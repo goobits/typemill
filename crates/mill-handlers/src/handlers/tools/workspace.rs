@@ -109,9 +109,10 @@ impl ToolHandler for WorkspaceToolsHandler {
                 self.system_handler.handle_tool_call(context, &call).await
             }
             "update_dependency" => self.handle_update_dependency(context, &call).await,
-            _ => Err(ServerError::invalid_request(
-                format!("Unknown workspace tool: {}", tool_call.name),
-            )),
+            _ => Err(ServerError::invalid_request(format!(
+                "Unknown workspace tool: {}",
+                tool_call.name
+            ))),
         }
     }
 }
@@ -137,10 +138,7 @@ impl WorkspaceToolsHandler {
 
         // Get the manifest filename (e.g., "Cargo.toml")
         let filename = path.file_name().and_then(|s| s.to_str()).ok_or_else(|| {
-            ServerError::invalid_request(format!(
-                "Invalid manifest path: {}",
-                manifest_path
-            ))
+            ServerError::invalid_request(format!("Invalid manifest path: {}", manifest_path))
         })?;
 
         // Find the appropriate language plugin for this manifest
@@ -171,12 +169,7 @@ impl WorkspaceToolsHandler {
         let updated_content = manifest_updater
             .update_dependency(path, old_dep_name, new_dep_name, new_path)
             .await
-            .map_err(|e| {
-                ServerError::internal(format!(
-                    "Failed to update dependency: {}",
-                    e
-                ))
-            })?;
+            .map_err(|e| ServerError::internal(format!("Failed to update dependency: {}", e)))?;
 
         context
             .app_state
@@ -209,9 +202,7 @@ impl WorkspaceToolsHandler {
             .as_ref()
             .and_then(|v| v.as_object())
             .ok_or_else(|| {
-                ServerError::invalid_request(
-                    "Arguments must be an object".to_string(),
-                )
+                ServerError::invalid_request("Arguments must be an object".to_string())
             })?;
 
         let manifest_path = args
@@ -227,18 +218,14 @@ impl WorkspaceToolsHandler {
             .get("old_dep_name")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                ServerError::invalid_request(
-                    "Missing required parameter: old_dep_name".to_string(),
-                )
+                ServerError::invalid_request("Missing required parameter: old_dep_name".to_string())
             })?;
 
         let new_dep_name = args
             .get("new_dep_name")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                ServerError::invalid_request(
-                    "Missing required parameter: new_dep_name".to_string(),
-                )
+                ServerError::invalid_request("Missing required parameter: new_dep_name".to_string())
             })?;
 
         // new_path is optional - if not provided, only rename the dependency

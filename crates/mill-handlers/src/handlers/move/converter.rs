@@ -8,11 +8,9 @@ use lsp_types::{
     DocumentChangeOperation, DocumentChanges, OptionalVersionedTextDocumentIdentifier, RenameFile,
     ResourceOp, TextDocumentEdit, TextEdit as LspTextEdit,
 };
-use mill_foundation::planning::{MovePlan, PlanMetadata, PlanSummary};
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
-use mill_foundation::protocol::{
-    EditPlan, TextEdit as ProtocolTextEdit,
-};
+use mill_foundation::planning::{MovePlan, PlanMetadata, PlanSummary};
+use mill_foundation::protocol::{EditPlan, TextEdit as ProtocolTextEdit};
 use std::collections::HashMap;
 use std::path::Path;
 use tracing::{debug, info};

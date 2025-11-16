@@ -2,9 +2,7 @@
 
 use async_trait::async_trait;
 use mill_foundation::errors::MillError;
-use mill_foundation::protocol::{
-    AstService, CacheStats, ImportGraph, LspService, Message,
-};
+use mill_foundation::protocol::{AstService, CacheStats, ImportGraph, LspService, Message};
 use mockall::mock;
 use std::path::Path;
 

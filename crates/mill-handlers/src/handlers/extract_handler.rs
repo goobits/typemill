@@ -18,10 +18,7 @@ use lsp_types::{Position, Range, WorkspaceEdit};
 use mill_ast::refactoring::CodeRange;
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
-use mill_foundation::protocol::{
-    EditPlan, ExtractPlan, PlanMetadata,
-    PlanSummary, RefactorPlan,
-};
+use mill_foundation::protocol::{EditPlan, ExtractPlan, PlanMetadata, PlanSummary, RefactorPlan};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -112,8 +109,8 @@ impl ExtractHandler {
                 "Executing extract plan"
             );
 
-            use mill_services::services::{ExecutionOptions, PlanExecutor};
             use crate::handlers::tools::extensions::get_concrete_app_state;
+            use mill_services::services::{ExecutionOptions, PlanExecutor};
 
             // Get concrete AppState to access concrete FileService
             let concrete_state = get_concrete_app_state(&context.app_state)?;
@@ -167,7 +164,10 @@ impl ExtractHandler {
         // Note: LSP integration removed as DirectLspAdapter doesn't implement LspRefactoringService
 
         // Get PluginDiscovery from language_plugins by downcasting
-        let plugin_discovery = context.app_state.language_plugins.inner()
+        let plugin_discovery = context
+            .app_state
+            .language_plugins
+            .inner()
             .downcast_ref::<mill_plugin_api::PluginDiscovery>()
             .ok_or_else(|| ServerError::internal("Failed to downcast to PluginDiscovery"))?;
 
@@ -176,7 +176,7 @@ impl ExtractHandler {
             &code_range,
             &source.name,
             &source.file_path,
-            None, // No LSP service - use AST-only approach
+            None,                   // No LSP service - use AST-only approach
             Some(plugin_discovery), // Pass plugin registry
         )
         .await
@@ -221,7 +221,10 @@ impl ExtractHandler {
         // and adapt the result (AST-only approach, no LSP service)
 
         // Get PluginDiscovery from language_plugins by downcasting
-        let plugin_discovery = context.app_state.language_plugins.inner()
+        let plugin_discovery = context
+            .app_state
+            .language_plugins
+            .inner()
             .downcast_ref::<mill_plugin_api::PluginDiscovery>()
             .ok_or_else(|| ServerError::internal("Failed to downcast to PluginDiscovery"))?;
 
@@ -230,7 +233,7 @@ impl ExtractHandler {
             &code_range,
             &source.name,
             &source.file_path,
-            None, // No LSP service - use AST-only approach
+            None,                   // No LSP service - use AST-only approach
             Some(plugin_discovery), // Pass plugin registry
         )
         .await
@@ -262,14 +265,22 @@ impl ExtractHandler {
             .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
         // Get PluginDiscovery from language_plugins by downcasting
-        let plugin_discovery = context.app_state.language_plugins.inner()
+        let plugin_discovery = context
+            .app_state
+            .language_plugins
+            .inner()
             .downcast_ref::<mill_plugin_api::PluginDiscovery>()
             .ok_or_else(|| ServerError::internal("Failed to downcast to PluginDiscovery"))?;
 
         // Get the refactoring provider for this file type
         let provider = plugin_discovery
             .refactoring_provider_for_file(&source.file_path)
-            .ok_or_else(|| ServerError::not_found(format!("No refactoring provider found for: {}", source.file_path)))?;
+            .ok_or_else(|| {
+                ServerError::not_found(format!(
+                    "No refactoring provider found for: {}",
+                    source.file_path
+                ))
+            })?;
 
         // Check if extract_constant is supported
         if !provider.supports_extract_constant() {

@@ -172,6 +172,9 @@ fn test_analysis_metadata_contract(plugin: &dyn LanguagePlugin) {
             meta.name
         );
     } else {
-        println!("  Plugin '{}' has no analysis metadata (config-only language)", meta.name);
+        println!(
+            "  Plugin '{}' has no analysis metadata (config-only language)",
+            meta.name
+        );
     }
 }

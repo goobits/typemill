@@ -92,35 +92,35 @@ impl DefaultWorkflowExecutor {
                         )));
                     }
 
-                    let step_index =
-                        parts[1]
-                            .parse::<usize>()
-                            .map_err(|_| ServerError::runtime(format!(
-                                "Invalid step index in placeholder '{}': '{}' is not a number",
-                                s, parts[1]
-                            )))?;
+                    let step_index = parts[1].parse::<usize>().map_err(|_| {
+                        ServerError::runtime(format!(
+                            "Invalid step index in placeholder '{}': '{}' is not a number",
+                            s, parts[1]
+                        ))
+                    })?;
 
-                    let step_result =
-                        step_results
-                            .get(&step_index)
-                            .ok_or_else(|| ServerError::runtime(format!(
-                                "Failed to resolve placeholder '{}': step {} has not been executed yet",
-                                s, step_index
-                            )))?;
+                    let step_result = step_results.get(&step_index).ok_or_else(|| {
+                        ServerError::runtime(format!(
+                            "Failed to resolve placeholder '{}': step {} has not been executed yet",
+                            s, step_index
+                        ))
+                    })?;
 
                     // Navigate the path in the result
                     let mut current = step_result;
                     for (i, part) in parts[2..].iter().enumerate() {
-                        current = current.get(part).ok_or_else(|| ServerError::runtime(format!(
-                            "Failed to resolve placeholder '{}': field '{}' not found in {}",
-                            s,
-                            part,
-                            if i == 0 {
-                                format!("step {} result", step_index)
-                            } else {
-                                format!("path '{}'", parts[2..i + 2].join("."))
-                            }
-                        )))?;
+                        current = current.get(part).ok_or_else(|| {
+                            ServerError::runtime(format!(
+                                "Failed to resolve placeholder '{}': field '{}' not found in {}",
+                                s,
+                                part,
+                                if i == 0 {
+                                    format!("step {} result", step_index)
+                                } else {
+                                    format!("path '{}'", parts[2..i + 2].join("."))
+                                }
+                            ))
+                        })?;
                     }
                     Ok(current.clone())
                 } else {
@@ -348,10 +348,12 @@ impl WorkflowExecutor for DefaultWorkflowExecutor {
         let paused_state = self
             .paused_workflows
             .remove(workflow_id)
-            .ok_or_else(|| ServerError::runtime(format!(
-                "Workflow '{}' not found or already completed",
-                workflow_id
-            )))?
+            .ok_or_else(|| {
+                ServerError::runtime(format!(
+                    "Workflow '{}' not found or already completed",
+                    workflow_id
+                ))
+            })?
             .1;
 
         let workflow = paused_state.workflow;

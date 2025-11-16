@@ -1,11 +1,11 @@
 //! TypeScript/JavaScript specific refactoring logic.
 use mill_foundation::protocol::{EditPlan, EditType, TextEdit};
+use mill_lang_common::refactoring::edit_plan_builder::EditPlanBuilder;
 use mill_lang_common::{
     find_literal_occurrences, is_escaped, is_valid_code_literal_location, CodeRange,
     ExtractConstantAnalysis, ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis,
     LineExtractor,
 };
-use mill_lang_common::refactoring::edit_plan_builder::EditPlanBuilder;
 use mill_plugin_api::{PluginApiError, PluginResult};
 use std::path::PathBuf;
 use swc_common::{sync::Lrc, FileName, FilePathMapping, SourceMap};
@@ -111,7 +111,7 @@ pub fn plan_extract_variable(
 ///
 /// # Returns
 /// * `Ok(EditPlan)` - The edit plan with constant declaration inserted at the top and all
-///                    literal occurrences replaced with the constant name
+///   literal occurrences replaced with the constant name
 /// * `Err(PluginError)` - If the cursor is not on a literal, the name is invalid, or parsing fails
 ///
 /// # Example
@@ -473,7 +473,7 @@ pub fn analyze_extract_variable(
 ///
 /// # Returns
 /// * `Ok(ExtractConstantAnalysis)` - Analysis result with literal value, occurrence ranges,
-///                                     validation status, and insertion point
+///   validation status, and insertion point
 /// * `Err(PluginError)` - If parsing fails or no literal is found at the cursor position
 ///
 /// # Implementation Details
@@ -606,7 +606,7 @@ fn ast_extract_constant_ts_js(
 
     ExtractConstantEditPlanBuilder::new(analysis.clone(), name.to_string(), file_path.to_string())
         .with_declaration_format(|name, value| format!("const {} = {};\n", name, value))
-        .map_err(|e| PluginApiError::invalid_input(e))
+        .map_err(PluginApiError::invalid_input)
 }
 
 // --- Visitors (moved from mill-ast) ---
@@ -691,7 +691,7 @@ fn is_valid_number(text: &str) -> bool {
         return cleaned.len() > 2 && cleaned[2..].chars().all(|c| c == '0' || c == '1');
     }
     if cleaned.starts_with("0o") || cleaned.starts_with("0O") {
-        return cleaned.len() > 2 && cleaned[2..].chars().all(|c| c >= '0' && c <= '7');
+        return cleaned.len() > 2 && cleaned[2..].chars().all(|c| ('0'..='7').contains(&c));
     }
 
     // For regular numbers, try parsing as f64
@@ -749,7 +749,6 @@ impl LiteralFinder {
             // Check for boolean or null
             if let Some((literal_value, range)) = self.find_keyword_literal(line_text) {
                 self.found_literal = Some((literal_value, range));
-                return;
             }
         }
     }
@@ -783,8 +782,13 @@ impl LiteralFinder {
                     if start == 1 {
                         start -= 1;
                         break;
-                    } else if let Some(before_sign) = line_text.chars().nth(start.saturating_sub(2)) {
-                        if !before_sign.is_alphanumeric() && before_sign != '_' && before_sign != ')' && before_sign != ']' {
+                    } else if let Some(before_sign) = line_text.chars().nth(start.saturating_sub(2))
+                    {
+                        if !before_sign.is_alphanumeric()
+                            && before_sign != '_'
+                            && before_sign != ')'
+                            && before_sign != ']'
+                        {
                             start -= 1;
                             break;
                         }
@@ -858,7 +862,10 @@ impl LiteralFinder {
         // We need to find an unescaped quote
         let mut opening_quote: Option<(char, usize)> = None;
 
-        for (i, ch) in line_text[..=col.min(line_text.len().saturating_sub(1))].char_indices().rev() {
+        for (i, ch) in line_text[..=col.min(line_text.len().saturating_sub(1))]
+            .char_indices()
+            .rev()
+        {
             if (ch == '"' || ch == '\'' || ch == '`') && !is_escaped(line_text, i) {
                 opening_quote = Some((ch, i));
                 break;
@@ -894,24 +901,26 @@ impl LiteralFinder {
         for keyword in &keywords {
             // Try to match keyword at or near cursor
             for start in col.saturating_sub(keyword.len())..=col {
-                if start + keyword.len() <= line_text.len() {
-                    if &line_text[start..start + keyword.len()] == *keyword {
-                        // Check word boundaries
-                        let before_ok = start == 0 || !line_text[..start].ends_with(|c: char| c.is_alphanumeric());
-                        let after_ok = start + keyword.len() == line_text.len()
-                            || !line_text[start + keyword.len()..].starts_with(|c: char| c.is_alphanumeric());
+                if start + keyword.len() <= line_text.len()
+                    && &line_text[start..start + keyword.len()] == *keyword
+                {
+                    // Check word boundaries
+                    let before_ok = start == 0
+                        || !line_text[..start].ends_with(|c: char| c.is_alphanumeric());
+                    let after_ok = start + keyword.len() == line_text.len()
+                        || !line_text[start + keyword.len()..]
+                            .starts_with(|c: char| c.is_alphanumeric());
 
-                        if before_ok && after_ok {
-                            return Some((
-                                keyword.to_string(),
-                                CodeRange {
-                                    start_line: self.target_line,
-                                    start_col: start as u32,
-                                    end_line: self.target_line,
-                                    end_col: (start + keyword.len()) as u32,
-                                },
-                            ));
-                        }
+                    if before_ok && after_ok {
+                        return Some((
+                            keyword.to_string(),
+                            CodeRange {
+                                start_line: self.target_line,
+                                start_col: start as u32,
+                                end_line: self.target_line,
+                                end_col: (start + keyword.len()) as u32,
+                            },
+                        ));
                     }
                 }
             }
@@ -1150,7 +1159,10 @@ mod tests {
     fn test_plan_extract_constant_valid() {
         let source = "const x = 42;\nconst y = 42;\n";
         let result = plan_extract_constant(source, 0, 10, "ANSWER", "test.ts");
-        assert!(result.is_ok(), "Should extract numeric literal successfully");
+        assert!(
+            result.is_ok(),
+            "Should extract numeric literal successfully"
+        );
     }
 
     #[test]
@@ -1166,21 +1178,33 @@ mod tests {
     fn test_extract_constant_negative_number() {
         let source = "const x = -42;\n";
         let result = plan_extract_constant(source, 0, 11, "NEGATIVE_VALUE", "test.ts");
-        assert!(result.is_ok(), "Should extract negative number: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Should extract negative number: {:?}",
+            result
+        );
     }
 
     #[test]
     fn test_extract_constant_scientific_notation_lowercase() {
         let source = "const x = 1e-5;\n";
         let result = plan_extract_constant(source, 0, 11, "SMALL_VALUE", "test.ts");
-        assert!(result.is_ok(), "Should extract scientific notation (lowercase e): {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Should extract scientific notation (lowercase e): {:?}",
+            result
+        );
     }
 
     #[test]
     fn test_extract_constant_scientific_notation_uppercase() {
         let source = "const x = 2.5E10;\n";
         let result = plan_extract_constant(source, 0, 12, "BIG_VALUE", "test.ts");
-        assert!(result.is_ok(), "Should extract scientific notation (uppercase E): {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Should extract scientific notation (uppercase E): {:?}",
+            result
+        );
     }
 
     #[test]
@@ -1210,26 +1234,39 @@ mod tests {
     fn test_extract_constant_string_with_escaped_quotes() {
         let source = format!("{}\n", r#"const msg = "He said \"hello\"";"#);
         let result = plan_extract_constant(&source, 0, 15, "GREETING", "test.ts");
-        assert!(result.is_ok(), "Should extract string with escaped quotes: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Should extract string with escaped quotes: {:?}",
+            result
+        );
     }
 
     #[test]
     fn test_is_valid_literal_location_escaped_quotes() {
         let line = r#"const s = "He said \"42\"";"#;
         // Position 20 is inside the escaped quote area
-        assert!(!is_valid_literal_location(line, 20, 2), "Should detect inside string with escaped quotes");
+        assert!(
+            !is_valid_literal_location(line, 20, 2),
+            "Should detect inside string with escaped quotes"
+        );
     }
 
     #[test]
     fn test_is_valid_literal_location_outside_string() {
         let line = "const x = 42;";
-        assert!(is_valid_literal_location(line, 10, 2), "Should allow literal outside string");
+        assert!(
+            is_valid_literal_location(line, 10, 2),
+            "Should allow literal outside string"
+        );
     }
 
     #[test]
     fn test_is_valid_literal_location_inside_comment() {
         let line = "const x = 0; // rate is 42";
-        assert!(!is_valid_literal_location(line, 24, 2), "Should reject literal inside comment");
+        assert!(
+            !is_valid_literal_location(line, 24, 2),
+            "Should reject literal inside comment"
+        );
     }
 
     #[test]
@@ -1237,8 +1274,15 @@ mod tests {
         let source = r#"const x = 42; const s = "42";"#;
         let occurrences = find_literal_occurrences(source, "42", is_valid_literal_location);
         // Should only find the numeric 42, not the string "42"
-        assert_eq!(occurrences.len(), 1, "Should find only numeric literal, not string");
-        assert_eq!(occurrences[0].start_col, 10, "Should find numeric 42 at correct position");
+        assert_eq!(
+            occurrences.len(),
+            1,
+            "Should find only numeric literal, not string"
+        );
+        assert_eq!(
+            occurrences[0].start_col, 10,
+            "Should find numeric 42 at correct position"
+        );
     }
 
     #[test]
@@ -1255,8 +1299,14 @@ mod tests {
         assert!(is_valid_number("42"), "Should validate integer");
         assert!(is_valid_number("-42"), "Should validate negative integer");
         assert!(is_valid_number("3.14"), "Should validate float");
-        assert!(is_valid_number("1e-5"), "Should validate scientific notation");
-        assert!(is_valid_number("2.5E10"), "Should validate scientific notation with uppercase E");
+        assert!(
+            is_valid_number("1e-5"),
+            "Should validate scientific notation"
+        );
+        assert!(
+            is_valid_number("2.5E10"),
+            "Should validate scientific notation with uppercase E"
+        );
         assert!(is_valid_number("0xFF"), "Should validate hexadecimal");
         assert!(is_valid_number("0b1010"), "Should validate binary");
         assert!(is_valid_number("0o777"), "Should validate octal");

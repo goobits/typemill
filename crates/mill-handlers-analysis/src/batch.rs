@@ -11,10 +11,10 @@ use crate::{
     tests_handler, AnalysisConfig,
 };
 use ignore::WalkBuilder;
+use mill_foundation::errors::MillError;
 use mill_foundation::protocol::analysis_result::{
     AnalysisResult, AnalysisScope, Finding, FindingLocation, Position, Range, Severity,
 };
-use mill_foundation::errors::MillError;
 use mill_plugin_api::Symbol;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -26,10 +26,13 @@ use tracing::{error, info, warn};
 
 /// Helper to downcast AnalysisConfigTrait to concrete AnalysisConfig
 fn get_analysis_config(context: &ToolHandlerContext) -> Result<&AnalysisConfig, MillError> {
-    context.analysis_config
+    context
+        .analysis_config
         .as_any()
         .downcast_ref::<AnalysisConfig>()
-        .ok_or_else(|| MillError::internal("Failed to downcast AnalysisConfigTrait to AnalysisConfig"))
+        .ok_or_else(|| {
+            MillError::internal("Failed to downcast AnalysisConfigTrait to AnalysisConfig")
+        })
 }
 
 // --- New Data Structures for Multi-Query Batching ---
@@ -206,7 +209,9 @@ pub async fn run_batch_analysis(
         for file_path in &files_for_query {
             if let Some(cached_ast) = ast_cache.get(file_path) {
                 let cache_key = (file_path.clone(), category.clone(), query.kind.clone());
-                if !all_file_results.contains_key(&cache_key) {
+                if let std::collections::hash_map::Entry::Vacant(entry) =
+                    all_file_results.entry(cache_key)
+                {
                     let default_config = get_analysis_config(context)
                         .map_err(|e| BatchError::AnalysisFailed(e.to_string()))?;
                     let config = request.config.as_ref().unwrap_or(default_config);
@@ -222,7 +227,7 @@ pub async fn run_batch_analysis(
                     .await
                     {
                         Ok(result_for_file) => {
-                            all_file_results.insert(cache_key, result_for_file);
+                            entry.insert(result_for_file);
                         }
                         Err(e) => {
                             let file_path_str = file_path.display().to_string();
@@ -885,11 +890,7 @@ fn finding_to_candidate(finding: &Finding) -> Option<RefactoringCandidate> {
         file: finding.location.file_path.clone(),
         line: r.start.line as usize,
         character: r.start.character as usize,
-    });
-
-    if location.is_none() {
-        return None;
-    }
+    })?;
 
     let candidate = RefactoringCandidate {
         refactor_type,
@@ -902,7 +903,7 @@ fn finding_to_candidate(finding: &Finding) -> Option<RefactoringCandidate> {
         involves_generics: false,
         involves_macros: false,
         evidence_strength: EvidenceStrength::Medium,
-        location: location.unwrap(),
+        location,
         refactor_call_args: json!({
             "file_path": finding.location.file_path,
             "range": finding.location.range,
@@ -926,7 +927,7 @@ fn deduplicate_suggestions(suggestions: &mut Vec<ActionableSuggestion>) {
     });
 }
 
-fn rank_suggestions(suggestions: &mut Vec<ActionableSuggestion>) {
+fn rank_suggestions(suggestions: &mut [ActionableSuggestion]) {
     suggestions.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
 }
 

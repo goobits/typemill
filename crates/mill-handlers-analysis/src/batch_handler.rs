@@ -1,6 +1,6 @@
 //! Tool handler for the `analyze.batch` command
-use crate::{ToolHandler, ToolHandlerContext};
 use crate::batch::{run_batch_analysis, AnalysisQuery, BatchAnalysisRequest};
+use crate::{ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
@@ -9,6 +9,12 @@ use serde_json::{json, Value};
 
 /// Tool handler for `analyze.batch`
 pub struct BatchAnalysisHandler;
+
+impl Default for BatchAnalysisHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl BatchAnalysisHandler {
     pub fn new() -> Self {

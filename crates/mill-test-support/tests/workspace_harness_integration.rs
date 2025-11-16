@@ -33,9 +33,9 @@ mod workspace_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin.workspace_support().expect(&format!(
+            let workspace_support = plugin.workspace_support().unwrap_or_else(|| panic!(
                 "{:?} should have workspace support",
                 fixture.language
             ));
@@ -63,9 +63,9 @@ mod workspace_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin.workspace_support().expect(&format!(
+            let workspace_support = plugin.workspace_support().unwrap_or_else(|| panic!(
                 "{:?} should have workspace support",
                 fixture.language
             ));
@@ -93,9 +93,9 @@ mod workspace_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin.workspace_support().expect(&format!(
+            let workspace_support = plugin.workspace_support().unwrap_or_else(|| panic!(
                 "{:?} should have workspace support",
                 fixture.language
             ));
@@ -123,9 +123,9 @@ mod workspace_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin.workspace_support().expect(&format!(
+            let workspace_support = plugin.workspace_support().unwrap_or_else(|| panic!(
                 "{:?} should have workspace support",
                 fixture.language
             ));
@@ -157,9 +157,9 @@ mod workspace_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin.workspace_support().expect(&format!(
+            let workspace_support = plugin.workspace_support().unwrap_or_else(|| panic!(
                 "{:?} should have workspace support",
                 fixture.language
             ));
@@ -191,9 +191,9 @@ mod workspace_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin.workspace_support().expect(&format!(
+            let workspace_support = plugin.workspace_support().unwrap_or_else(|| panic!(
                 "{:?} should have workspace support",
                 fixture.language
             ));
@@ -225,9 +225,9 @@ mod workspace_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin.workspace_support().expect(&format!(
+            let workspace_support = plugin.workspace_support().unwrap_or_else(|| panic!(
                 "{:?} should have workspace support",
                 fixture.language
             ));
@@ -262,9 +262,9 @@ mod workspace_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin.workspace_support().expect(&format!(
+            let workspace_support = plugin.workspace_support().unwrap_or_else(|| panic!(
                 "{:?} should have workspace support",
                 fixture.language
             ));
@@ -297,9 +297,9 @@ mod workspace_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
-            let workspace_support = plugin.workspace_support().expect(&format!(
+            let workspace_support = plugin.workspace_support().unwrap_or_else(|| panic!(
                 "{:?} should have workspace support",
                 fixture.language
             ));
@@ -309,7 +309,8 @@ mod workspace_harness_tests {
                     workspace_support.remove_workspace_member(fixture.manifest_content, member);
 
                 // Verify the member was not in the list (operation should be no-op)
-                let members_before = workspace_support.list_workspace_members(fixture.manifest_content);
+                let members_before =
+                    workspace_support.list_workspace_members(fixture.manifest_content);
                 let members_after = workspace_support.list_workspace_members(&result);
 
                 assert_eq!(

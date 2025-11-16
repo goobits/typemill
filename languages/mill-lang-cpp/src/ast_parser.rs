@@ -119,7 +119,5 @@ pub fn list_functions(source: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     // List functions tests moved to mill-test-support/tests/list_functions_harness_integration.rs
 }

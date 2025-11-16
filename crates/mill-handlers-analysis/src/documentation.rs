@@ -12,15 +12,15 @@
 //! Uses the shared analysis engine for orchestration and focuses only on
 //! detection logic.
 
-use crate::{ToolHandler, ToolHandlerContext};
 use crate::suggestions::{AnalysisContext, RefactoringCandidate, SuggestionGenerator};
+use crate::{ToolHandler, ToolHandlerContext};
 use anyhow::Result;
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_foundation::protocol::analysis_result::{
     Finding, FindingLocation, Position, Range, SafetyLevel, Severity, Suggestion,
 };
-use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_plugin_api::{Symbol, SymbolKind};
 use regex::Regex;
 use serde_json::{json, Value};
@@ -1524,6 +1524,12 @@ fn extract_todo_text(line: &str, pattern: &str) -> Option<String> {
 // ============================================================================
 
 pub struct DocumentationHandler;
+
+impl Default for DocumentationHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl DocumentationHandler {
     pub fn new() -> Self {

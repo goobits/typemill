@@ -305,8 +305,8 @@ fn sync_crate_features(
                 // Update existing dependency to ensure it's optional
                 if let Some(inline_table) = existing_dep.as_inline_table_mut() {
                     // For mill-services, ensure optional = true
-                    if crate_info.name == "mill-services" {
-                        if !inline_table.contains_key("optional") {
+                    if crate_info.name == "mill-services"
+                        && !inline_table.contains_key("optional") {
                             inline_table.insert("optional", Value::Boolean(Formatted::new(true)));
                             if verbose {
                                 println!(
@@ -316,7 +316,6 @@ fn sync_crate_features(
                                 );
                             }
                         }
-                    }
                 }
             } else {
                 // Add new dependency
@@ -480,7 +479,7 @@ fn generate_plugin_bundle_code(
         ));
     }
 
-    code.push_str("\n");
+    code.push('\n');
 
     // Linkage function
     code.push_str(
@@ -547,7 +546,7 @@ fn generate_plugin_bundle_code(
         code.push_str(&format!("    extern crate mill_lang_{};\n", lang_name));
     }
 
-    code.push_str("\n");
+    code.push('\n');
     code.push_str("    #[test]\n");
     code.push_str("    fn test_all_plugins_returns_plugins() {\n");
     code.push_str("        let plugins = all_plugins();\n");

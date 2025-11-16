@@ -22,9 +22,7 @@ pub use mill_handlers::handlers;
 pub use mill_services::services;
 
 use mill_config::AppConfig;
-pub use mill_foundation::errors::{
-    MillError as ServerError, MillResult as ServerResult,
-};
+pub use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 pub use mill_foundation::protocol::{AstService, LspService};
 use mill_handlers::handlers::plugin_dispatcher::{AppState, PluginDispatcher};
 use std::path::PathBuf;

@@ -39,11 +39,11 @@ mod import_harness_tests {
 
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
             let parser = plugin
                 .import_parser()
-                .expect(&format!("{:?} should have import parser", fixture.language));
+                .unwrap_or_else(|| panic!("{:?} should have import parser", fixture.language));
 
             let imports = parser.parse_imports(fixture.source_code);
             eprintln!("Expected: {:?}", fixture.expected);
@@ -70,11 +70,11 @@ mod import_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
             let parser = plugin
                 .import_parser()
-                .expect(&format!("{:?} should have import parser", fixture.language));
+                .unwrap_or_else(|| panic!("{:?} should have import parser", fixture.language));
 
             if let ImportOperation::ContainsImport { module_name } = &fixture.operation {
                 let contains = parser.contains_import(fixture.source_code, module_name);
@@ -103,11 +103,11 @@ mod import_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
             let parser = plugin
                 .import_parser()
-                .expect(&format!("{:?} should have import parser", fixture.language));
+                .unwrap_or_else(|| panic!("{:?} should have import parser", fixture.language));
 
             if let ImportOperation::ContainsImport { module_name } = &fixture.operation {
                 let contains = parser.contains_import(fixture.source_code, module_name);
@@ -136,9 +136,9 @@ mod import_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
-            let mutation = plugin.import_mutation_support().expect(&format!(
+            let mutation = plugin.import_mutation_support().unwrap_or_else(|| panic!(
                 "{:?} should have import mutation support",
                 fixture.language
             ));
@@ -169,9 +169,9 @@ mod import_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
-            let mutation = plugin.import_mutation_support().expect(&format!(
+            let mutation = plugin.import_mutation_support().unwrap_or_else(|| panic!(
                 "{:?} should have import mutation support",
                 fixture.language
             ));
@@ -202,9 +202,9 @@ mod import_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
-            let mutation = plugin.import_mutation_support().expect(&format!(
+            let mutation = plugin.import_mutation_support().unwrap_or_else(|| panic!(
                 "{:?} should have import mutation support",
                 fixture.language
             ));
@@ -235,9 +235,9 @@ mod import_harness_tests {
         for fixture in scenario.fixtures {
             let plugin = registry
                 .find_by_extension(fixture.language.file_extension())
-                .expect(&format!("Plugin not found for {:?}", fixture.language));
+                .unwrap_or_else(|| panic!("Plugin not found for {:?}", fixture.language));
 
-            let rename_support = plugin.import_rename_support().expect(&format!(
+            let rename_support = plugin.import_rename_support().unwrap_or_else(|| panic!(
                 "{:?} should have import rename support",
                 fixture.language
             ));

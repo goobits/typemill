@@ -1,12 +1,6 @@
 use mill_foundation::protocol::{DependencyUpdate, DependencyUpdateType};
 use mill_lang_cpp::CppPlugin;
-use mill_plugin_api::{
-    capabilities::{ImportAnalyzer, ModuleReferenceScanner, RefactoringProvider},
-    import_support::{
-        ImportAdvancedSupport, ImportMoveSupport, ImportMutationSupport, ImportRenameSupport,
-    },
-    LanguagePlugin, ManifestUpdater, ScanScope, WorkspaceSupport,
-};
+use mill_plugin_api::{LanguagePlugin, ScanScope};
 use std::io::Write;
 use std::path::Path;
 use tempfile::Builder;

@@ -398,7 +398,7 @@ impl mill_handler_api::LspAdapter for DirectLspAdapter {
         // Delegate to the existing implementation, converting error type
         self.get_or_create_client(file_extension)
             .await
-            .map_err(|e| mill_foundation::errors::MillError::lsp(e))
+            .map_err(mill_foundation::errors::MillError::lsp)
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

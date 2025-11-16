@@ -3,14 +3,14 @@
 //! This module provides AST-based refactoring capabilities for Go code.
 
 use lazy_static::lazy_static;
+use mill_foundation::protocol::EditPlan;
 use mill_foundation::protocol::{EditType, TextEdit};
 use mill_lang_common::{
-    find_literal_occurrences, is_screaming_snake_case,
-    is_valid_code_literal_location, refactoring::edit_plan_builder::EditPlanBuilder, CodeRange,
-    ExtractConstantAnalysis, ExtractConstantEditPlanBuilder, LineExtractor,
+    find_literal_occurrences, is_screaming_snake_case, is_valid_code_literal_location,
+    refactoring::edit_plan_builder::EditPlanBuilder, CodeRange, ExtractConstantAnalysis,
+    ExtractConstantEditPlanBuilder, LineExtractor,
 };
 use mill_plugin_api::{PluginApiError, PluginResult};
-use mill_foundation::protocol::EditPlan;
 
 /// Plan extract function refactoring for Go
 pub fn plan_extract_function(
@@ -53,7 +53,8 @@ pub fn plan_extract_function(
             start_col: 0,
             end_line: start_line,
             end_col: 0,
-        }.into(),
+        }
+        .into(),
         original_text: String::new(),
         new_text: new_function,
         priority: 100,
@@ -69,7 +70,8 @@ pub fn plan_extract_function(
             start_col: 0,
             end_line,
             end_col: lines[end_line as usize].len() as u32,
-        }.into(),
+        }
+        .into(),
         original_text: selected_code.clone(),
         new_text: function_call,
         priority: 90,
@@ -143,7 +145,8 @@ pub fn plan_extract_variable(
             start_col: 0,
             end_line: start_line,
             end_col: 0,
-        }.into(),
+        }
+        .into(),
         original_text: String::new(),
         new_text: declaration,
         priority: 100,
@@ -159,7 +162,8 @@ pub fn plan_extract_variable(
             start_col,
             end_line,
             end_col,
-        }.into(),
+        }
+        .into(),
         original_text: expression.clone(),
         new_text: var_name.clone(),
         priority: 90,
@@ -232,7 +236,8 @@ pub fn plan_inline_variable(
                         start_col: mat.start() as u32,
                         end_line: line_num,
                         end_col: mat.end() as u32,
-                    }.into(),
+                    }
+                    .into(),
                     original_text: var_name.to_string(),
                     new_text: initializer.to_string(),
                     priority: 100,
@@ -250,7 +255,8 @@ pub fn plan_inline_variable(
                 start_col: 0,
                 end_line: variable_line,
                 end_col: line_text.len() as u32,
-            }.into(),
+            }
+            .into(),
             original_text: line_text.to_string(),
             new_text: String::new(),
             priority: 50,
@@ -311,10 +317,8 @@ pub fn plan_extract_constant(
     // For PascalCase names, builder's validation would fail, so we'll build manually
     if is_screaming_snake_case(name) {
         ExtractConstantEditPlanBuilder::new(analysis, name.to_string(), file_path.to_string())
-            .with_declaration_format(|name, value| {
-                format!("const {} = {}\n", name, value)
-            })
-            .map_err(|e| PluginApiError::invalid_input(e))
+            .with_declaration_format(|name, value| format!("const {} = {}\n", name, value))
+            .map_err(PluginApiError::invalid_input)
     } else {
         // PascalCase - use custom logic to avoid builder's SCREAMING_SNAKE_CASE validation
         let mut edits = Vec::new();
@@ -409,7 +413,8 @@ pub(crate) fn analyze_extract_constant(
 
         // Check for numeric literal
         if let Some((literal_value, _range)) = find_numeric_literal(line_text, line, character) {
-            let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_literal_location);
+            let occurrence_ranges =
+                find_literal_occurrences(source, &literal_value, is_valid_literal_location);
             return Ok(ExtractConstantAnalysis {
                 literal_value,
                 occurrence_ranges,
@@ -421,7 +426,8 @@ pub(crate) fn analyze_extract_constant(
 
         // Check for string literal (quoted)
         if let Some((literal_value, _range)) = find_string_literal(line_text, line, character) {
-            let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_literal_location);
+            let occurrence_ranges =
+                find_literal_occurrences(source, &literal_value, is_valid_literal_location);
             return Ok(ExtractConstantAnalysis {
                 literal_value,
                 occurrence_ranges,
@@ -433,7 +439,8 @@ pub(crate) fn analyze_extract_constant(
 
         // Check for boolean literal
         if let Some((literal_value, _range)) = find_keyword_literal(line_text, line, character) {
-            let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_literal_location);
+            let occurrence_ranges =
+                find_literal_occurrences(source, &literal_value, is_valid_literal_location);
             return Ok(ExtractConstantAnalysis {
                 literal_value,
                 occurrence_ranges,
@@ -488,9 +495,10 @@ fn find_numeric_literal(line_text: &str, line: u32, character: u32) -> Option<(S
         .unwrap_or(0);
 
     // Find the end of the number
-    let end = col + line_text[col..]
-        .find(|c: char| !c.is_ascii_digit() && c != '.')
-        .unwrap_or(line_text.len() - col);
+    let end = col
+        + line_text[col..]
+            .find(|c: char| !c.is_ascii_digit() && c != '.')
+            .unwrap_or(line_text.len() - col);
 
     if start < end && end <= line_text.len() {
         let text = &line_text[start..end];
@@ -624,25 +632,28 @@ fn find_keyword_literal(line_text: &str, line: u32, character: u32) -> Option<(S
 
     for keyword in &keywords {
         // Try to match keyword at or near cursor
-        for start in col.saturating_sub(keyword.len())..=col.min(line_text.len().saturating_sub(1)) {
-            if start + keyword.len() <= line_text.len() {
-                if &line_text[start..start + keyword.len()] == *keyword {
-                    // Check word boundaries
-                    let before_ok = start == 0 || !line_text[..start].ends_with(|c: char| c.is_alphanumeric());
-                    let after_ok = start + keyword.len() == line_text.len()
-                        || !line_text[start + keyword.len()..].starts_with(|c: char| c.is_alphanumeric());
+        for start in col.saturating_sub(keyword.len())..=col.min(line_text.len().saturating_sub(1))
+        {
+            if start + keyword.len() <= line_text.len()
+                && &line_text[start..start + keyword.len()] == *keyword
+            {
+                // Check word boundaries
+                let before_ok =
+                    start == 0 || !line_text[..start].ends_with(|c: char| c.is_alphanumeric());
+                let after_ok = start + keyword.len() == line_text.len()
+                    || !line_text[start + keyword.len()..]
+                        .starts_with(|c: char| c.is_alphanumeric());
 
-                    if before_ok && after_ok {
-                        return Some((
-                            keyword.to_string(),
-                            CodeRange {
-                                start_line: line,
-                                start_col: start as u32,
-                                end_line: line,
-                                end_col: (start + keyword.len()) as u32,
-                            },
-                        ));
-                    }
+                if before_ok && after_ok {
+                    return Some((
+                        keyword.to_string(),
+                        CodeRange {
+                            start_line: line,
+                            start_col: start as u32,
+                            end_line: line,
+                            end_col: (start + keyword.len()) as u32,
+                        },
+                    ));
                 }
             }
         }
@@ -708,7 +719,6 @@ fn find_insertion_point(source: &str) -> CodeRange {
         end_col: 0,
     }
 }
-
 
 /// Validates if a position in a line of code is a valid literal location for Go.
 ///
@@ -781,6 +791,7 @@ fn is_pascal_case(name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mill_lang_common::count_unescaped_quotes;
 
     #[test]
     fn test_plan_extract_constant_valid_number() {
@@ -792,7 +803,10 @@ func main() {
 }
 "#;
         let result = plan_extract_constant(source, 3, 9, "ANSWER", "test.go");
-        assert!(result.is_ok(), "Should extract numeric literal successfully");
+        assert!(
+            result.is_ok(),
+            "Should extract numeric literal successfully"
+        );
 
         let plan = result.unwrap();
         assert_eq!(plan.edits.len(), 3); // 1 declaration + 2 replacements
@@ -824,7 +838,9 @@ func main() {
         assert_eq!(plan.edits.len(), 3); // 1 declaration + 2 replacements
 
         // Check declaration
-        assert!(plan.edits[0].new_text.contains("const GREETING = \"hello\""));
+        assert!(plan.edits[0]
+            .new_text
+            .contains("const GREETING = \"hello\""));
     }
 
     #[test]
@@ -839,7 +855,10 @@ func main() {
 }
 "#;
         let result = plan_extract_constant(source, 3, 15, "ENABLED", "test.go");
-        assert!(result.is_ok(), "Should extract boolean literal successfully");
+        assert!(
+            result.is_ok(),
+            "Should extract boolean literal successfully"
+        );
 
         let plan = result.unwrap();
         assert_eq!(plan.edits.len(), 3); // 1 declaration + 2 replacements
@@ -862,7 +881,10 @@ func main() {
 
         // Test name starting with underscore (invalid)
         let result = plan_extract_constant(source, 3, 9, "_ANSWER", "test.go");
-        assert!(result.is_err(), "Should reject name starting with underscore");
+        assert!(
+            result.is_err(),
+            "Should reject name starting with underscore"
+        );
 
         // Test name ending with underscore (invalid)
         let result = plan_extract_constant(source, 3, 9, "ANSWER_", "test.go");
@@ -895,7 +917,10 @@ func main() {
 "#;
         // Cursor not on a literal (on 'x' instead)
         let result = plan_extract_constant(source, 3, 4, "ANSWER", "test.go");
-        assert!(result.is_err(), "Should error when cursor is not on a literal");
+        assert!(
+            result.is_err(),
+            "Should error when cursor is not on a literal"
+        );
     }
 
     #[test]
@@ -1025,7 +1050,10 @@ func main() {
         // Actual chars: \ " q u o t e \ "   i n   m i d d l e   " r e a l "
         // First \" is escaped, second \" is escaped, third and fourth " are unescaped
         // So 2 unescaped quotes
-        assert_eq!(count_unescaped_quotes(r#"\"quote\" in middle "real""#, '"'), 2);
+        assert_eq!(
+            count_unescaped_quotes(r#"\"quote\" in middle "real""#, '"'),
+            2
+        );
 
         // Backticks don't support escaping (raw strings in Go)
         // The backslashes are literal characters, not escape sequences
@@ -1132,7 +1160,9 @@ func main() {
         let plan = result.unwrap();
         // Should find both occurrences
         assert_eq!(plan.edits.len(), 3); // 1 declaration + 2 replacements
-        assert!(plan.edits[0].new_text.contains("const NEGATIVE_ANSWER = -42"));
+        assert!(plan.edits[0]
+            .new_text
+            .contains("const NEGATIVE_ANSWER = -42"));
     }
 
     #[test]
@@ -1168,7 +1198,9 @@ func main() {
         let plan = result.unwrap();
         // Should find both occurrences
         assert_eq!(plan.edits.len(), 3); // 1 declaration + 2 replacements
-        assert!(plan.edits[0].new_text.contains(r#"const GREETING_MESSAGE = "Say \"hello\"""#));
+        assert!(plan.edits[0]
+            .new_text
+            .contains(r#"const GREETING_MESSAGE = "Say \"hello\"""#));
     }
 
     #[test]
@@ -1185,6 +1217,8 @@ func main() {
 
         let plan = result.unwrap();
         assert_eq!(plan.edits.len(), 3); // 1 declaration + 2 replacements
-        assert!(plan.edits[0].new_text.contains("const RAW_MESSAGE = `Raw string literal`"));
+        assert!(plan.edits[0]
+            .new_text
+            .contains("const RAW_MESSAGE = `Raw string literal`"));
     }
 }

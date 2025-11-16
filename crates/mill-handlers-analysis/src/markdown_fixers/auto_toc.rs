@@ -332,8 +332,10 @@ mod tests {
     #[test]
     fn test_extract_headings_with_h1() {
         let content = "# Title\n## Section 1";
-        let mut options = AutoTocOptions::default();
-        options.include_h1 = true;
+        let options = AutoTocOptions {
+            include_h1: true,
+            ..Default::default()
+        };
         let headings = AutoTocFixer::extract_headings(content, &options);
 
         assert_eq!(headings.len(), 2);
@@ -343,8 +345,10 @@ mod tests {
     #[test]
     fn test_extract_headings_max_depth() {
         let content = "## H2\n### H3\n#### H4\n##### H5";
-        let mut options = AutoTocOptions::default();
-        options.max_depth = 3;
+        let options = AutoTocOptions {
+            max_depth: 3,
+            ..Default::default()
+        };
         let headings = AutoTocFixer::extract_headings(content, &options);
 
         assert_eq!(headings.len(), 2); // Only H2 and H3

@@ -182,12 +182,8 @@ mod tests {
     #[test]
     fn test_rewrite_double_quotes() {
         let source = r#"const path = "tests/fixtures/test.ts";"#;
-        let (result, count) = rewrite_string_literals(
-            source,
-            Path::new("tests"),
-            Path::new("e2e"),
-        )
-        .unwrap();
+        let (result, count) =
+            rewrite_string_literals(source, Path::new("tests"), Path::new("e2e")).unwrap();
         assert_eq!(count, 1);
         assert!(result.contains(r#""e2e/fixtures/test.ts""#));
     }
@@ -195,12 +191,8 @@ mod tests {
     #[test]
     fn test_rewrite_single_quotes() {
         let source = r"const path = 'tests/fixtures/test.ts';";
-        let (result, count) = rewrite_string_literals(
-            source,
-            Path::new("tests"),
-            Path::new("e2e"),
-        )
-        .unwrap();
+        let (result, count) =
+            rewrite_string_literals(source, Path::new("tests"), Path::new("e2e")).unwrap();
         assert_eq!(count, 1);
         assert!(result.contains(r"'e2e/fixtures/test.ts'"));
     }
@@ -208,12 +200,8 @@ mod tests {
     #[test]
     fn test_rewrite_backticks() {
         let source = r"const path = `tests/fixtures/test.ts`;";
-        let (result, count) = rewrite_string_literals(
-            source,
-            Path::new("tests"),
-            Path::new("e2e"),
-        )
-        .unwrap();
+        let (result, count) =
+            rewrite_string_literals(source, Path::new("tests"), Path::new("e2e")).unwrap();
         assert_eq!(count, 1);
         assert!(result.contains(r"`e2e/fixtures/test.ts`"));
     }
@@ -221,12 +209,8 @@ mod tests {
     #[test]
     fn test_no_rewrite_non_path() {
         let source = r#"const msg = "Hello world";"#;
-        let (result, count) = rewrite_string_literals(
-            source,
-            Path::new("tests"),
-            Path::new("e2e"),
-        )
-        .unwrap();
+        let (result, count) =
+            rewrite_string_literals(source, Path::new("tests"), Path::new("e2e")).unwrap();
         assert_eq!(count, 0);
         assert_eq!(result, source);
     }
@@ -234,12 +218,8 @@ mod tests {
     #[test]
     fn test_idempotency_nested_rename() {
         let source = r#"const path = "tests/e2e/test.ts";"#;
-        let (result, count) = rewrite_string_literals(
-            source,
-            Path::new("tests"),
-            Path::new("tests/e2e"),
-        )
-        .unwrap();
+        let (result, count) =
+            rewrite_string_literals(source, Path::new("tests"), Path::new("tests/e2e")).unwrap();
         // Should not change since it already contains the new path
         assert_eq!(count, 0);
         assert_eq!(result, source);

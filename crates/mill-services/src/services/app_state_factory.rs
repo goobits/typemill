@@ -150,7 +150,7 @@ fn spawn_operation_worker(
                                 .and_then(|v| v.as_str())
                                 .ok_or_else(|| {
                                 mill_foundation::errors::MillError::invalid_request(
-                                    "Rename operation missing new_path"
+                                    "Rename operation missing new_path",
                                 )
                             })?;
                             fs::rename(&op.file_path, new_path_str).await.map_err(|e| {
@@ -174,7 +174,8 @@ fn spawn_operation_worker(
                                 .map(|_| ())
                                 .map_err(|e| {
                                     mill_foundation::errors::MillError::internal(format!(
-                                        "Plugin error: {}", e
+                                        "Plugin error: {}",
+                                        e
                                     ))
                                 })
                         }
@@ -225,7 +226,8 @@ pub async fn register_mcp_proxy_if_enabled(
         let mut plugin = McpProxyPlugin::new(config.servers.clone());
         plugin.initialize().await.map_err(|e| {
             mill_foundation::errors::MillError::internal(format!(
-                "Failed to initialize MCP proxy plugin: {}", e
+                "Failed to initialize MCP proxy plugin: {}",
+                e
             ))
         })?;
 
@@ -234,7 +236,8 @@ pub async fn register_mcp_proxy_if_enabled(
             .await
             .map_err(|e| {
                 mill_foundation::errors::MillError::internal(format!(
-                    "Failed to register MCP proxy plugin: {}", e
+                    "Failed to register MCP proxy plugin: {}",
+                    e
                 ))
             })?;
     }

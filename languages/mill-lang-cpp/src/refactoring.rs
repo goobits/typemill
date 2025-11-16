@@ -12,16 +12,14 @@
 
 use crate::ast_parser::get_cpp_language;
 use async_trait::async_trait;
-use mill_foundation::protocol::{
-    EditPlan, EditType, TextEdit,
-};
+use mill_foundation::protocol::{EditPlan, EditType, TextEdit};
 use mill_lang_common::is_valid_code_literal_location;
-use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
-use mill_lang_common::refactoring::find_literal_occurrences;
 use mill_lang_common::refactoring::edit_plan_builder::EditPlanBuilder;
-use mill_lang_common::{ExtractConstantEditPlanBuilder, LineExtractor};
+use mill_lang_common::refactoring::find_literal_occurrences;
+use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
 #[cfg(test)]
 use mill_lang_common::{is_escaped, is_screaming_snake_case};
+use mill_lang_common::{ExtractConstantEditPlanBuilder, LineExtractor};
 use mill_plugin_api::{PluginApiError, PluginResult, RefactoringProvider};
 use tree_sitter::{Node, Parser, Point};
 
@@ -181,7 +179,8 @@ fn plan_extract_function_impl(
         .ok_or_else(|| "Selection is not inside a function".to_string())?;
 
     // Get indentation
-    let indent = LineExtractor::get_indentation_str(source, enclosing_function.start_position().row as u32);
+    let indent =
+        LineExtractor::get_indentation_str(source, enclosing_function.start_position().row as u32);
     let function_indent = format!("{}    ", indent);
 
     // Create the new function text
@@ -311,7 +310,8 @@ fn plan_extract_variable_impl(
         .or_else(|| find_ancestor_of_kind(selected_node, "return_statement"))
         .ok_or_else(|| "Could not find statement to insert before".to_string())?;
 
-    let indent = LineExtractor::get_indentation_str(source, insertion_node.start_position().row as u32);
+    let indent =
+        LineExtractor::get_indentation_str(source, insertion_node.start_position().row as u32);
     let var_name = variable_name.unwrap_or_else(|| "extracted".to_string());
 
     // Use 'auto' for type deduction in C++
@@ -453,7 +453,7 @@ fn plan_inline_variable_impl(
 ///
 /// # Returns
 /// * `Ok(ExtractConstantAnalysis)` - Analysis result with literal value, occurrence ranges,
-///                                     validation status, and insertion point
+///   validation status, and insertion point
 /// * `Err(String)` - If no literal is found at the cursor position
 pub(crate) fn analyze_extract_constant(
     source: &str,
@@ -492,7 +492,8 @@ pub(crate) fn analyze_extract_constant(
     };
 
     // Find all occurrences of this literal
-    let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_literal_location);
+    let occurrence_ranges =
+        find_literal_occurrences(source, &literal_value, is_valid_literal_location);
 
     // Find the best insertion point (top of file or after includes)
     let insertion_point = find_constant_insertion_point(root, source);
@@ -662,7 +663,11 @@ fn infer_cpp_constant_type(literal_value: &str) -> &'static str {
         "bool"
     } else if literal_value.starts_with("0x") || literal_value.starts_with("0X") {
         // Hexadecimal literal - check suffixes
-        if literal_value.ends_with("UL") || literal_value.ends_with("ul") || literal_value.ends_with("Ul") || literal_value.ends_with("uL") {
+        if literal_value.ends_with("UL")
+            || literal_value.ends_with("ul")
+            || literal_value.ends_with("Ul")
+            || literal_value.ends_with("uL")
+        {
             "unsigned long"
         } else if literal_value.ends_with('L') || literal_value.ends_with('l') {
             "long"
@@ -672,17 +677,27 @@ fn infer_cpp_constant_type(literal_value: &str) -> &'static str {
     } else if literal_value.starts_with("0b") || literal_value.starts_with("0B") {
         // Binary literal (C++14)
         "int"
-    } else if literal_value.starts_with('0') && literal_value.len() > 1 && !literal_value.contains('.') {
+    } else if literal_value.starts_with('0')
+        && literal_value.len() > 1
+        && !literal_value.contains('.')
+    {
         // Octal literal
         "int"
-    } else if literal_value.contains('.') || literal_value.contains('e') || literal_value.contains('E') {
+    } else if literal_value.contains('.')
+        || literal_value.contains('e')
+        || literal_value.contains('E')
+    {
         // Floating point
         if literal_value.ends_with('f') || literal_value.ends_with('F') {
             "float"
         } else {
             "double"
         }
-    } else if literal_value.ends_with("UL") || literal_value.ends_with("ul") || literal_value.ends_with("Ul") || literal_value.ends_with("uL") {
+    } else if literal_value.ends_with("UL")
+        || literal_value.ends_with("ul")
+        || literal_value.ends_with("Ul")
+        || literal_value.ends_with("uL")
+    {
         // Unsigned long - must check before plain long
         "unsigned long"
     } else if literal_value.ends_with('L') || literal_value.ends_with('l') {
@@ -739,7 +754,6 @@ fn find_ancestor_of_kind<'a>(node: Node<'a>, kind: &str) -> Option<Node<'a>> {
     }
     None
 }
-
 
 fn node_to_location(node: Node) -> CommonCodeRange {
     let range = node.range();
@@ -1093,7 +1107,7 @@ int calculate() {
 }
 "#;
         let plan = plan_inline_variable_impl(source, 3, 8, "calc.cpp").unwrap();
-        assert!(plan.edits.len() >= 1);
+        assert!(!plan.edits.is_empty());
 
         // Should have delete edit for declaration
         let delete_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Delete);
@@ -1132,7 +1146,7 @@ int compute() {
 }
 "#;
         let plan = plan_inline_variable_impl(source, 3, 8, "comp.cpp").unwrap();
-        assert!(plan.edits.len() >= 1);
+        assert!(!plan.edits.is_empty());
 
         // Verify declaration is removed
         let delete_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Delete);
@@ -1225,7 +1239,9 @@ int calculate() {
         // Check the declaration edit
         let insert_edit = &plan.edits[0];
         assert_eq!(insert_edit.edit_type, EditType::Insert);
-        assert!(insert_edit.new_text.contains("constexpr int MAGIC_NUMBER = 42;"));
+        assert!(insert_edit
+            .new_text
+            .contains("constexpr int MAGIC_NUMBER = 42;"));
 
         // Check replace edits
         let replace_edits: Vec<_> = plan
@@ -1256,7 +1272,9 @@ void process() {
         assert_eq!(plan.edits.len(), 4); // 1 insert + 3 replace
 
         let insert_edit = &plan.edits[0];
-        assert!(insert_edit.new_text.contains("constexpr bool DEFAULT_FLAG = true;"));
+        assert!(insert_edit
+            .new_text
+            .contains("constexpr bool DEFAULT_FLAG = true;"));
     }
 
     #[test]
@@ -1415,7 +1433,9 @@ int main() {
         assert_eq!(plan.edits.len(), 3); // 1 insert + 2 replace
 
         let insert_edit = &plan.edits[0];
-        assert!(insert_edit.new_text.contains("constexpr int COLOR_RED = 0xFF0000;"));
+        assert!(insert_edit
+            .new_text
+            .contains("constexpr int COLOR_RED = 0xFF0000;"));
     }
 
     #[test]
@@ -1429,7 +1449,9 @@ int main() {
         let plan = plan_extract_constant_impl(source, 2, 17, "MAX_LONG_HEX", "test.cpp").unwrap();
 
         let insert_edit = &plan.edits[0];
-        assert!(insert_edit.new_text.contains("constexpr long MAX_LONG_HEX = 0xFFFFFFFFL;"));
+        assert!(insert_edit
+            .new_text
+            .contains("constexpr long MAX_LONG_HEX = 0xFFFFFFFFL;"));
     }
 
     #[test]
@@ -1445,7 +1467,9 @@ int main() {
         assert_eq!(plan.edits.len(), 2); // 1 insert + 1 replace
 
         let insert_edit = &plan.edits[0];
-        assert!(insert_edit.new_text.contains("constexpr int DEFAULT_PERMS = 0777;"));
+        assert!(insert_edit
+            .new_text
+            .contains("constexpr int DEFAULT_PERMS = 0777;"));
     }
 
     #[test]
@@ -1461,7 +1485,9 @@ int main() {
         assert_eq!(plan.edits.len(), 2); // 1 insert + 1 replace
 
         let insert_edit = &plan.edits[0];
-        assert!(insert_edit.new_text.contains("constexpr int FLAG_BITS = 0b1010;"));
+        assert!(insert_edit
+            .new_text
+            .contains("constexpr int FLAG_BITS = 0b1010;"));
     }
 
     #[test]
@@ -1479,8 +1505,7 @@ int main() {
 
         // This might fail depending on how tree-sitter parses it
         // If it does, that's a known limitation
-        if plan.is_ok() {
-            let p = plan.unwrap();
+        if let Ok(p) = plan {
             assert!(p.edits.len() >= 2);
         }
     }

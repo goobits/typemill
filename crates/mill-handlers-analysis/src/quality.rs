@@ -1,25 +1,24 @@
 #![allow(dead_code, unused_variables)]
 
-use crate::{ToolHandler, ToolHandlerContext};
+use crate::markdown_fixers;
 use crate::suggestions::{
     AnalysisContext, EvidenceStrength, Location, RefactorType, RefactoringCandidate, Scope,
     SuggestionGenerator,
 };
+use crate::{ToolHandler, ToolHandlerContext};
 use anyhow::Result;
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_foundation::protocol::analysis_result::{
     AnalysisResult, AnalysisScope, Finding, FindingLocation, Position, Range, SafetyLevel,
     Severity, Suggestion,
 };
-use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use regex::Regex;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 
-#[path = "markdown_fixers/mod.rs"]
-mod markdown_fixers;
 use super::config::AnalysisConfig;
 use std::path::Path;
 use std::time::Instant;
@@ -27,10 +26,13 @@ use tracing::{debug, info};
 
 /// Helper to downcast AnalysisConfigTrait to concrete AnalysisConfig
 fn get_analysis_config(context: &ToolHandlerContext) -> ServerResult<&AnalysisConfig> {
-    context.analysis_config
+    context
+        .analysis_config
         .as_any()
         .downcast_ref::<AnalysisConfig>()
-        .ok_or_else(|| ServerError::internal("Failed to downcast AnalysisConfigTrait to AnalysisConfig"))
+        .ok_or_else(|| {
+            ServerError::internal("Failed to downcast AnalysisConfigTrait to AnalysisConfig")
+        })
 }
 
 #[derive(Deserialize, Debug)]
@@ -80,6 +82,12 @@ fn get_markdown_fixers() -> Vec<Box<dyn markdown_fixers::MarkdownFixer>> {
 }
 
 pub struct QualityHandler;
+
+impl Default for QualityHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl QualityHandler {
     pub fn new() -> Self {
@@ -833,8 +841,8 @@ pub(crate) fn detect_smells(
 
     // 1. Long methods (from functions in complexity_report)
     for func in &complexity_report.functions {
-        if func.metrics.sloc > thresholds.max_function_lines as u32 {
-            let severity = if func.metrics.sloc > (thresholds.max_function_lines * 2) as u32 {
+        if func.metrics.sloc > thresholds.max_function_lines {
+            let severity = if func.metrics.sloc > (thresholds.max_function_lines * 2) {
                 Severity::High
             } else {
                 Severity::Medium
@@ -1075,7 +1083,7 @@ pub(crate) fn analyze_readability(
 
     for func in &complexity_report.functions {
         // 1. Deep nesting
-        if func.complexity.max_nesting_depth > thresholds.max_nesting_depth as u32 {
+        if func.complexity.max_nesting_depth > thresholds.max_nesting_depth {
             let mut metrics = HashMap::new();
             metrics.insert(
                 "nesting_depth".to_string(),
@@ -1086,7 +1094,7 @@ pub(crate) fn analyze_readability(
                 id: format!("deep-nesting-{}-{}", file_path, func.line),
                 kind: "deep_nesting".to_string(),
                 severity: if func.complexity.max_nesting_depth
-                    > (thresholds.max_nesting_depth + 2) as u32
+                    > (thresholds.max_nesting_depth + 2)
                 {
                     Severity::High
                 } else {
@@ -1134,7 +1142,7 @@ pub(crate) fn analyze_readability(
         }
 
         // 2. Too many parameters
-        if func.metrics.parameters > thresholds.max_parameters as u32 {
+        if func.metrics.parameters > thresholds.max_parameters {
             let mut metrics = HashMap::new();
             metrics.insert(
                 "parameter_count".to_string(),
@@ -1144,7 +1152,7 @@ pub(crate) fn analyze_readability(
             let mut finding = Finding {
                 id: format!("too-many-params-{}-{}", file_path, func.line),
                 kind: "too_many_parameters".to_string(),
-                severity: if func.metrics.parameters > (thresholds.max_parameters + 2) as u32 {
+                severity: if func.metrics.parameters > (thresholds.max_parameters + 2) {
                     Severity::High
                 } else {
                     Severity::Medium
@@ -1191,14 +1199,14 @@ pub(crate) fn analyze_readability(
         }
 
         // 3. Long functions - readability perspective
-        if func.metrics.sloc > thresholds.max_function_lines as u32 {
+        if func.metrics.sloc > thresholds.max_function_lines {
             let mut metrics = HashMap::new();
             metrics.insert("sloc".to_string(), json!(func.metrics.sloc));
 
             let mut finding = Finding {
                 id: format!("long-function-{}-{}", file_path, func.line),
                 kind: "long_function".to_string(),
-                severity: if func.metrics.sloc > (thresholds.max_function_lines * 2) as u32 {
+                severity: if func.metrics.sloc > (thresholds.max_function_lines * 2) {
                     Severity::High
                 } else {
                     Severity::Medium
@@ -1696,7 +1704,7 @@ fn detect_markdown_structure(
         // Track duplicates
         heading_map
             .entry((level, symbol.name.clone()))
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(line_num);
 
         // Check for empty sections
@@ -2309,7 +2317,10 @@ impl ToolHandler for QualityHandler {
                     .extension()
                     .and_then(|ext| ext.to_str())
                     .ok_or_else(|| {
-                        ServerError::invalid_request(format!("File has no extension: {}", file_path))
+                        ServerError::invalid_request(format!(
+                            "File has no extension: {}",
+                            file_path
+                        ))
                     })?;
 
                 let content = context

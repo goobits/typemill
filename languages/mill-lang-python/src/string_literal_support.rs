@@ -109,7 +109,10 @@ pub(crate) fn rewrite_string_literals(
             // Skip regular string matches that are actually f-strings/r-strings/b-strings
             if !is_fstring && match_start > 0 {
                 let prev_char = source.chars().nth(match_start - 1);
-                if matches!(prev_char, Some('f') | Some('r') | Some('b') | Some('F') | Some('R') | Some('B')) {
+                if matches!(
+                    prev_char,
+                    Some('f') | Some('r') | Some('b') | Some('F') | Some('R') | Some('B')
+                ) {
                     continue; // This is actually an f-string/r-string/b-string, skip it
                 }
             }
@@ -199,12 +202,8 @@ mod tests {
     #[test]
     fn test_rewrite_double_quotes() {
         let source = r#"path = "tests/fixtures/test.py""#;
-        let (result, count) = rewrite_string_literals(
-            source,
-            Path::new("tests"),
-            Path::new("e2e"),
-        )
-        .unwrap();
+        let (result, count) =
+            rewrite_string_literals(source, Path::new("tests"), Path::new("e2e")).unwrap();
         assert_eq!(count, 1);
         assert!(result.contains(r#""e2e/fixtures/test.py""#));
     }
@@ -212,12 +211,8 @@ mod tests {
     #[test]
     fn test_rewrite_single_quotes() {
         let source = r"path = 'tests/fixtures/test.py'";
-        let (result, count) = rewrite_string_literals(
-            source,
-            Path::new("tests"),
-            Path::new("e2e"),
-        )
-        .unwrap();
+        let (result, count) =
+            rewrite_string_literals(source, Path::new("tests"), Path::new("e2e")).unwrap();
         assert_eq!(count, 1);
         assert!(result.contains(r"'e2e/fixtures/test.py'"));
     }
@@ -225,12 +220,8 @@ mod tests {
     #[test]
     fn test_rewrite_fstring_double() {
         let source = r#"path = f"tests/fixtures/test.py""#;
-        let (result, count) = rewrite_string_literals(
-            source,
-            Path::new("tests"),
-            Path::new("e2e"),
-        )
-        .unwrap();
+        let (result, count) =
+            rewrite_string_literals(source, Path::new("tests"), Path::new("e2e")).unwrap();
         assert_eq!(count, 1);
         assert!(result.contains(r#"f"e2e/fixtures/test.py""#));
     }
@@ -238,12 +229,8 @@ mod tests {
     #[test]
     fn test_no_rewrite_non_path() {
         let source = r#"msg = "Hello world""#;
-        let (result, count) = rewrite_string_literals(
-            source,
-            Path::new("tests"),
-            Path::new("e2e"),
-        )
-        .unwrap();
+        let (result, count) =
+            rewrite_string_literals(source, Path::new("tests"), Path::new("e2e")).unwrap();
         assert_eq!(count, 0);
         assert_eq!(result, source);
     }
@@ -251,12 +238,8 @@ mod tests {
     #[test]
     fn test_idempotency_nested_rename() {
         let source = r#"path = "tests/e2e/test.py""#;
-        let (result, count) = rewrite_string_literals(
-            source,
-            Path::new("tests"),
-            Path::new("tests/e2e"),
-        )
-        .unwrap();
+        let (result, count) =
+            rewrite_string_literals(source, Path::new("tests"), Path::new("tests/e2e")).unwrap();
         // Should not change since it already contains the new path
         assert_eq!(count, 0);
         assert_eq!(result, source);

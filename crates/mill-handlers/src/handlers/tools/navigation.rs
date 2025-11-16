@@ -131,14 +131,10 @@ impl NavigationHandler {
             }
             _ => {
                 // Extract file path for file-specific operations
-                let file_path_str =
-                    args.get("filePath")
-                        .and_then(|v| v.as_str())
-                        .ok_or_else(|| {
-                            ServerError::invalid_request(
-                                "Missing file_path parameter",
-                            )
-                        })?;
+                let file_path_str = args
+                    .get("filePath")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| ServerError::invalid_request("Missing file_path parameter"))?;
                 PathBuf::from(file_path_str)
             }
         };
@@ -280,11 +276,7 @@ impl InternalNavigationHandler {
         let file_path_str = args
             .get("filePath")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                ServerError::invalid_request(
-                    "Missing file_path parameter",
-                )
-            })?;
+            .ok_or_else(|| ServerError::invalid_request("Missing file_path parameter"))?;
 
         let file_path = PathBuf::from(file_path_str);
         let request = PluginRequest::new(tool_call.name.clone(), file_path);

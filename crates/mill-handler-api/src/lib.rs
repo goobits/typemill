@@ -4,9 +4,9 @@
 //! the circular dependency between mill-handlers and mill-handlers-analysis.
 
 use async_trait::async_trait;
+use mill_foundation::core::dry_run::DryRunnable;
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::errors::{MillError, MillResult as ServerResult};
-use mill_foundation::core::dry_run::DryRunnable;
 use mill_foundation::protocol::EditPlan;
 use mill_lsp::lsp_system::client::LspClient;
 use mill_plugin_api::LanguagePlugin;
@@ -29,13 +29,29 @@ pub trait FileService: Send + Sync {
     ///
     /// Returns the result directly when dry_run is false (actual write).
     /// When dry_run is true, returns preview information wrapped in DryRunnable.
-    async fn write_file(&self, path: &Path, content: &str, dry_run: bool) -> Result<DryRunnable<Value>, MillError>;
+    async fn write_file(
+        &self,
+        path: &Path,
+        content: &str,
+        dry_run: bool,
+    ) -> Result<DryRunnable<Value>, MillError>;
 
     /// Delete a file
-    async fn delete_file(&self, path: &Path, force: bool, dry_run: bool) -> Result<DryRunnable<Value>, MillError>;
+    async fn delete_file(
+        &self,
+        path: &Path,
+        force: bool,
+        dry_run: bool,
+    ) -> Result<DryRunnable<Value>, MillError>;
 
     /// Create a new file with content
-    async fn create_file(&self, path: &Path, content: Option<&str>, overwrite: bool, dry_run: bool) -> Result<DryRunnable<Value>, MillError>;
+    async fn create_file(
+        &self,
+        path: &Path,
+        content: Option<&str>,
+        overwrite: bool,
+        dry_run: bool,
+    ) -> Result<DryRunnable<Value>, MillError>;
 
     /// Rename a file and update all imports
     async fn rename_file_with_imports(
@@ -68,7 +84,10 @@ pub trait FileService: Send + Sync {
     fn to_absolute_path_checked(&self, path: &Path) -> Result<PathBuf, MillError>;
 
     /// Apply an edit plan to the filesystem
-    async fn apply_edit_plan(&self, plan: &EditPlan) -> Result<mill_foundation::protocol::EditPlanResult, MillError>;
+    async fn apply_edit_plan(
+        &self,
+        plan: &EditPlan,
+    ) -> Result<mill_foundation::protocol::EditPlanResult, MillError>;
 }
 
 /// Trait for language plugin registry
@@ -95,7 +114,8 @@ pub trait AnalysisConfigTrait: Send + Sync {
 #[async_trait]
 pub trait LspAdapter: Send + Sync {
     /// Get or create an LSP client for the given file extension
-    async fn get_or_create_client(&self, file_extension: &str) -> Result<Arc<LspClient>, MillError>;
+    async fn get_or_create_client(&self, file_extension: &str)
+        -> Result<Arc<LspClient>, MillError>;
 
     /// Access to the inner adapter for downcasting
     fn as_any(&self) -> &dyn std::any::Any;

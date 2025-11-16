@@ -18,6 +18,12 @@ pub struct SuggestionGenerator {
     config: SuggestionConfig,
 }
 
+impl Default for SuggestionGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SuggestionGenerator {
     pub fn new() -> Self {
         Self::with_config(SuggestionConfig::default())

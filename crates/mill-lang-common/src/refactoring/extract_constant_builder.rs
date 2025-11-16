@@ -3,9 +3,9 @@
 //! This builder encapsulates the common pattern used across all 9 language plugins for extract constant
 //! refactoring operations, eliminating ~750 lines of duplicated code.
 
-use super::ExtractConstantAnalysis;
 #[allow(unused_imports)]
 use super::CodeRange; // Used in tests and doc comments
+use super::ExtractConstantAnalysis;
 use mill_foundation::planning::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
@@ -47,11 +47,7 @@ impl ExtractConstantEditPlanBuilder {
     /// * `analysis` - The extract constant analysis result
     /// * `name` - The proposed constant name (will be validated as SCREAMING_SNAKE_CASE)
     /// * `file_path` - Path to the file being refactored
-    pub fn new(
-        analysis: ExtractConstantAnalysis,
-        name: String,
-        file_path: String,
-    ) -> Self {
+    pub fn new(analysis: ExtractConstantAnalysis, name: String, file_path: String) -> Self {
         Self {
             analysis,
             name,
@@ -194,10 +190,7 @@ mod tests {
     fn test_builder_basic() {
         let analysis = ExtractConstantAnalysis {
             literal_value: "42".to_string(),
-            occurrence_ranges: vec![
-                CodeRange::new(5, 10, 5, 12),
-                CodeRange::new(7, 15, 7, 17),
-            ],
+            occurrence_ranges: vec![CodeRange::new(5, 10, 5, 12), CodeRange::new(7, 15, 7, 17)],
             is_valid_literal: true,
             blocking_reasons: vec![],
             insertion_point: CodeRange::new(0, 0, 0, 0),
@@ -252,9 +245,8 @@ mod tests {
             "test.ts".to_string(),
         );
 
-        let result = builder.with_declaration_format(|name, value| {
-            format!("const {} = {};\n", name, value)
-        });
+        let result =
+            builder.with_declaration_format(|name, value| format!("const {} = {};\n", name, value));
 
         assert!(result.is_err());
         assert!(result
@@ -333,9 +325,7 @@ mod tests {
             "test.rs".to_string(),
         );
         let plan_rs = builder_rs
-            .with_declaration_format(|name, value| {
-                format!("const {}: &str = {};\n", name, value)
-            })
+            .with_declaration_format(|name, value| format!("const {}: &str = {};\n", name, value))
             .unwrap();
         assert_eq!(
             plan_rs.edits[0].new_text,

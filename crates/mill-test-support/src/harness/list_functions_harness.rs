@@ -31,8 +31,9 @@ pub async fn test_all_plugins_list_functions_multiple() {
         let meta = plugin.metadata();
 
         // Generate language-specific source with 3 functions
-        let source = match meta.name.as_ref() {
-            "TypeScript" => r#"
+        let source = match meta.name {
+            "TypeScript" => {
+                r#"
 function firstFunction() {
     return "first";
 }
@@ -44,8 +45,10 @@ async function secondFunction() {
 const thirdFunction = () => {
     return "third";
 };
-"#,
-            "Rust" => r#"
+"#
+            }
+            "Rust" => {
+                r#"
 fn first_function() {
     println!("first");
 }
@@ -55,8 +58,10 @@ fn second_function() -> i32 {
 }
 
 pub fn third_function() {}
-"#,
-            "Python" => r#"
+"#
+            }
+            "Python" => {
+                r#"
 def first_function():
     print("first")
 
@@ -65,15 +70,19 @@ def second_function():
 
 def third_function():
     pass
-"#,
-            "Java" => r#"
+"#
+            }
+            "Java" => {
+                r#"
 public class MyClass {
     public void firstMethod() {}
     private int secondMethod() { return 0; }
     public static String thirdMethod() { return "test"; }
 }
-"#,
-            "Go" => r#"package main
+"#
+            }
+            "Go" => {
+                r#"package main
 
 func FirstFunction() {
     println("first")
@@ -86,15 +95,19 @@ func SecondFunction() {
 func ThirdFunction() int {
     return 42
 }
-"#,
-            "C#" => r#"
+"#
+            }
+            "C#" => {
+                r#"
 public class MyClass {
     public void FirstMethod() {}
     private int SecondMethod() { return 0; }
     public static string ThirdMethod() { return "test"; }
 }
-"#,
-            "Swift" => r#"
+"#
+            }
+            "Swift" => {
+                r#"
 func firstFunction() {
     print("first")
 }
@@ -104,8 +117,10 @@ func secondFunction() -> Int {
 }
 
 func thirdFunction() {}
-"#,
-            "C" => r#"
+"#
+            }
+            "C" => {
+                r#"
 void first_function() {
     printf("first\n");
 }
@@ -115,8 +130,10 @@ int second_function() {
 }
 
 void third_function() {}
-"#,
-            "C++" => r#"
+"#
+            }
+            "C++" => {
+                r#"
 void firstFunction() {
     std::cout << "first" << std::endl;
 }
@@ -126,7 +143,8 @@ int secondFunction() {
 }
 
 void thirdFunction() {}
-"#,
+"#
+            }
             _ => {
                 // Skip plugins without list_functions support (config languages)
                 continue;
@@ -148,7 +166,7 @@ void thirdFunction() {}
         // If functions were extracted, verify they're correct
         // (May be empty if language parser/tools not available)
         if !functions.is_empty() {
-            let expected_names = match meta.name.as_ref() {
+            let expected_names = match meta.name {
                 "TypeScript" => vec!["firstFunction", "secondFunction", "thirdFunction"],
                 "Rust" => vec!["first_function", "second_function", "third_function"],
                 "Python" => vec!["first_function", "second_function", "third_function"],
@@ -185,8 +203,9 @@ pub async fn test_all_plugins_list_functions_empty() {
         let meta = plugin.metadata();
 
         // Generate language-specific source with NO functions (only fields/constants)
-        let source = match meta.name.as_ref() {
-            "TypeScript" => r#"
+        let source = match meta.name {
+            "TypeScript" => {
+                r#"
 const myConstant = 42;
 let myVariable = "test";
 type UserId = string;
@@ -195,29 +214,37 @@ class MyClass {
     private myField: number;
     static readonly MAX_SIZE = 100;
 }
-"#,
-            "Rust" => r#"
+"#
+            }
+            "Rust" => {
+                r#"
 const MY_CONSTANT: i32 = 42;
 static MY_STATIC: &str = "test";
 
 struct MyStruct {
     field: i32,
 }
-"#,
-            "Python" => r#"
+"#
+            }
+            "Python" => {
+                r#"
 MY_CONSTANT = 42
 my_variable = "test"
 
 class MyClass:
     my_field = 100
-"#,
-            "Java" => r#"
+"#
+            }
+            "Java" => {
+                r#"
 public class MyClass {
     private int myField;
     public static final int CONSTANT = 42;
 }
-"#,
-            "Go" => r#"package main
+"#
+            }
+            "Go" => {
+                r#"package main
 
 const MaxSize = 100
 
@@ -226,22 +253,28 @@ var GlobalVar = "test"
 type User struct {
     Name string
 }
-"#,
-            "C#" => r#"
+"#
+            }
+            "C#" => {
+                r#"
 public class MyClass {
     private int myField;
     public const int MAX_SIZE = 100;
 }
-"#,
-            "Swift" => r#"
+"#
+            }
+            "Swift" => {
+                r#"
 let myConstant = 42
 var myVariable = "test"
 
 struct MyStruct {
     var field: Int
 }
-"#,
-            "C" => r#"
+"#
+            }
+            "C" => {
+                r#"
 #define MAX_SIZE 100
 
 int global_var = 42;
@@ -249,8 +282,10 @@ int global_var = 42;
 struct MyStruct {
     int field;
 };
-"#,
-            "C++" => r#"
+"#
+            }
+            "C++" => {
+                r#"
 const int MAX_SIZE = 100;
 
 int globalVar = 42;
@@ -259,7 +294,8 @@ class MyClass {
 private:
     int myField;
 };
-"#,
+"#
+            }
             _ => {
                 // Skip plugins without list_functions support
                 continue;
@@ -280,7 +316,7 @@ private:
 
         // Should return empty list (no functions to find)
         // Or if it finds anything, those should not be field/constant names
-        let invalid_names = match meta.name.as_ref() {
+        let invalid_names = match meta.name {
             "TypeScript" => vec!["myConstant", "myVariable", "UserId", "myField", "MAX_SIZE"],
             "Rust" => vec!["MY_CONSTANT", "MY_STATIC", "field"],
             "Python" => vec!["MY_CONSTANT", "my_variable", "my_field"],

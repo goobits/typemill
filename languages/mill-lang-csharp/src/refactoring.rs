@@ -515,7 +515,7 @@ fn extract_csharp_var_info<'a>(
 ///
 /// # Returns
 /// * `Ok(ExtractConstantAnalysis)` - Analysis result with literal value, occurrence ranges,
-///                                     validation status, and insertion point
+///   validation status, and insertion point
 /// * `Err(RefactoringError)` - If no literal is found at the cursor position
 pub(crate) fn analyze_extract_constant(
     source: &str,
@@ -621,7 +621,7 @@ fn infer_csharp_type(literal: &str) -> &'static str {
 ///
 /// # Returns
 /// * `Ok(EditPlan)` - The edit plan with constant declaration inserted at class level and all
-///                    literal occurrences replaced with the constant name
+///   literal occurrences replaced with the constant name
 /// * `Err(RefactoringError)` - If the cursor is not on a literal, the name is invalid, or parsing fails
 pub fn plan_extract_constant(
     source: &str,
@@ -644,7 +644,7 @@ pub fn plan_extract_constant(
                 const_indent, csharp_type, name, value
             )
         })
-        .map_err(|e| PluginApiError::invalid_input(e))
+        .map_err(PluginApiError::invalid_input)
 }
 
 /// Finds a C# literal at a given position in a line of code.
@@ -749,15 +749,15 @@ fn find_csharp_numeric_literal(line_text: &str, col: usize) -> Option<(String, C
         // Find the end
         let mut end = col;
         let mut found_x = false;
-        for i in start..chars.len() {
-            if chars[i] == 'x' || chars[i] == 'X' {
+        for (i, &ch) in chars.iter().enumerate().skip(start) {
+            if ch == 'x' || ch == 'X' {
                 found_x = true;
                 end = i + 1;
             } else if found_x
-                && (chars[i].is_ascii_hexdigit()
-                    || chars[i] == '_'
-                    || chars[i] == 'L'
-                    || chars[i] == 'l')
+                && (ch.is_ascii_hexdigit()
+                    || ch == '_'
+                    || ch == 'L'
+                    || ch == 'l')
             {
                 end = i + 1;
             } else if found_x {
@@ -808,8 +808,7 @@ fn find_csharp_numeric_literal(line_text: &str, col: usize) -> Option<(String, C
 
     // Find the end of the number
     let mut end = col;
-    for i in col..chars.len() {
-        let c = chars[i];
+    for (i, &c) in chars.iter().enumerate().skip(col) {
         if c.is_ascii_digit()
             || c == '.'
             || c == '_'
@@ -866,8 +865,8 @@ fn find_csharp_string_literal(line_text: &str, col: usize) -> Option<(String, Co
 
     if let Some((start, quote)) = opening_quote_pos {
         // Find closing quote after cursor, skipping escaped quotes
-        for j in col..chars.len() {
-            if chars[j] == quote && !is_escaped(line_text, j) {
+        for (j, &ch) in chars.iter().enumerate().skip(col) {
+            if ch == quote && !is_escaped(line_text, j) {
                 let end = j + 1;
                 let literal = line_text[start..end].to_string();
                 return Some((
@@ -895,26 +894,26 @@ fn find_csharp_keyword_literal(line_text: &str, col: usize) -> Option<(String, C
         for start in col.saturating_sub(keyword.len())
             ..=col.min(line_text.len().saturating_sub(keyword.len()))
         {
-            if start + keyword.len() <= line_text.len() {
-                if &line_text[start..start + keyword.len()] == *keyword {
-                    // Check word boundaries
-                    let before_ok = start == 0
-                        || !line_text[..start].ends_with(|c: char| c.is_alphanumeric() || c == '_');
-                    let after_ok = start + keyword.len() == line_text.len()
-                        || !line_text[start + keyword.len()..]
-                            .starts_with(|c: char| c.is_alphanumeric() || c == '_');
+            if start + keyword.len() <= line_text.len()
+                && &line_text[start..start + keyword.len()] == *keyword
+            {
+                // Check word boundaries
+                let before_ok = start == 0
+                    || !line_text[..start].ends_with(|c: char| c.is_alphanumeric() || c == '_');
+                let after_ok = start + keyword.len() == line_text.len()
+                    || !line_text[start + keyword.len()..]
+                        .starts_with(|c: char| c.is_alphanumeric() || c == '_');
 
-                    if before_ok && after_ok {
-                        return Some((
-                            keyword.to_string(),
-                            CodeRange {
-                                start_line: 0,
-                                start_col: start as u32,
-                                end_line: 0,
-                                end_col: (start + keyword.len()) as u32,
-                            },
-                        ));
-                    }
+                if before_ok && after_ok {
+                    return Some((
+                        keyword.to_string(),
+                        CodeRange {
+                            start_line: 0,
+                            start_col: start as u32,
+                            end_line: 0,
+                            end_col: (start + keyword.len()) as u32,
+                        },
+                    ));
                 }
             }
         }
@@ -973,6 +972,7 @@ fn find_csharp_insertion_point_for_constant(source: &str) -> PluginResult<CodeRa
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mill_lang_common::{count_unescaped_quotes, is_screaming_snake_case};
 
     #[test]
     fn test_extract_csharp_variable() {

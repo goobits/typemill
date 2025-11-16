@@ -1,8 +1,8 @@
 //! Service for managing import updates across the codebase
 
 use mill_ast::{find_project_files, update_imports_for_rename, ImportPathResolver};
-use mill_foundation::protocol::DependencyUpdate;
 use mill_foundation::errors::MillError as ServerError;
+use mill_foundation::protocol::DependencyUpdate;
 
 type ServerResult<T> = Result<T, ServerError>;
 use mill_plugin_api::PluginDiscovery;

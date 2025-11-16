@@ -55,7 +55,8 @@ impl ChecksumValidator {
                 .await
                 .map_err(|e| {
                     MillError::invalid_request(format!(
-                        "Cannot validate checksum for {}: {}", file_path, e
+                        "Cannot validate checksum for {}: {}",
+                        file_path, e
                     ))
                 })?;
 

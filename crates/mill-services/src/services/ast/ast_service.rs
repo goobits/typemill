@@ -114,9 +114,7 @@ fn build_import_graph_with_plugin(
     let extension = path
         .extension()
         .and_then(|ext| ext.to_str())
-        .ok_or_else(|| mill_foundation::errors::MillError::internal(
-            "File has no extension"
-        ))?;
+        .ok_or_else(|| mill_foundation::errors::MillError::internal("File has no extension"))?;
 
     // Try to find appropriate plugin from registry - works for all languages with plugins
     if let Some(plugin) = registry.find_by_extension(extension) {
@@ -133,8 +131,6 @@ fn build_import_graph_with_plugin(
 
     // Fallback to mill-ast parser for languages without plugins
     mill_ast::parser::build_import_graph(source, path).map_err(|e| {
-        mill_foundation::errors::MillError::internal(format!(
-            "AST parsing failed: {}", e
-        ))
+        mill_foundation::errors::MillError::internal(format!("AST parsing failed: {}", e))
     })
 }

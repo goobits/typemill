@@ -15,8 +15,8 @@ use crate::handlers::tools::{extensions::get_concrete_app_state, ToolHandler};
 use async_trait::async_trait;
 use lsp_types::{Position, WorkspaceEdit};
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::planning::{PlanSummary, PlanWarning, RefactorPlan, RenamePlan};
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
+use mill_foundation::planning::{PlanSummary, PlanWarning, RefactorPlan, RenamePlan};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
@@ -167,9 +167,7 @@ impl ToolHandler for RenameHandler {
             (Some(target), None) => {
                 // Single target mode (existing API)
                 let new_name = params.new_name.as_ref().ok_or_else(|| {
-                    ServerError::invalid_request(
-                        "new_name is required for single target mode",
-                    )
+                    ServerError::invalid_request("new_name is required for single target mode")
                 })?;
 
                 debug!(
@@ -249,8 +247,8 @@ impl ToolHandler for RenameHandler {
                 "Executing rename plan"
             );
 
-            use mill_services::services::{ExecutionOptions, PlanExecutor};
             use crate::handlers::tools::extensions::get_concrete_app_state;
+            use mill_services::services::{ExecutionOptions, PlanExecutor};
 
             // Get concrete AppState to access concrete FileService
             let concrete_state = get_concrete_app_state(&context.app_state)?;
@@ -694,7 +692,7 @@ impl RenameHandler {
         }
 
         // Filter duplicate full-file edits (keep first=batch version)
-        let mut seen_full_file_edits: HashSet<lsp_types::Uri> = HashSet::new();
+        let mut seen_full_file_edits: HashSet<String> = HashSet::new();
         let filtered_changes: Vec<_> = all_document_changes
             .into_iter()
             .filter(|change| {
@@ -707,11 +705,11 @@ impl RenameHandler {
                         text_edit.range.start.line == 0 && text_edit.range.start.character == 0
                     });
                     if is_full_file {
-                        let uri = &edit.text_document.uri;
-                        if seen_full_file_edits.contains(uri) {
+                        let uri = edit.text_document.uri.to_string();
+                        if seen_full_file_edits.contains(&uri) {
                             return false;
                         } else {
-                            seen_full_file_edits.insert(uri.clone());
+                            seen_full_file_edits.insert(uri);
                             return true;
                         }
                     }

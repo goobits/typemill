@@ -28,7 +28,8 @@ impl FileService {
             // Preview mode - just return what would happen
             if abs_path.exists() && !overwrite {
                 return Err(ServerError::invalid_request(format!(
-                    "Resource already exists: File already exists: {:?}", abs_path
+                    "Resource already exists: File already exists: {:?}",
+                    abs_path
                 )));
             }
 
@@ -45,7 +46,8 @@ impl FileService {
             // Execution mode - queue the operation
             if abs_path.exists() && !overwrite {
                 return Err(ServerError::invalid_request(format!(
-                    "Resource already exists: File already exists: {:?}", abs_path
+                    "Resource already exists: File already exists: {:?}",
+                    abs_path
                 )));
             }
 

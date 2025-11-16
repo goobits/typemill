@@ -115,7 +115,5 @@ fn extract_function_symbol(node: &Node, source: &str) -> Option<Symbol> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     // List functions tests moved to mill-test-support/tests/list_functions_harness_integration.rs
 }

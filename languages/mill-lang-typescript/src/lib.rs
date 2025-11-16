@@ -137,9 +137,12 @@ impl LanguagePlugin for TypeScriptPlugin {
             .ok()?;
 
         // Then, rewrite string literals (path-like strings)
-        let (final_content, literal_count) =
-            string_literal_support::rewrite_string_literals(&content_after_imports, old_path, new_path)
-                .ok()?;
+        let (final_content, literal_count) = string_literal_support::rewrite_string_literals(
+            &content_after_imports,
+            old_path,
+            new_path,
+        )
+        .ok()?;
 
         let total_changes = import_count + literal_count;
 
@@ -374,18 +377,17 @@ impl TypeScriptPlugin {
             let line_idx = line_num + 1;
 
             // Find import statements: "import ... from 'module'" or "import module"
-            if scope != ScanScope::QualifiedPaths {
-                if (line.contains("import") || line.contains("from"))
-                    && line.contains(module_to_find)
-                {
-                    references.push(ModuleReference {
-                        line: line_idx,
-                        column: 0,
-                        length: line.len(),
-                        text: line.to_string(),
-                        kind: ReferenceKind::Declaration,
-                    });
-                }
+            if scope != ScanScope::QualifiedPaths
+                && (line.contains("import") || line.contains("from"))
+                && line.contains(module_to_find)
+            {
+                references.push(ModuleReference {
+                    line: line_idx,
+                    column: 0,
+                    length: line.len(),
+                    text: line.to_string(),
+                    kind: ReferenceKind::Declaration,
+                });
             }
 
             // Find qualified paths: "module.function()"
@@ -475,7 +477,11 @@ function тестфункция() {
 "#;
         let result = plugin.parse(source).await;
         // Should not panic with Unicode identifiers
-        assert!(result.is_ok(), "Should parse Unicode identifiers successfully: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Should parse Unicode identifiers successfully: {:?}",
+            result.err()
+        );
     }
 
     #[tokio::test]
@@ -651,9 +657,7 @@ export function process(data: string[]): number[] {
         assert!(package_content.contains("name"));
         assert!(package_content.contains("dependencies"));
 
-        let ts_content = harness
-            .read_file("index.ts")
-            .expect("Should read index.ts");
+        let ts_content = harness.read_file("index.ts").expect("Should read index.ts");
         assert!(ts_content.contains("import"));
         assert!(ts_content.contains("from"));
     }
@@ -675,21 +679,14 @@ export function process(data: string[]): number[] {
         // Parse and verify
         let plugin = TypeScriptPlugin::new();
 
-        let utils_content = harness
-            .read_file("utils.ts")
-            .expect("Should read utils.ts");
-        let parsed = plugin
-            .parse(&utils_content)
-            .await
-            .expect("Should parse");
+        let utils_content = harness.read_file("utils.ts").expect("Should read utils.ts");
+        let parsed = plugin.parse(&utils_content).await.expect("Should parse");
         assert!(!parsed.symbols.is_empty());
 
         assert!(utils_content.contains("export"));
         assert!(utils_content.contains("function"));
 
-        let main_content = harness
-            .read_file("main.ts")
-            .expect("Should read main.ts");
+        let main_content = harness.read_file("main.ts").expect("Should read main.ts");
         assert!(main_content.contains("import"));
         assert!(main_content.contains("./utils"));
     }

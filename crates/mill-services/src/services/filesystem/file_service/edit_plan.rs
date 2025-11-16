@@ -1,8 +1,7 @@
 use super::FileService;
 use mill_foundation::errors::MillError as ServerError;
 use mill_foundation::protocol::{
-    DependencyUpdate, EditPlan,
-    EditPlanMetadata, EditPlanResult, TextEdit,
+    DependencyUpdate, EditPlan, EditPlanMetadata, EditPlanResult, TextEdit,
 };
 
 type ServerResult<T> = Result<T, ServerError>;

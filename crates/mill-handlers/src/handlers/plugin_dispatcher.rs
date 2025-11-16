@@ -19,8 +19,8 @@
 use crate::register_handlers_with_logging;
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::{McpMessage, McpRequest, McpResponse, ToolCall};
-use mill_foundation::protocol::AstService;
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
+use mill_foundation::protocol::AstService;
 use mill_plugin_system::{LspAdapterPlugin, PluginManager};
 use mill_services::services::planner::Planner;
 use mill_services::services::workflow_executor::WorkflowExecutor;
@@ -75,10 +75,12 @@ impl AppState {
     /// Convert to mill_handler_api::AppState for use with trait-based handlers
     pub fn to_api_app_state(&self) -> Arc<mill_handler_api::AppState> {
         Arc::new(mill_handler_api::AppState {
-            file_service: Arc::new(FileServiceWrapper(self.file_service.clone())) as Arc<dyn mill_handler_api::FileService>,
-            language_plugins: Arc::new(LanguagePluginRegistryWrapper(self.language_plugins.clone())) as Arc<dyn mill_handler_api::LanguagePluginRegistry>,
+            file_service: Arc::new(FileServiceWrapper(self.file_service.clone()))
+                as Arc<dyn mill_handler_api::FileService>,
+            language_plugins: Arc::new(LanguagePluginRegistryWrapper(self.language_plugins.clone()))
+                as Arc<dyn mill_handler_api::LanguagePluginRegistry>,
             project_root: self.project_root.clone(),
-            extensions: None,  // Will be set by caller if needed
+            extensions: None, // Will be set by caller if needed
         })
     }
 }
@@ -90,23 +92,55 @@ pub struct FileServiceWrapper(pub Arc<mill_services::services::FileService>);
 
 #[async_trait]
 impl mill_handler_api::FileService for FileServiceWrapper {
-    async fn read_file(&self, path: &std::path::Path) -> Result<String, mill_foundation::errors::MillError> {
+    async fn read_file(
+        &self,
+        path: &std::path::Path,
+    ) -> Result<String, mill_foundation::errors::MillError> {
         self.0.read_file(path).await
     }
 
-    async fn list_files(&self, path: &std::path::Path, recursive: bool) -> Result<Vec<String>, mill_foundation::errors::MillError> {
+    async fn list_files(
+        &self,
+        path: &std::path::Path,
+        recursive: bool,
+    ) -> Result<Vec<String>, mill_foundation::errors::MillError> {
         self.0.list_files(path, recursive).await
     }
 
-    async fn write_file(&self, path: &std::path::Path, content: &str, dry_run: bool) -> Result<mill_foundation::core::dry_run::DryRunnable<serde_json::Value>, mill_foundation::errors::MillError> {
+    async fn write_file(
+        &self,
+        path: &std::path::Path,
+        content: &str,
+        dry_run: bool,
+    ) -> Result<
+        mill_foundation::core::dry_run::DryRunnable<serde_json::Value>,
+        mill_foundation::errors::MillError,
+    > {
         self.0.write_file(path, content, dry_run).await
     }
 
-    async fn delete_file(&self, path: &std::path::Path, force: bool, dry_run: bool) -> Result<mill_foundation::core::dry_run::DryRunnable<serde_json::Value>, mill_foundation::errors::MillError> {
+    async fn delete_file(
+        &self,
+        path: &std::path::Path,
+        force: bool,
+        dry_run: bool,
+    ) -> Result<
+        mill_foundation::core::dry_run::DryRunnable<serde_json::Value>,
+        mill_foundation::errors::MillError,
+    > {
         self.0.delete_file(path, force, dry_run).await
     }
 
-    async fn create_file(&self, path: &std::path::Path, content: Option<&str>, overwrite: bool, dry_run: bool) -> Result<mill_foundation::core::dry_run::DryRunnable<serde_json::Value>, mill_foundation::errors::MillError> {
+    async fn create_file(
+        &self,
+        path: &std::path::Path,
+        content: Option<&str>,
+        overwrite: bool,
+        dry_run: bool,
+    ) -> Result<
+        mill_foundation::core::dry_run::DryRunnable<serde_json::Value>,
+        mill_foundation::errors::MillError,
+    > {
         self.0.create_file(path, content, overwrite, dry_run).await
     }
 
@@ -116,8 +150,13 @@ impl mill_handler_api::FileService for FileServiceWrapper {
         new_path: &std::path::Path,
         dry_run: bool,
         scan_scope: Option<mill_plugin_api::ScanScope>,
-    ) -> Result<mill_foundation::core::dry_run::DryRunnable<serde_json::Value>, mill_foundation::errors::MillError> {
-        self.0.rename_file_with_imports(old_path, new_path, dry_run, scan_scope).await
+    ) -> Result<
+        mill_foundation::core::dry_run::DryRunnable<serde_json::Value>,
+        mill_foundation::errors::MillError,
+    > {
+        self.0
+            .rename_file_with_imports(old_path, new_path, dry_run, scan_scope)
+            .await
     }
 
     async fn rename_directory_with_imports(
@@ -127,8 +166,13 @@ impl mill_handler_api::FileService for FileServiceWrapper {
         dry_run: bool,
         scan_scope: Option<mill_plugin_api::ScanScope>,
         details: bool,
-    ) -> Result<mill_foundation::core::dry_run::DryRunnable<serde_json::Value>, mill_foundation::errors::MillError> {
-        self.0.rename_directory_with_imports(old_path, new_path, dry_run, scan_scope, details).await
+    ) -> Result<
+        mill_foundation::core::dry_run::DryRunnable<serde_json::Value>,
+        mill_foundation::errors::MillError,
+    > {
+        self.0
+            .rename_directory_with_imports(old_path, new_path, dry_run, scan_scope, details)
+            .await
     }
 
     async fn list_files_with_pattern(
@@ -137,14 +181,22 @@ impl mill_handler_api::FileService for FileServiceWrapper {
         recursive: bool,
         pattern: Option<&str>,
     ) -> Result<Vec<String>, mill_foundation::errors::MillError> {
-        self.0.list_files_with_pattern(path, recursive, pattern).await
+        self.0
+            .list_files_with_pattern(path, recursive, pattern)
+            .await
     }
 
-    fn to_absolute_path_checked(&self, path: &std::path::Path) -> Result<std::path::PathBuf, mill_foundation::errors::MillError> {
+    fn to_absolute_path_checked(
+        &self,
+        path: &std::path::Path,
+    ) -> Result<std::path::PathBuf, mill_foundation::errors::MillError> {
         self.0.to_absolute_path_checked(path)
     }
 
-    async fn apply_edit_plan(&self, plan: &mill_foundation::protocol::EditPlan) -> Result<mill_foundation::protocol::EditPlanResult, mill_foundation::errors::MillError> {
+    async fn apply_edit_plan(
+        &self,
+        plan: &mill_foundation::protocol::EditPlan,
+    ) -> Result<mill_foundation::protocol::EditPlanResult, mill_foundation::errors::MillError> {
         self.0.apply_edit_plan(plan).await
     }
 }
@@ -161,7 +213,10 @@ impl mill_handler_api::LanguagePluginRegistry for LanguagePluginRegistryWrapper 
         self.0.supported_extensions()
     }
 
-    fn get_plugin_for_manifest(&self, file_path: &std::path::Path) -> Option<&dyn mill_plugin_api::LanguagePlugin> {
+    fn get_plugin_for_manifest(
+        &self,
+        file_path: &std::path::Path,
+    ) -> Option<&dyn mill_plugin_api::LanguagePlugin> {
         // Extract filename from path
         let filename = file_path.file_name()?.to_str()?;
         self.0.get_plugin_for_manifest(filename)
@@ -181,7 +236,7 @@ impl mill_handler_api::AnalysisConfigTrait for AnalysisConfigWrapper {
     }
 }
 
-//// Plugin-based MCP dispatcher
+/// Plugin-based MCP dispatcher
 pub struct PluginDispatcher {
     /// Plugin manager for handling requests
     plugin_manager: Arc<PluginManager>,

@@ -27,7 +27,7 @@ pub fn find_plugin_by_language(language: &str) -> Option<Box<dyn LanguagePlugin>
 }
 
 /// Get LSP installer from a plugin
-pub fn get_lsp_installer<'a>(plugin: &'a dyn LanguagePlugin) -> Option<&'a dyn LspInstaller> {
+pub fn get_lsp_installer(plugin: &dyn LanguagePlugin) -> Option<&dyn LspInstaller> {
     plugin.lsp_installer()
 }
 
@@ -67,11 +67,7 @@ pub fn list_supported_languages() -> Vec<(&'static str, String)> {
         .filter_map(|desc| {
             // Create plugin instance to check for LSP installer
             let plugin = (desc.factory)();
-            if let Some(installer) = plugin.lsp_installer() {
-                Some((desc.name, installer.lsp_name().to_string()))
-            } else {
-                None
-            }
+            plugin.lsp_installer().map(|installer| (desc.name, installer.lsp_name().to_string()))
         })
         .collect()
 }
@@ -208,6 +204,7 @@ pub fn detect_typescript_root(start_dir: &Path) -> Option<PathBuf> {
 ///
 /// # Returns
 /// * `Vec<PathBuf>` - List of relative paths to directories containing TS projects
+#[allow(dead_code)]
 pub fn detect_all_typescript_roots(start_dir: &Path) -> Vec<PathBuf> {
     use std::collections::HashSet;
     use walkdir::WalkDir;

@@ -193,7 +193,10 @@ impl std::fmt::Display for CacheStats {
 #[async_trait]
 pub trait AstService: Send + Sync {
     /// Build import graph for a file
-    async fn build_import_graph(&self, file: &Path) -> Result<ImportGraph, crate::errors::MillError>;
+    async fn build_import_graph(
+        &self,
+        file: &Path,
+    ) -> Result<ImportGraph, crate::errors::MillError>;
 
     /// Get cache statistics for monitoring
     async fn cache_stats(&self) -> CacheStats;
@@ -209,7 +212,10 @@ pub trait LspService: Send + Sync {
     async fn is_available(&self, extension: &str) -> bool;
 
     /// Restart LSP server for given extensions
-    async fn restart_servers(&self, extensions: Option<Vec<String>>) -> Result<(), crate::errors::MillError>;
+    async fn restart_servers(
+        &self,
+        extensions: Option<Vec<String>>,
+    ) -> Result<(), crate::errors::MillError>;
 
     /// Notify LSP server that a file has been opened
     async fn notify_file_opened(&self, file_path: &Path) -> Result<(), crate::errors::MillError>;

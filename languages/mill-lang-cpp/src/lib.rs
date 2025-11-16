@@ -251,7 +251,11 @@ void тестфункция() {
 "#;
         let result = plugin.parse(source).await;
         // Should not panic with Unicode identifiers
-        assert!(result.is_ok(), "Should parse Unicode identifiers successfully: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Should parse Unicode identifiers successfully: {:?}",
+            result.err()
+        );
     }
 
     #[tokio::test]
@@ -412,15 +416,11 @@ void тестфункция() {
             .expect("Should create math.cpp");
 
         // Verify structure
-        let header_content = harness
-            .read_file("math.h")
-            .expect("Should read math.h");
+        let header_content = harness.read_file("math.h").expect("Should read math.h");
         assert!(header_content.contains("#ifndef"));
         assert!(header_content.contains("int add"));
 
-        let impl_content = harness
-            .read_file("math.cpp")
-            .expect("Should read math.cpp");
+        let impl_content = harness.read_file("math.cpp").expect("Should read math.cpp");
         assert!(impl_content.contains("#include"));
         assert!(impl_content.contains("return"));
     }
@@ -439,10 +439,7 @@ void тестфункция() {
             .expect("Should create CMakeLists.txt");
 
         harness
-            .create_source_file(
-                "main.cpp",
-                "#include <iostream>\nint main() { return 0; }",
-            )
+            .create_source_file("main.cpp", "#include <iostream>\nint main() { return 0; }")
             .expect("Should create main.cpp");
 
         // Verify build configuration

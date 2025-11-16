@@ -102,7 +102,10 @@ impl CodeRange {
             // Single line extraction
             let line = lines[self.start_line as usize];
             if self.end_col as usize > line.len() {
-                return Err(format!("End column {} out of bounds on line {}", self.end_col, self.start_line));
+                return Err(format!(
+                    "End column {} out of bounds on line {}",
+                    self.end_col, self.start_line
+                ));
             }
             Ok(line[self.start_col as usize..self.end_col as usize].to_string())
         } else {

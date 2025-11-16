@@ -269,7 +269,9 @@ impl WorkspaceScenarios {
                 Language::TypeScript => r#"{"name":"root","workspaces":[]}"#,
                 Language::Rust => "[workspace]\nmembers = []\n",
                 Language::Python => "[tool.pdm.workspace]\nmembers = []\n",
-                Language::Java => "<?xml version=\"1.0\"?>\n<project>\n<modules>\n</modules>\n</project>",
+                Language::Java => {
+                    "<?xml version=\"1.0\"?>\n<project>\n<modules>\n</modules>\n</project>"
+                }
                 Language::Go => "go 1.21\n\nuse ()\n",
                 Language::Cpp => "cmake_minimum_required(VERSION 3.10)\nproject(MyWorkspace)\n",
                 _ => unreachable!(),

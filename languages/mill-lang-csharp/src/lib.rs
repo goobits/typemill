@@ -770,10 +770,7 @@ class Program
             .expect("Failed to create Program.cs");
 
         // 3. Analyze project structure
-        let parsed = plugin
-            .parse(source)
-            .await
-            .expect("Failed to parse");
+        let parsed = plugin.parse(source).await.expect("Failed to parse");
 
         // Parser may find symbols or use fallback mode
         // At minimum, we expect parsing to succeed
@@ -884,7 +881,10 @@ class Program
             .expect("Failed to analyze csproj");
 
         // 3. Verify packages detected
-        assert!(!manifest.dependencies.is_empty(), "Should find dependencies");
+        assert!(
+            !manifest.dependencies.is_empty(),
+            "Should find dependencies"
+        );
         let has_json = manifest
             .dependencies
             .iter()

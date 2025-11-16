@@ -4,13 +4,12 @@
 //! for file, directory, and symbol moves.
 
 use lsp_types::{Uri, WorkspaceEdit};
-use mill_foundation::planning::{PlanSummary, PlanWarning};
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
+use mill_foundation::planning::{PlanSummary, PlanWarning};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use tracing::debug;
-
 
 /// Convert LSP URI to native file path string
 ///
