@@ -8,7 +8,10 @@
 use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
-use mill_lang_common::CodeRange;
+use mill_lang_common::{
+    validation::{count_unescaped_quotes, is_escaped, is_screaming_snake_case},
+    CodeRange,
+};
 use tree_sitter::{Node, Parser, Point, Query, QueryCursor, StreamingIterator};
 
 /// Get the C# language for tree-sitter
@@ -622,29 +625,6 @@ pub fn plan_extract_constant(
     })
 }
 
-/// Check if a name follows SCREAMING_SNAKE_CASE convention
-fn is_screaming_snake_case(name: &str) -> bool {
-    if name.is_empty() {
-        return false;
-    }
-
-    // Must not start or end with underscore
-    if name.starts_with('_') || name.ends_with('_') {
-        return false;
-    }
-
-    // Check each character
-    for ch in name.chars() {
-        match ch {
-            'A'..='Z' | '0'..='9' | '_' => continue,
-            _ => return false,
-        }
-    }
-
-    // Must have at least one uppercase letter
-    name.chars().any(|c| c.is_ascii_uppercase())
-}
-
 /// Finds a C# literal at a given position in a line of code.
 fn find_csharp_literal_at_position(line_text: &str, col: usize) -> Option<(String, CodeRange)> {
     // Try to find different kinds of literals at the cursor position
@@ -673,35 +653,103 @@ fn find_csharp_numeric_literal(line_text: &str, col: usize) -> Option<(String, C
         return None;
     }
 
+    let chars: Vec<char> = line_text.chars().collect();
+    if col >= chars.len() {
+        return None;
+    }
+
+    // Check for hexadecimal literal (0x or 0X prefix)
+    let is_hex = col >= 2 && (chars[col - 1] == 'x' || chars[col - 1] == 'X') && chars[col - 2] == '0'
+        || col >= 1 && (chars[col] == 'x' || chars[col] == 'X') && col > 0 && chars[col - 1] == '0'
+        || col > 0 && chars[col - 1].is_ascii_hexdigit() && col >= 2 && (chars[col - 2] == 'x' || chars[col - 2] == 'X');
+
+    // If we're in a hex literal, find its boundaries
+    if is_hex {
+        // Find the start (should be '0x' or '0X')
+        let mut start = col;
+        while start > 0 {
+            if chars[start] == '0' && start + 1 < chars.len() && (chars[start + 1] == 'x' || chars[start + 1] == 'X') {
+                break;
+            }
+            if !chars[start].is_ascii_hexdigit() && chars[start] != 'x' && chars[start] != 'X' && chars[start] != '_' {
+                start += 1;
+                break;
+            }
+            start -= 1;
+        }
+
+        // Find the end
+        let mut end = col;
+        let mut found_x = false;
+        for i in start..chars.len() {
+            if chars[i] == 'x' || chars[i] == 'X' {
+                found_x = true;
+                end = i + 1;
+            } else if found_x && (chars[i].is_ascii_hexdigit() || chars[i] == '_' || chars[i] == 'L' || chars[i] == 'l') {
+                end = i + 1;
+            } else if found_x {
+                break;
+            } else {
+                end = i + 1;
+            }
+        }
+
+        if start < end && end <= chars.len() {
+            let text: String = chars[start..end].iter().collect();
+            if text.starts_with("0x") || text.starts_with("0X") {
+                return Some((
+                    text,
+                    CodeRange {
+                        start_line: 0,
+                        start_col: start as u32,
+                        end_line: 0,
+                        end_col: end as u32,
+                    },
+                ));
+            }
+        }
+    }
+
+    // Handle decimal literals
     // Find the start of the number (handle negative sign)
-    let start = if col > 0 && line_text.chars().nth(col - 1) == Some('-') {
+    let start = if col > 0 && chars[col - 1] == '-' {
         col.saturating_sub(1)
     } else {
-        line_text[..col]
-            .rfind(|c: char| !c.is_ascii_digit() && c != '.' && c != '_')
-            .map(|p| p + 1)
-            .unwrap_or(0)
+        let mut s = col;
+        while s > 0 {
+            s -= 1;
+            if !chars[s].is_ascii_digit() && chars[s] != '.' && chars[s] != '_' {
+                s += 1;
+                break;
+            }
+        }
+        s
     };
 
     // Adjust start if we found a leading minus sign
-    let actual_start = if start > 0 && line_text.chars().nth(start - 1) == Some('-') {
+    let actual_start = if start > 0 && chars[start - 1] == '-' {
         start - 1
     } else {
         start
     };
 
-    // Find the end of the number by scanning right from cursor
-    let end = col
-        + line_text[col..]
-            .find(|c: char| !c.is_ascii_digit() && c != '.' && c != '_')
-            .unwrap_or(line_text.len() - col);
+    // Find the end of the number
+    let mut end = col;
+    for i in col..chars.len() {
+        let c = chars[i];
+        if c.is_ascii_digit() || c == '.' || c == '_' || c == 'f' || c == 'F' || c == 'L' || c == 'l' || c == 'd' || c == 'D' || c == 'm' || c == 'M' {
+            end = i + 1;
+        } else {
+            break;
+        }
+    }
 
-    if actual_start < end && end <= line_text.len() {
-        let text = &line_text[actual_start..end];
-        // Validate: must contain at least one digit and be parseable as a number
-        if text.chars().any(|c| c.is_ascii_digit()) && text.parse::<f64>().is_ok() {
+    if actual_start < end && end <= chars.len() {
+        let text: String = chars[actual_start..end].iter().collect();
+        // Validate: must contain at least one digit
+        if text.chars().any(|c| c.is_ascii_digit()) {
             return Some((
-                text.to_string(),
+                text,
                 CodeRange {
                     start_line: 0,
                     start_col: actual_start as u32,
@@ -721,29 +769,33 @@ fn find_csharp_string_literal(line_text: &str, col: usize) -> Option<(String, Co
         return None;
     }
 
-    // Look for single or double quoted strings
-    for (i, ch) in line_text[..col].char_indices().rev() {
-        if ch == '"' || ch == '\'' {
-            let quote = ch;
-            // Find closing quote after cursor
-            for (j, ch2) in line_text[col..].char_indices() {
-                if ch2 == quote {
-                    let end = col + j + 1;
-                    if end <= line_text.len() {
-                        let literal = line_text[i..end].to_string();
-                        return Some((
-                            literal,
-                            CodeRange {
-                                start_line: 0,
-                                start_col: i as u32,
-                                end_line: 0,
-                                end_col: end as u32,
-                            },
-                        ));
-                    }
-                }
-            }
+    // Look for opening quote before cursor, skipping escaped quotes
+    let chars: Vec<char> = line_text.chars().collect();
+    let mut opening_quote_pos = None;
+
+    for i in (0..col).rev() {
+        if i < chars.len() && (chars[i] == '"' || chars[i] == '\'') && !is_escaped(line_text, i) {
+            opening_quote_pos = Some((i, chars[i]));
             break;
+        }
+    }
+
+    if let Some((start, quote)) = opening_quote_pos {
+        // Find closing quote after cursor, skipping escaped quotes
+        for j in col..chars.len() {
+            if chars[j] == quote && !is_escaped(line_text, j) {
+                let end = j + 1;
+                let literal = line_text[start..end].to_string();
+                return Some((
+                    literal,
+                    CodeRange {
+                        start_line: 0,
+                        start_col: start as u32,
+                        end_line: 0,
+                        end_col: end as u32,
+                    },
+                ));
+            }
         }
     }
 
@@ -816,12 +868,12 @@ fn find_csharp_literal_occurrences(source: &str, literal_value: &str) -> Vec<Cod
 
 /// Validates whether a position in source code is a valid location for a literal.
 fn is_valid_csharp_literal_location(line: &str, pos: usize, _len: usize) -> bool {
-    // Count quotes before position to determine if we're inside a string literal.
+    // Count unescaped quotes before position to determine if we're inside a string literal.
     let before = &line[..pos];
-    let single_quotes = before.matches('\'').count();
-    let double_quotes = before.matches('"').count();
+    let single_quotes = count_unescaped_quotes(before, '\'');
+    let double_quotes = count_unescaped_quotes(before, '"');
 
-    // If odd number of quotes appear before the position, we're inside a string literal
+    // If odd number of unescaped quotes appear before the position, we're inside a string literal
     if single_quotes % 2 == 1 || double_quotes % 2 == 1 {
         return false;
     }
@@ -830,6 +882,24 @@ fn is_valid_csharp_literal_location(line: &str, pos: usize, _len: usize) -> bool
     if let Some(comment_pos) = line.find("//") {
         if pos > comment_pos {
             return false;
+        }
+    }
+
+    // Check for block comment markers (/* ... */)
+    // This is a simplified check - doesn't handle multi-line block comments
+    // but catches single-line block comments like /* comment */ code
+    if let Some(block_start) = line.find("/*") {
+        if pos > block_start {
+            // Check if we're before the closing */
+            if let Some(block_end) = line[block_start..].find("*/") {
+                let actual_block_end = block_start + block_end + 2; // +2 for */
+                if pos < actual_block_end {
+                    return false;
+                }
+            } else {
+                // Block comment opened but not closed on this line - assume we're in it
+                return false;
+            }
         }
     }
 
@@ -1082,5 +1152,265 @@ class Program
 
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("SCREAMING_SNAKE_CASE"));
+    }
+
+    // ========================================================================
+    // New Edge Case Tests for Extract Constant
+    // ========================================================================
+
+    #[test]
+    fn test_is_escaped() {
+        assert!(!is_escaped("hello", 0));
+        assert!(!is_escaped("hello", 2));
+        assert!(is_escaped(r#"\"hello"#, 1)); // \" - quote is escaped
+        assert!(is_escaped(r#"\\"#, 1)); // \\ - second backslash IS escaped by the first
+        assert!(!is_escaped(r#"\\\"#, 2)); // \\\ - third backslash is NOT escaped (two backslashes before it)
+        assert!(is_escaped(r#"\\\\"#, 3)); // \\\\ - fourth backslash IS escaped by the third
+    }
+
+    #[test]
+    fn test_find_csharp_string_literal_with_escaped_quotes() {
+        let line = r#"string msg = "He said \"hello\"";"#;
+        // Position 22 is inside the string literal, after the opening quote
+        let result = find_csharp_string_literal(line, 22);
+        assert!(result.is_some(), "Should find string with escaped quotes");
+        let (literal, _) = result.unwrap();
+        // Expected: opening quote + He said + escaped quote + hello + escaped quote + closing quote
+        assert_eq!(literal, r#""He said \"hello\"""#);
+    }
+
+    #[test]
+    fn test_find_csharp_string_literal_multiple_escapes() {
+        let line = r#"string path = "C:\\Users\\Admin\\file.txt";"#;
+        // Position 20 is inside the string literal
+        let result = find_csharp_string_literal(line, 20);
+        assert!(result.is_some(), "Should find string with escaped backslashes");
+        let (literal, _) = result.unwrap();
+        assert_eq!(literal, r#""C:\\Users\\Admin\\file.txt""#);
+    }
+
+    #[test]
+    fn test_find_csharp_numeric_literal_hex() {
+        let line = "int color = 0xFF00AA;";
+        // Position 15 is inside the hex literal
+        let result = find_csharp_numeric_literal(line, 15);
+        assert!(result.is_some(), "Should find hex literal");
+        let (literal, range) = result.unwrap();
+        assert_eq!(literal, "0xFF00AA");
+        assert_eq!(range.start_col, 12);
+        assert_eq!(range.end_col, 20);
+    }
+
+    #[test]
+    fn test_find_csharp_numeric_literal_hex_lowercase() {
+        let line = "int mask = 0xdeadbeef;";
+        // Position 14 is inside the hex literal
+        let result = find_csharp_numeric_literal(line, 14);
+        assert!(result.is_some(), "Should find lowercase hex literal");
+        let (literal, _) = result.unwrap();
+        assert_eq!(literal, "0xdeadbeef");
+    }
+
+    #[test]
+    fn test_find_csharp_numeric_literal_hex_long() {
+        let line = "long value = 0xFFFFFFFFL;";
+        // Position 16 is inside the hex literal
+        let result = find_csharp_numeric_literal(line, 16);
+        assert!(result.is_some(), "Should find hex long literal");
+        let (literal, _) = result.unwrap();
+        assert_eq!(literal, "0xFFFFFFFFL");
+    }
+
+    #[test]
+    fn test_find_csharp_numeric_literal_negative() {
+        let line = "int temp = -42;";
+        // Position 12 is inside the numeric literal
+        let result = find_csharp_numeric_literal(line, 12);
+        assert!(result.is_some(), "Should find negative literal");
+        let (literal, _) = result.unwrap();
+        assert_eq!(literal, "-42");
+    }
+
+    #[test]
+    fn test_find_csharp_numeric_literal_decimal() {
+        let line = "decimal price = 19.99m;";
+        // Position 18 is inside the decimal literal
+        let result = find_csharp_numeric_literal(line, 18);
+        assert!(result.is_some(), "Should find decimal literal with suffix");
+        let (literal, _) = result.unwrap();
+        assert_eq!(literal, "19.99m");
+    }
+
+    #[test]
+    fn test_is_valid_csharp_literal_location_block_comment() {
+        let line = "int x = /* 42 */ 100;";
+        // Position 11 is inside the block comment (on the '4')
+        assert!(
+            !is_valid_csharp_literal_location(line, 11, 2),
+            "Should detect position inside block comment"
+        );
+        // Position 17 is after the block comment (on the '1')
+        assert!(
+            is_valid_csharp_literal_location(line, 17, 3),
+            "Should allow position after block comment"
+        );
+    }
+
+    #[test]
+    fn test_is_valid_csharp_literal_location_escaped_quotes() {
+        let line = r#"string s = "test \"quote\" test"; int x = 42;"#;
+        // Position inside the string should be invalid
+        assert!(
+            !is_valid_csharp_literal_location(line, 20, 1),
+            "Should detect position inside string with escaped quotes"
+        );
+        // Position after the string should be valid
+        assert!(
+            is_valid_csharp_literal_location(line, 45, 2),
+            "Should allow position after string with escaped quotes"
+        );
+    }
+
+    #[test]
+    fn test_count_unescaped_quotes_empty() {
+        assert_eq!(count_unescaped_quotes("", '"'), 0);
+        assert_eq!(count_unescaped_quotes("", '\''), 0);
+    }
+
+    #[test]
+    fn test_count_unescaped_quotes_regular() {
+        assert_eq!(count_unescaped_quotes("\"hello\"", '"'), 2);
+        assert_eq!(count_unescaped_quotes("'hello'", '\''), 2);
+        assert_eq!(count_unescaped_quotes("int x = \"hello\"", '"'), 2);
+    }
+
+    #[test]
+    fn test_count_unescaped_quotes_escaped() {
+        // Escaped quote in double-quoted string
+        assert_eq!(count_unescaped_quotes(r#""He said \"hi\"""#, '"'), 2);
+        // Escaped quote in single-quoted string
+        assert_eq!(count_unescaped_quotes(r"'It\'s fine'", '\''), 2);
+    }
+
+    #[test]
+    fn test_count_unescaped_quotes_escaped_backslash() {
+        // Double backslash doesn't escape the quote
+        assert_eq!(count_unescaped_quotes(r#""path\\to\\file""#, '"'), 2);
+        // Triple backslash escapes the quote
+        assert_eq!(count_unescaped_quotes(r#""test\\\""#, '"'), 1);
+    }
+
+    #[test]
+    fn test_count_unescaped_quotes_mixed() {
+        // Single quotes inside double-quoted string
+        assert_eq!(count_unescaped_quotes("\"It's fine\"", '"'), 2);
+        assert_eq!(count_unescaped_quotes("\"It's fine\"", '\''), 1);
+    }
+
+    #[test]
+    fn test_plan_extract_constant_hex_literal() {
+        let source = r#"
+class Colors
+{
+    public void SetColor()
+    {
+        int red = 0xFF0000;
+        int green = 0x00FF00;
+    }
+}"#;
+        // Column 18 is inside the hex literal 0xFF0000
+        let result = plan_extract_constant(source, 5, 18, "COLOR_RED", "Colors.cs");
+        assert!(
+            result.is_ok(),
+            "Should extract hex literal: {:?}",
+            result.err()
+        );
+
+        let plan = result.unwrap();
+        // Check that we have the expected edits
+        assert!(plan.edits.len() >= 2, "Should have insertion and replacement edits");
+    }
+
+    #[test]
+    fn test_plan_extract_constant_with_escaped_quotes() {
+        let source = r#"
+class Program
+{
+    static void Main(string[] args)
+    {
+        string msg = "He said \"hello\"";
+        string greeting = "He said \"hello\"";
+    }
+}"#;
+        // Column 24 is inside the first string literal
+        let result = plan_extract_constant(source, 5, 24, "GREETING_MSG", "test.cs");
+        assert!(
+            result.is_ok(),
+            "Should extract string with escaped quotes: {:?}",
+            result.err()
+        );
+
+        let plan = result.unwrap();
+        // Should find both occurrences
+        assert_eq!(plan.edits.len(), 3, "Should have 1 insert + 2 replace edits");
+    }
+
+    #[test]
+    fn test_find_csharp_literal_occurrences_escaped_quotes() {
+        // Should not match literal inside string with escaped quotes
+        let source = r#"const int TAX_RATE = 8;
+string msg = "Rate is \"8\"";
+int value = 8;"#;
+        let occurrences = find_csharp_literal_occurrences(source, "8");
+        // Should find 2 occurrences (lines 0 and 2), but not the one inside the string
+        assert_eq!(occurrences.len(), 2, "Should find exactly 2 valid occurrences");
+        assert_eq!(occurrences[0].start_line, 0);
+        assert_eq!(occurrences[1].start_line, 2);
+    }
+
+    #[test]
+    fn test_plan_extract_constant_negative_number() {
+        let source = r#"
+class Program
+{
+    static void Main(string[] args)
+    {
+        int temp = -42;
+        int cold = -42;
+    }
+}"#;
+        // Column 20 is inside the negative literal (on the '4')
+        let result = plan_extract_constant(source, 5, 20, "FREEZING_TEMP", "test.cs");
+        assert!(
+            result.is_ok(),
+            "Should extract negative number: {:?}",
+            result.err()
+        );
+
+        let plan = result.unwrap();
+        assert_eq!(plan.edits.len(), 3, "Should have 1 insert + 2 replace edits");
+    }
+
+    #[test]
+    fn test_plan_extract_constant_decimal_with_suffix() {
+        let source = r#"
+class Program
+{
+    static void Main(string[] args)
+    {
+        decimal price = 19.99m;
+        decimal tax = 19.99m;
+    }
+}"#;
+        // Column 24 is inside the decimal literal
+        let result = plan_extract_constant(source, 5, 24, "DEFAULT_PRICE", "test.cs");
+        assert!(
+            result.is_ok(),
+            "Should extract decimal with suffix: {:?}",
+            result.err()
+        );
+
+        let plan = result.unwrap();
+        assert_eq!(plan.edits.len(), 3, "Should have 1 insert + 2 replace edits");
     }
 }
