@@ -119,11 +119,7 @@ pub fn extract_package_name(path: &str) -> String {
 ///     None
 /// );
 /// ```
-pub fn split_qualified_name_prefix(
-    name: &str,
-    delimiter: &str,
-    segments: usize,
-) -> Option<String> {
+pub fn split_qualified_name_prefix(name: &str, delimiter: &str, segments: usize) -> Option<String> {
     let parts: Vec<&str> = name.split(delimiter).collect();
     if parts.len() >= segments {
         Some(parts[..segments].join(delimiter))
@@ -220,10 +216,7 @@ mod tests {
     fn test_get_qualified_name_suffix() {
         // Java class names
         assert_eq!(get_qualified_name_suffix("org.junit.Test", "."), "Test");
-        assert_eq!(
-            get_qualified_name_suffix("java.util.List", "."),
-            "List"
-        );
+        assert_eq!(get_qualified_name_suffix("java.util.List", "."), "List");
 
         // Rust types
         assert_eq!(

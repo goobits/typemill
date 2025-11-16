@@ -160,6 +160,5 @@ fn list_workspace_members_impl(content: &str) -> Vec<String> {
         .collect()
 }
 
-
 // Unit tests deleted - functionality is covered by workspace_harness integration tests
 // See: crates/mill-test-support/src/harness/workspace_harness.rs

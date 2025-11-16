@@ -9,8 +9,12 @@ use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::path::PathBuf;
+
+#[cfg(feature = "lang-java")]
+use serde_json::json;
+#[cfg(feature = "lang-java")]
 use tracing::{debug, info};
 
 /// Handler for workspace Java dependency operations
@@ -34,9 +38,7 @@ impl ToolHandler for WorkspaceAddJavaDependencyHandler {
         tool_call: &ToolCall,
     ) -> ServerResult<Value> {
         match tool_call.name.as_str() {
-            "workspace.add_java_dependency" => {
-                handle_add_java_dependency(context, tool_call).await
-            }
+            "workspace.add_java_dependency" => handle_add_java_dependency(context, tool_call).await,
             _ => Err(ServerError::invalid_request(format!(
                 "Unknown workspace Java tool: {}",
                 tool_call.name
@@ -47,6 +49,7 @@ impl ToolHandler for WorkspaceAddJavaDependencyHandler {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 struct AddJavaDependencyParams {
     manifest_path: PathBuf,
     group_id: String,
@@ -64,15 +67,14 @@ async fn handle_add_java_dependency(
     debug!("Handling workspace.add_java_dependency");
 
     // Parse parameters
-    let params: AddJavaDependencyParams = serde_json::from_value(
-        tool_call
-            .arguments
-            .clone()
-            .unwrap_or(serde_json::json!({})),
-    )
-    .map_err(|e| {
-        ServerError::invalid_request(format!("Invalid parameters for add_java_dependency: {}", e))
-    })?;
+    let params: AddJavaDependencyParams =
+        serde_json::from_value(tool_call.arguments.clone().unwrap_or(serde_json::json!({})))
+            .map_err(|e| {
+                ServerError::invalid_request(format!(
+                    "Invalid parameters for add_java_dependency: {}",
+                    e
+                ))
+            })?;
 
     let dry_run = params.dry_run.unwrap_or(true);
 
@@ -113,7 +115,13 @@ async fn handle_add_java_dependency(
     // Read current pom.xml content
     let content = tokio::fs::read_to_string(&params.manifest_path)
         .await
-        .map_err(|e| ServerError::io(format!("Failed to read file '{}': {}", params.manifest_path.display(), e)))?;
+        .map_err(|e| {
+            ServerError::io(format!(
+                "Failed to read file '{}': {}",
+                params.manifest_path.display(),
+                e
+            ))
+        })?;
 
     debug!("Read pom.xml ({} bytes)", content.len());
 
@@ -138,7 +146,13 @@ async fn handle_add_java_dependency(
     if !dry_run {
         tokio::fs::write(&params.manifest_path, &updated_content)
             .await
-            .map_err(|e| ServerError::io(format!("Failed to write file '{}': {}", params.manifest_path.display(), e)))?;
+            .map_err(|e| {
+                ServerError::io(format!(
+                    "Failed to write file '{}': {}",
+                    params.manifest_path.display(),
+                    e
+                ))
+            })?;
 
         info!(
             "Successfully added dependency {}:{}:{} to {}",
@@ -180,6 +194,7 @@ async fn handle_add_java_dependency(
 ) -> ServerResult<Value> {
     Err(ServerError::not_supported(
         "Java dependency management requires the 'lang-java' feature to be enabled. \
-         Please rebuild with --features lang-java or enable it in default features.".to_string()
+         Please rebuild with --features lang-java or enable it in default features."
+            .to_string(),
     ))
 }

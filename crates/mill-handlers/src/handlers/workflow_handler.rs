@@ -55,9 +55,9 @@ impl WorkflowHandler {
     ) -> ServerResult<Value> {
         debug!(tool_name = %tool_call.name, "Planning or resuming workflow");
 
-        let args = tool_call.arguments.ok_or_else(|| {
-            ServerError::invalid_request("Missing arguments for achieve_intent")
-        })?;
+        let args = tool_call
+            .arguments
+            .ok_or_else(|| ServerError::invalid_request("Missing arguments for achieve_intent"))?;
 
         // Get concrete state for workflow operations
         let concrete_state = get_concrete_app_state(&context.app_state)?;
@@ -71,8 +71,7 @@ impl WorkflowHandler {
             return concrete_state
                 .workflow_executor
                 .resume_workflow(workflow_id, resume_data)
-                .await
-                .map_err(|e| e.into());
+                .await;
         }
 
         // Otherwise, plan a new workflow
@@ -131,7 +130,7 @@ impl WorkflowHandler {
                                 error = %e,
                                 "Workflow execution failed"
                             );
-                            Err(e.into())
+                            Err(e)
                         }
                     }
                 } else {
@@ -207,7 +206,10 @@ impl WorkflowHandler {
             }
             Err(e) => {
                 error!(error = %e, "Failed to apply edit plan");
-                Err(ServerError::runtime(format!("Failed to apply edit plan: {}", e)))
+                Err(ServerError::runtime(format!(
+                    "Failed to apply edit plan: {}",
+                    e
+                )))
             }
         }
     }

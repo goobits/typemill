@@ -147,7 +147,6 @@ impl PluginApiError {
     }
 }
 
-
 // ============================================================================
 // Core Data Types
 // ============================================================================
@@ -1113,24 +1112,18 @@ impl From<mill_foundation::errors::MillError> for PluginApiError {
                 location: None,
             },
             MillError::Manifest { message, .. } => PluginApiError::Manifest { message },
-            MillError::NotSupported { operation, .. } => {
-                PluginApiError::NotSupported { operation }
-            }
+            MillError::NotSupported { operation, .. } => PluginApiError::NotSupported { operation },
             MillError::InvalidData { message, .. } => PluginApiError::InvalidInput { message },
 
             // All other variants map to Internal
             MillError::Config { message, .. } => PluginApiError::Internal { message },
             MillError::Bootstrap { message, .. } => PluginApiError::Internal { message },
-            MillError::NotFound { resource, .. } => {
-                PluginApiError::Internal {
-                    message: format!("Resource not found: {}", resource),
-                }
-            }
-            MillError::AlreadyExists { resource, .. } => {
-                PluginApiError::Internal {
-                    message: format!("Resource already exists: {}", resource),
-                }
-            }
+            MillError::NotFound { resource, .. } => PluginApiError::Internal {
+                message: format!("Resource not found: {}", resource),
+            },
+            MillError::AlreadyExists { resource, .. } => PluginApiError::Internal {
+                message: format!("Resource already exists: {}", resource),
+            },
             MillError::Io { message, .. } => PluginApiError::Internal { message },
             MillError::Validation { message, .. } => PluginApiError::InvalidInput { message },
             MillError::Json { message, .. } => PluginApiError::Parse {
@@ -1138,16 +1131,12 @@ impl From<mill_foundation::errors::MillError> for PluginApiError {
                 location: None,
             },
             MillError::Serialization { message, .. } => PluginApiError::Internal { message },
-            MillError::PermissionDenied { operation, .. } => {
-                PluginApiError::Internal {
-                    message: format!("Permission denied: {}", operation),
-                }
-            }
-            MillError::Timeout { operation, .. } => {
-                PluginApiError::Internal {
-                    message: format!("Timeout during: {}", operation),
-                }
-            }
+            MillError::PermissionDenied { operation, .. } => PluginApiError::Internal {
+                message: format!("Permission denied: {}", operation),
+            },
+            MillError::Timeout { operation, .. } => PluginApiError::Internal {
+                message: format!("Timeout during: {}", operation),
+            },
             MillError::Lsp { message, .. } => PluginApiError::Internal { message },
             MillError::Ast { message, .. } => PluginApiError::Parse {
                 message,
@@ -1156,11 +1145,9 @@ impl From<mill_foundation::errors::MillError> for PluginApiError {
             MillError::UnsupportedSyntax { feature, .. } => {
                 PluginApiError::NotSupported { operation: feature }
             }
-            MillError::PluginNotFound { name, .. } => {
-                PluginApiError::Internal {
-                    message: format!("Plugin not found: {}", name),
-                }
-            }
+            MillError::PluginNotFound { name, .. } => PluginApiError::Internal {
+                message: format!("Plugin not found: {}", name),
+            },
             MillError::Plugin { message, .. } => PluginApiError::Internal { message },
             MillError::Connection { message, .. } => PluginApiError::Internal { message },
             MillError::Transport { message, .. } => PluginApiError::Internal { message },
@@ -1188,7 +1175,7 @@ mod error_conversion_tests {
     fn test_parse_error_conversion() {
         let plugin_err = PluginApiError::parse("syntax error");
         let mill_err: MillError = plugin_err.into();
-        
+
         match mill_err {
             MillError::Parse { message, .. } => {
                 assert_eq!(message, "syntax error");
@@ -1201,9 +1188,14 @@ mod error_conversion_tests {
     fn test_parse_error_with_location_conversion() {
         let plugin_err = PluginApiError::parse_at("syntax error", 10, 5);
         let mill_err: MillError = plugin_err.into();
-        
+
         match mill_err {
-            MillError::Parse { message, line, column, .. } => {
+            MillError::Parse {
+                message,
+                line,
+                column,
+                ..
+            } => {
                 assert_eq!(message, "syntax error");
                 assert_eq!(line, Some(10));
                 assert_eq!(column, Some(5));
@@ -1216,7 +1208,7 @@ mod error_conversion_tests {
     fn test_manifest_error_conversion() {
         let plugin_err = PluginApiError::manifest("invalid manifest");
         let mill_err: MillError = plugin_err.into();
-        
+
         match mill_err {
             MillError::Manifest { message, .. } => {
                 assert_eq!(message, "invalid manifest");
@@ -1229,7 +1221,7 @@ mod error_conversion_tests {
     fn test_not_supported_conversion() {
         let plugin_err = PluginApiError::not_supported("refactor");
         let mill_err: MillError = plugin_err.into();
-        
+
         match mill_err {
             MillError::NotSupported { operation, .. } => {
                 assert_eq!(operation, "refactor");
@@ -1242,7 +1234,7 @@ mod error_conversion_tests {
     fn test_invalid_input_conversion() {
         let plugin_err = PluginApiError::invalid_input("missing param");
         let mill_err: MillError = plugin_err.into();
-        
+
         match mill_err {
             MillError::InvalidData { message, .. } => {
                 assert_eq!(message, "missing param");

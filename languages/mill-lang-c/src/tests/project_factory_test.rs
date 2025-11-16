@@ -1,5 +1,5 @@
 use crate::CPlugin;
-use mill_plugin_api::{CreatePackageConfig, LanguagePlugin, PackageType, ProjectFactory, Template};
+use mill_plugin_api::{CreatePackageConfig, LanguagePlugin, PackageType, Template};
 use tempfile::tempdir;
 
 #[test]

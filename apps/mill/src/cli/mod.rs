@@ -634,10 +634,7 @@ async fn handle_cycles_command(command: Cycles) {
     let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
         Ok(d) => d,
         Err(e) => {
-            let error = MillError::internal(format!(
-                "Failed to initialize: {}",
-                e
-            ));
+            let error = MillError::internal(format!("Failed to initialize: {}", e));
             output_error(&error, &command.format);
             process::exit(3); // Tool error
         }
@@ -725,10 +722,7 @@ async fn handle_dead_code_command(command: DeadCode) {
     let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
         Ok(d) => d,
         Err(e) => {
-            let error = MillError::internal(format!(
-                "Failed to initialize: {}",
-                e
-            ));
+            let error = MillError::internal(format!("Failed to initialize: {}", e));
             output_error(&error, &command.format);
             process::exit(3);
         }
@@ -1001,7 +995,10 @@ async fn handle_status() {
                 if let Ok(pid) = pid_str.trim().parse::<u32>() {
                     if is_process_running(pid) {
                         println!("  {}", fmt.success(&format!("Running (PID: {})", pid)));
-                        println!("  {}", fmt.key_value("PID file", &pid_file.display().to_string()));
+                        println!(
+                            "  {}",
+                            fmt.key_value("PID file", &pid_file.display().to_string())
+                        );
                         true
                     } else {
                         println!("  {}", fmt.warning("Not running (stale PID file found)"));
@@ -1014,7 +1011,10 @@ async fn handle_status() {
                 }
             }
             Err(e) => {
-                println!("  {}", fmt.error(&format!("Failed to read PID file: {}", e)));
+                println!(
+                    "  {}",
+                    fmt.error(&format!("Failed to read PID file: {}", e))
+                );
                 false
             }
         }
@@ -1032,12 +1032,24 @@ async fn handle_status() {
         Ok(config) => {
             let config_path = std::path::Path::new(".typemill/config.json");
             println!("  {}", fmt.success("Configuration loaded"));
-            println!("  {}", fmt.key_value("Path", &config_path.display().to_string()));
+            println!(
+                "  {}",
+                fmt.key_value("Path", &config_path.display().to_string())
+            );
             println!("  {}", fmt.key_value("Log level", &config.logging.level));
-            println!("  {}", fmt.key_value("Log format", &format!("{:?}", config.logging.format)));
+            println!(
+                "  {}",
+                fmt.key_value("Log format", &format!("{:?}", config.logging.format))
+            );
 
             if let Some(fuse_config) = &config.fuse {
-                println!("  {}", fmt.warning(&format!("FUSE enabled: {}", fuse_config.mount_point.display())));
+                println!(
+                    "  {}",
+                    fmt.warning(&format!(
+                        "FUSE enabled: {}",
+                        fuse_config.mount_point.display()
+                    ))
+                );
             }
 
             println!();
@@ -1050,11 +1062,7 @@ async fn handle_status() {
                 let extensions = server.extensions.join(", ");
                 let is_ok = command_exists(cmd);
 
-                status_items.push((
-                    cmd.clone(),
-                    format!("Extensions: {}", extensions),
-                    is_ok
-                ));
+                status_items.push((cmd.clone(), format!("Extensions: {}", extensions), is_ok));
             }
 
             println!("{}", fmt.status_summary(&status_items));
@@ -1099,7 +1107,10 @@ async fn handle_status() {
             }
         }
         Err(e) => {
-            println!("  {}", fmt.warning(&format!("Could not list processes: {}", e)));
+            println!(
+                "  {}",
+                fmt.warning(&format!("Could not list processes: {}", e))
+            );
         }
     }
 
@@ -1148,34 +1159,46 @@ async fn handle_doctor() {
                     println!("    {}", fmt.success(&format!("Installed: {}", version)));
 
                     // Additional checks for TypeScript
-                    if server.extensions.contains(&"ts".to_string()) {
-                        if server.root_dir.is_none() {
-                            println!("    {}", fmt.warning("rootDir not set"));
-                            println!("      {}", fmt.subtitle("TypeScript LSP may not find dependencies"));
+                    if server.extensions.contains(&"ts".to_string())
+                        && server.root_dir.is_none()
+                    {
+                        println!("    {}", fmt.warning("rootDir not set"));
+                        println!(
+                            "      {}",
+                            fmt.subtitle("TypeScript LSP may not find dependencies")
+                        );
 
-                            // Suggest rootDir
-                            if let Some(detected) =
-                                lsp_helpers::detect_typescript_root(std::path::Path::new("."))
-                            {
-                                println!("      {}", fmt.info(&format!(
+                        // Suggest rootDir
+                        if let Some(detected) =
+                            lsp_helpers::detect_typescript_root(std::path::Path::new("."))
+                        {
+                            println!(
+                                "      {}",
+                                fmt.info(&format!(
                                     "Suggestion: Set rootDir to '{}'",
                                     detected.display()
-                                )));
-                                println!("      {}", fmt.subtitle("Run: mill setup --update"));
-                            }
+                                ))
+                            );
+                            println!("      {}", fmt.subtitle("Run: mill setup --update"));
                         }
                     }
                 } else {
                     // Command doesn't work
                     if std::path::Path::new(cmd).is_absolute() {
                         println!("    {}", fmt.error("Absolute path not found"));
-                        println!("      {}", fmt.subtitle(&format!("File doesn't exist: {}", cmd)));
+                        println!(
+                            "      {}",
+                            fmt.subtitle(&format!("File doesn't exist: {}", cmd))
+                        );
                     } else {
                         println!("    {}", fmt.error("Not found in PATH"));
-                        println!("      {}", fmt.subtitle(&format!(
-                            "Install via: mill install-lsp {}",
-                            server.extensions[0]
-                        )));
+                        println!(
+                            "      {}",
+                            fmt.subtitle(&format!(
+                                "Install via: mill install-lsp {}",
+                                server.extensions[0]
+                            ))
+                        );
                     }
                 }
                 println!();
@@ -1183,7 +1206,10 @@ async fn handle_doctor() {
         }
         Err(e) => {
             println!("  {}", fmt.error(&format!("Error: {}", e)));
-            println!("  {}", fmt.subtitle("Run `mill setup` to create a new configuration file."));
+            println!(
+                "  {}",
+                fmt.subtitle("Run `mill setup` to create a new configuration file.")
+            );
         }
     }
 
@@ -1535,12 +1561,18 @@ async fn handle_tools_command(format: &str) {
                 .collect::<std::collections::HashSet<_>>()
                 .len();
 
-            println!("{}", fmt.info(&format!(
-                "Public tools: {} across {} handlers",
-                tools_with_handlers.len(),
-                handler_count
-            )));
-            println!("{}", fmt.subtitle("(Internal tools hidden - 20 backend-only tools not shown)"));
+            println!(
+                "{}",
+                fmt.info(&format!(
+                    "Public tools: {} across {} handlers",
+                    tools_with_handlers.len(),
+                    handler_count
+                ))
+            );
+            println!(
+                "{}",
+                fmt.subtitle("(Internal tools hidden - 20 backend-only tools not shown)")
+            );
         }
     }
 }
@@ -1683,10 +1715,7 @@ async fn handle_tool_command(
     let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
         Ok(d) => d,
         Err(e) => {
-            let error = MillError::internal(format!(
-                "Failed to initialize: {}",
-                e
-            ));
+            let error = MillError::internal(format!("Failed to initialize: {}", e));
             output_error(&error, format);
             process::exit(1);
         }
@@ -1858,10 +1887,7 @@ async fn handle_convert_naming(
     let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
         Ok(d) => d,
         Err(e) => {
-            let error = MillError::internal(format!(
-                "Failed to initialize: {}",
-                e
-            ));
+            let error = MillError::internal(format!("Failed to initialize: {}", e));
             output_error(&error, format);
             process::exit(1);
         }
@@ -1927,10 +1953,7 @@ async fn handle_convert_naming(
                             if apply_response.error.is_some() {
                                 eprintln!("❌ Failed to apply renames");
                                 output_error(
-                                    &MillError::internal(format!(
-                                        "{:?}",
-                                        apply_response.error
-                                    )),
+                                    &MillError::internal(format!("{:?}", apply_response.error)),
                                     format,
                                 );
                                 process::exit(1);
@@ -1993,7 +2016,7 @@ fn to_junit_xml(result: &AnalysisResult) -> String {
         let file = finding.location.file_path.clone();
         findings_by_file
             .entry(file)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(finding);
     }
 

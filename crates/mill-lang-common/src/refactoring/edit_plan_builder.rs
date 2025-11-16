@@ -212,7 +212,7 @@ impl EditPlanBuilder {
     ///     .with_complexity(7);
     /// ```
     pub fn with_complexity(mut self, complexity: u8) -> Self {
-        self.complexity = complexity.max(1).min(10);
+        self.complexity = complexity.clamp(1, 10);
         self
     }
 
@@ -435,7 +435,11 @@ mod tests {
             }))
             .build();
 
-        assert!(plan.metadata.intent_arguments.get("function_name").is_some());
+        assert!(plan
+            .metadata
+            .intent_arguments
+            .get("function_name")
+            .is_some());
         assert_eq!(
             plan.metadata.intent_arguments.get("function_name").unwrap(),
             "test_func"

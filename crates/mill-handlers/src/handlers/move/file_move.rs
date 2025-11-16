@@ -3,8 +3,8 @@
 //! Handles single-file move operations with automatic import updates.
 //! Uses MoveService for unified planning logic.
 
-use mill_foundation::planning::MovePlan;
 use mill_foundation::errors::MillResult as ServerResult;
+use mill_foundation::planning::MovePlan;
 use std::path::Path;
 use tracing::{debug, error, info};
 

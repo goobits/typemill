@@ -10,8 +10,8 @@ use crate::handlers::tools::ToolHandler;
 use async_trait::async_trait;
 use lsp_types::{Range, WorkspaceEdit};
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::planning::{PlanMetadata, PlanSummary, RefactorPlan, TransformPlan};
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
+use mill_foundation::planning::{PlanMetadata, PlanSummary, RefactorPlan, TransformPlan};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -150,8 +150,8 @@ impl ToolHandler for TransformHandler {
                 "Executing transform plan"
             );
 
-            use mill_services::services::{ExecutionOptions, PlanExecutor};
             use crate::handlers::tools::extensions::get_concrete_app_state;
+            use mill_services::services::{ExecutionOptions, PlanExecutor};
 
             // Get concrete AppState to access concrete FileService
             let concrete_state = get_concrete_app_state(&context.app_state)?;

@@ -17,10 +17,7 @@ use async_trait::async_trait;
 use lsp_types::{Position, Range, WorkspaceEdit};
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
-use mill_foundation::protocol::{
-    EditPlan, InlinePlan, PlanMetadata,
-    PlanSummary, RefactorPlan,
-};
+use mill_foundation::protocol::{EditPlan, InlinePlan, PlanMetadata, PlanSummary, RefactorPlan};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -107,8 +104,8 @@ impl InlineHandler {
                 "Executing inline plan"
             );
 
-            use mill_services::services::{ExecutionOptions, PlanExecutor};
             use crate::handlers::tools::extensions::get_concrete_app_state;
+            use mill_services::services::{ExecutionOptions, PlanExecutor};
 
             // Get concrete AppState to access concrete FileService
             let concrete_state = get_concrete_app_state(&context.app_state)?;
@@ -152,7 +149,10 @@ impl InlineHandler {
         // Note: LSP integration removed as DirectLspAdapter doesn't implement LspRefactoringService
 
         // Get PluginDiscovery from language_plugins by downcasting
-        let plugin_discovery = context.app_state.language_plugins.inner()
+        let plugin_discovery = context
+            .app_state
+            .language_plugins
+            .inner()
             .downcast_ref::<mill_plugin_api::PluginDiscovery>()
             .ok_or_else(|| ServerError::internal("Failed to downcast to PluginDiscovery"))?;
 
@@ -161,7 +161,7 @@ impl InlineHandler {
             target.position.line,
             target.position.character,
             &target.file_path,
-            None, // No LSP service - use AST-only approach
+            None,                   // No LSP service - use AST-only approach
             Some(plugin_discovery), // Pass plugin registry
         )
         .await
@@ -198,7 +198,10 @@ impl InlineHandler {
         // Try AST-based inline for functions
 
         // Get PluginDiscovery from language_plugins by downcasting
-        let plugin_discovery = context.app_state.language_plugins.inner()
+        let plugin_discovery = context
+            .app_state
+            .language_plugins
+            .inner()
             .downcast_ref::<mill_plugin_api::PluginDiscovery>()
             .ok_or_else(|| ServerError::internal("Failed to downcast to PluginDiscovery"))?;
 
@@ -207,7 +210,7 @@ impl InlineHandler {
             target.position.line,
             target.position.character,
             &target.file_path,
-            None, // No LSP service - use AST-only approach
+            None,                   // No LSP service - use AST-only approach
             Some(plugin_discovery), // Pass plugin registry
         )
         .await
@@ -242,7 +245,10 @@ impl InlineHandler {
         // Use AST-only approach for inlining constants
 
         // Get PluginDiscovery from language_plugins by downcasting
-        let plugin_discovery = context.app_state.language_plugins.inner()
+        let plugin_discovery = context
+            .app_state
+            .language_plugins
+            .inner()
             .downcast_ref::<mill_plugin_api::PluginDiscovery>()
             .ok_or_else(|| ServerError::internal("Failed to downcast to PluginDiscovery"))?;
 
@@ -251,7 +257,7 @@ impl InlineHandler {
             target.position.line,
             target.position.character,
             &target.file_path,
-            None, // No LSP service - use AST-only approach
+            None,                   // No LSP service - use AST-only approach
             Some(plugin_discovery), // Pass plugin registry
         )
         .await

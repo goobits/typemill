@@ -145,7 +145,8 @@ fn generate_rust_large_file(count: usize) -> String {
 
 /// TypeScript: Generate file with many functions
 fn generate_typescript_large_file(count: usize) -> String {
-    let mut content = String::from("// Generated large TypeScript file for performance testing\n\n");
+    let mut content =
+        String::from("// Generated large TypeScript file for performance testing\n\n");
 
     for i in 0..count {
         content.push_str(&format!(
@@ -173,7 +174,8 @@ fn generate_python_large_file(count: usize) -> String {
 
 /// Go: Generate file with many functions
 fn generate_go_large_file(count: usize) -> String {
-    let mut content = String::from("// Generated large Go file for performance testing\npackage main\n\n");
+    let mut content =
+        String::from("// Generated large Go file for performance testing\npackage main\n\n");
 
     for i in 0..count {
         content.push_str(&format!(
@@ -187,7 +189,9 @@ fn generate_go_large_file(count: usize) -> String {
 
 /// Java: Generate file with many methods in a class
 fn generate_java_large_file(count: usize) -> String {
-    let mut content = String::from("// Generated large Java file for performance testing\npublic class LargeClass {\n\n");
+    let mut content = String::from(
+        "// Generated large Java file for performance testing\npublic class LargeClass {\n\n",
+    );
 
     for i in 0..count {
         content.push_str(&format!(
@@ -216,7 +220,9 @@ fn generate_c_large_file(count: usize) -> String {
 
 /// C#: Generate file with many methods
 fn generate_csharp_large_file(count: usize) -> String {
-    let mut content = String::from("// Generated large C# file for performance testing\npublic class LargeClass\n{{\n\n");
+    let mut content = String::from(
+        "// Generated large C# file for performance testing\npublic class LargeClass\n{{\n\n",
+    );
 
     for i in 0..count {
         content.push_str(&format!(
@@ -296,7 +302,9 @@ pub mod symbol_fixtures {
     pub fn function_definition(language: &str) -> &'static str {
         match language {
             "rust" => "pub fn my_function(x: i32) -> String { x.to_string() }",
-            "typescript" => "export function myFunction(x: number): string { return x.toString(); }",
+            "typescript" => {
+                "export function myFunction(x: number): string { return x.toString(); }"
+            }
             "python" => "def my_function(x):\n    return str(x)",
             "go" => "func MyFunction(x int) string { return fmt.Sprint(x) }",
             "java" => "public static String myFunction(int x) { return String.valueOf(x); }",

@@ -13,9 +13,9 @@ use crate::parser::{
 };
 use mill_foundation::protocol::{EditPlan, EditType, TextEdit};
 use mill_lang_common::{
-    count_unescaped_quotes, find_literal_occurrences, refactoring::edit_plan_builder::EditPlanBuilder,
-    ExtractConstantAnalysis, ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis,
-    LineExtractor,
+    count_unescaped_quotes, find_literal_occurrences,
+    refactoring::edit_plan_builder::EditPlanBuilder, ExtractConstantAnalysis,
+    ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis, LineExtractor,
 };
 use mill_plugin_api::{PluginApiError, PluginResult};
 
@@ -93,8 +93,13 @@ pub(crate) fn analyze_inline_variable(
         ))
         .map_err(|e| PluginApiError::invalid_input(format!("Invalid regex pattern: {}", e)))?;
         let initializer = if let Some(captures) = assign_re.captures(var_line_text) {
-            captures.get(1)
-                .ok_or_else(|| PluginApiError::invalid_input("Failed to capture initializer expression".to_string()))?
+            captures
+                .get(1)
+                .ok_or_else(|| {
+                    PluginApiError::invalid_input(
+                        "Failed to capture initializer expression".to_string(),
+                    )
+                })?
                 .as_str()
                 .trim()
                 .to_string()
@@ -341,13 +346,13 @@ pub(crate) fn plan_extract_variable(
 }
 /// Extract text from a Python code range
 fn extract_range_text(source: &str, range: &CodeRange) -> PluginResult<String> {
-    Ok(analyze_python_expression_range(
+    analyze_python_expression_range(
         source,
         range.start_line,
         range.start_col,
         range.end_line,
         range.end_col,
-    )?)
+    )
 }
 /// Find proper insertion point for a new Python function
 fn find_insertion_point(source: &str, start_line: u32) -> PluginResult<CodeRange> {
@@ -473,7 +478,7 @@ fn suggest_variable_name(expression: &str) -> String {
 ///
 /// # Returns
 /// * `Ok(ExtractConstantAnalysis)` - Analysis result with literal value, occurrence ranges,
-///                                     validation status, and insertion point
+///   validation status, and insertion point
 /// * `Err(RefactoringError)` - If no literal is found at the cursor position
 ///
 /// # Implementation Details
@@ -514,12 +519,15 @@ pub(crate) fn analyze_extract_constant(
     let lines: Vec<&str> = source.lines().collect();
 
     // Get the line at cursor position
-    let line_text = lines.get(line as usize)
+    let line_text = lines
+        .get(line as usize)
         .ok_or_else(|| PluginApiError::invalid_input("Invalid line number".to_string()))?;
 
     // Find the literal at the cursor position
-    let found_literal = find_python_literal_at_position(line_text, character as usize)
-        .ok_or_else(|| PluginApiError::invalid_input("No literal found at the specified location".to_string()))?;
+    let found_literal =
+        find_python_literal_at_position(line_text, character as usize).ok_or_else(|| {
+            PluginApiError::invalid_input("No literal found at the specified location".to_string())
+        })?;
 
     let literal_value = found_literal.0;
     let is_valid_literal = !literal_value.is_empty();
@@ -530,7 +538,8 @@ pub(crate) fn analyze_extract_constant(
     };
 
     // Find all occurrences of this literal value in the source
-    let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_python_literal_location);
+    let occurrence_ranges =
+        find_literal_occurrences(source, &literal_value, is_valid_python_literal_location);
 
     // Insertion point: after imports and docstring, at the top of the file
     let insertion_point = find_python_insertion_point_for_constant(source)?;
@@ -559,7 +568,7 @@ pub(crate) fn analyze_extract_constant(
 ///
 /// # Returns
 /// * `Ok(EditPlan)` - The edit plan with constant declaration inserted at module level and all
-///                    literal occurrences replaced with the constant name
+///   literal occurrences replaced with the constant name
 /// * `Err(RefactoringError)` - If the cursor is not on a literal, the name is invalid, or parsing fails
 ///
 /// # Example
@@ -647,7 +656,7 @@ pub(crate) fn plan_extract_constant(
 
     ExtractConstantEditPlanBuilder::new(analysis, name.to_string(), file_path.to_string())
         .with_declaration_format(|name, value| format!("{} = {}\n", name, value))
-        .map_err(|e| PluginApiError::invalid_input(e))
+        .map_err(PluginApiError::invalid_input)
 }
 
 /// Finds a Python literal at a given position in a line of code.
@@ -749,20 +758,24 @@ fn find_python_numeric_literal(line_text: &str, col: usize) -> Option<(String, C
     };
 
     // Find the end of the number by scanning right from cursor
-    let end = col + line_text[col..]
-        .find(|c: char| !c.is_ascii_digit() && c != '.' && c != '_')
-        .unwrap_or(line_text.len() - col);
+    let end = col
+        + line_text[col..]
+            .find(|c: char| !c.is_ascii_digit() && c != '.' && c != '_')
+            .unwrap_or(line_text.len() - col);
 
     if actual_start < end && end <= line_text.len() {
         let text = &line_text[actual_start..end];
         // Validate: must contain at least one digit and be parseable as a number
         if text.chars().any(|c| c.is_ascii_digit()) && text.parse::<f64>().is_ok() {
-            return Some((text.to_string(), CodeRange {
-                start_line: 0,
-                start_col: actual_start as u32,
-                end_line: 0,
-                end_col: end as u32,
-            }));
+            return Some((
+                text.to_string(),
+                CodeRange {
+                    start_line: 0,
+                    start_col: actual_start as u32,
+                    end_line: 0,
+                    end_col: end as u32,
+                },
+            ));
         }
     }
 
@@ -818,19 +831,25 @@ fn find_python_string_literal(line_text: &str, col: usize) -> Option<(String, Co
                 // We're inside or near a triple-quoted string
                 // Find the actual opening
                 for i in (0..=check_pos).rev() {
-                    if i + quote_type.len() <= line_text.len() && &line_text[i..i + quote_type.len()] == *quote_type {
+                    if i + quote_type.len() <= line_text.len()
+                        && &line_text[i..i + quote_type.len()] == *quote_type
+                    {
                         // Check if this is the opening (not closing of a different string)
                         // Try to find closing triple quote
-                        if let Some(close_pos) = line_text[i + quote_type.len()..].find(quote_type) {
+                        if let Some(close_pos) = line_text[i + quote_type.len()..].find(quote_type)
+                        {
                             let end = i + quote_type.len() + close_pos + quote_type.len();
                             if col >= i && col <= end {
                                 let literal = line_text[i..end].to_string();
-                                return Some((literal, CodeRange {
-                                    start_line: 0,
-                                    start_col: i as u32,
-                                    end_line: 0,
-                                    end_col: end as u32,
-                                }));
+                                return Some((
+                                    literal,
+                                    CodeRange {
+                                        start_line: 0,
+                                        start_col: i as u32,
+                                        end_line: 0,
+                                        end_col: end as u32,
+                                    },
+                                ));
                             }
                         }
                     }
@@ -849,12 +868,15 @@ fn find_python_string_literal(line_text: &str, col: usize) -> Option<(String, Co
                     let end = col + j + 1;
                     if end <= line_text.len() {
                         let literal = line_text[i..end].to_string();
-                        return Some((literal, CodeRange {
-                            start_line: 0,
-                            start_col: i as u32,
-                            end_line: 0,
-                            end_col: end as u32,
-                        }));
+                        return Some((
+                            literal,
+                            CodeRange {
+                                start_line: 0,
+                                start_col: i as u32,
+                                end_line: 0,
+                                end_col: end as u32,
+                            },
+                        ));
                     }
                 }
             }
@@ -901,26 +923,29 @@ fn find_python_keyword_literal(line_text: &str, col: usize) -> Option<(String, C
 
     for keyword in &keywords {
         // Try to match keyword at or near cursor
-        for start in col.saturating_sub(keyword.len())..=col.min(line_text.len().saturating_sub(keyword.len())) {
-            if start + keyword.len() <= line_text.len() {
-                if &line_text[start..start + keyword.len()] == *keyword {
-                    // Check word boundaries
-                    let before_ok = start == 0 ||
-                        !line_text[..start].ends_with(|c: char| c.is_alphanumeric() || c == '_');
-                    let after_ok = start + keyword.len() == line_text.len()
-                        || !line_text[start + keyword.len()..].starts_with(|c: char| c.is_alphanumeric() || c == '_');
+        for start in col.saturating_sub(keyword.len())
+            ..=col.min(line_text.len().saturating_sub(keyword.len()))
+        {
+            if start + keyword.len() <= line_text.len()
+                && &line_text[start..start + keyword.len()] == *keyword
+            {
+                // Check word boundaries
+                let before_ok = start == 0
+                    || !line_text[..start].ends_with(|c: char| c.is_alphanumeric() || c == '_');
+                let after_ok = start + keyword.len() == line_text.len()
+                    || !line_text[start + keyword.len()..]
+                        .starts_with(|c: char| c.is_alphanumeric() || c == '_');
 
-                    if before_ok && after_ok {
-                        return Some((
-                            keyword.to_string(),
-                            CodeRange {
-                                start_line: 0,
-                                start_col: start as u32,
-                                end_line: 0,
-                                end_col: (start + keyword.len()) as u32,
-                            },
-                        ));
-                    }
+                if before_ok && after_ok {
+                    return Some((
+                        keyword.to_string(),
+                        CodeRange {
+                            start_line: 0,
+                            start_col: start as u32,
+                            end_line: 0,
+                            end_col: (start + keyword.len()) as u32,
+                        },
+                    ));
                 }
             }
         }
@@ -1019,7 +1044,7 @@ fn is_valid_python_literal_location(line: &str, pos: usize, _len: usize) -> bool
         let sq = count_unescaped_quotes(&line[..comment_pos], '\'');
         let dq = count_unescaped_quotes(&line[..comment_pos], '"');
 
-        if sq % 2 == 0 && dq % 2 == 0 && pos > comment_pos {
+        if sq.is_multiple_of(2) && dq.is_multiple_of(2) && pos > comment_pos {
             return false; // We're after a real comment
         }
     }
@@ -1088,7 +1113,11 @@ fn find_python_insertion_point_for_constant(source: &str) -> PluginResult<CodeRa
 
         // Track docstring state to skip module-level docstring
         if trimmed.starts_with("\"\"\"") || trimmed.starts_with("'''") {
-            let quote = if trimmed.starts_with("\"\"\"") { "\"\"\"" } else { "'''" };
+            let quote = if trimmed.starts_with("\"\"\"") {
+                "\"\"\""
+            } else {
+                "'''"
+            };
             if in_docstring && docstring_quote == quote {
                 // Found closing triple quote - mark insertion point after docstring
                 in_docstring = false;
@@ -1242,7 +1271,10 @@ z = x * 2"#;
     fn test_plan_extract_constant_valid_number() {
         let source = "x = 42\ny = 42\n";
         let result = plan_extract_constant(source, 0, 4, "ANSWER", "test.py");
-        assert!(result.is_ok(), "Should extract numeric literal successfully");
+        assert!(
+            result.is_ok(),
+            "Should extract numeric literal successfully"
+        );
     }
 
     #[test]
@@ -1276,10 +1308,16 @@ greeting = "hello"
         // Test escaped quotes in string literals
         let line = r#"msg = "Rate is \"0.08\"""#;
         // Position 20 is inside the escaped quote section
-        assert!(!is_valid_python_literal_location(line, 20, 4), "Should be inside string with escaped quotes");
+        assert!(
+            !is_valid_python_literal_location(line, 20, 4),
+            "Should be inside string with escaped quotes"
+        );
 
         // Position before string should be valid
-        assert!(is_valid_python_literal_location(line, 4, 1), "Should be valid before string");
+        assert!(
+            is_valid_python_literal_location(line, 4, 1),
+            "Should be valid before string"
+        );
     }
 
     #[test]
@@ -1287,7 +1325,10 @@ greeting = "hello"
         // Test escaped backslash followed by quote
         let line = r#"path = "C:\\dir\\file""#;
         // Position inside the string
-        assert!(!is_valid_python_literal_location(line, 12, 1), "Should be inside string");
+        assert!(
+            !is_valid_python_literal_location(line, 12, 1),
+            "Should be inside string"
+        );
     }
 
     #[test]
@@ -1295,7 +1336,10 @@ greeting = "hello"
         // Raw strings don't process escape sequences, but our algorithm still works
         let line = r#"pattern = r"\d+""#;
         // Position inside the raw string
-        assert!(!is_valid_python_literal_location(line, 14, 1), "Should be inside raw string");
+        assert!(
+            !is_valid_python_literal_location(line, 14, 1),
+            "Should be inside raw string"
+        );
     }
 
     #[test]
@@ -1303,14 +1347,20 @@ greeting = "hello"
         // F-strings should be treated as strings
         let line = r#"msg = f"Value is {value}""#;
         // Position inside the f-string
-        assert!(!is_valid_python_literal_location(line, 18, 1), "Should be inside f-string");
+        assert!(
+            !is_valid_python_literal_location(line, 18, 1),
+            "Should be inside f-string"
+        );
     }
 
     #[test]
     fn test_is_valid_python_literal_location_single_quotes_escaped() {
         let line = r"msg = 'It\'s fine'";
         // Position inside the string (after escaped quote)
-        assert!(!is_valid_python_literal_location(line, 13, 1), "Should be inside string with escaped single quote");
+        assert!(
+            !is_valid_python_literal_location(line, 13, 1),
+            "Should be inside string with escaped single quote"
+        );
     }
 
     #[test]
@@ -1319,9 +1369,14 @@ greeting = "hello"
         let source = r#"TAX_RATE = 0.08
 msg = "Rate is \"0.08\""
 value = 0.08"#;
-        let occurrences = find_literal_occurrences(source, "0.08", is_valid_python_literal_location);
+        let occurrences =
+            find_literal_occurrences(source, "0.08", is_valid_python_literal_location);
         // Should find 2 occurrences (lines 0 and 2), but not the one inside the string
-        assert_eq!(occurrences.len(), 2, "Should find exactly 2 valid occurrences");
+        assert_eq!(
+            occurrences.len(),
+            2,
+            "Should find exactly 2 valid occurrences"
+        );
         assert_eq!(occurrences[0].start_line, 0);
         assert_eq!(occurrences[1].start_line, 2);
     }
@@ -1345,7 +1400,11 @@ tax = 0.08"#;
         assert!(result.is_ok());
         let plan = result.unwrap();
         // Should find 2 occurrences (lines 0 and 2), not the one in the string
-        assert_eq!(plan.edits.len(), 3, "Should have 1 insert + 2 replace edits");
+        assert_eq!(
+            plan.edits.len(),
+            3,
+            "Should have 1 insert + 2 replace edits"
+        );
     }
 
     #[test]
@@ -1356,7 +1415,11 @@ regex = r"\d+""#;
         assert!(result.is_ok());
         let plan = result.unwrap();
         // Should find both raw string occurrences
-        assert_eq!(plan.edits.len(), 3, "Should have 1 insert + 2 replace edits");
+        assert_eq!(
+            plan.edits.len(),
+            3,
+            "Should have 1 insert + 2 replace edits"
+        );
     }
 
     #[test]
@@ -1368,6 +1431,10 @@ limit = 100"#;
         assert!(result.is_ok());
         let plan = result.unwrap();
         // Should find 2 occurrences (lines 0 and 2), not inside the f-string
-        assert_eq!(plan.edits.len(), 3, "Should have 1 insert + 2 replace edits");
+        assert_eq!(
+            plan.edits.len(),
+            3,
+            "Should have 1 insert + 2 replace edits"
+        );
     }
 }

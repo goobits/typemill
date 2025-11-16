@@ -430,7 +430,11 @@ public class Main {
         let result = tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(async { plugin.parse(source).await });
-        assert!(result.is_ok(), "Should parse Unicode strings successfully: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Should parse Unicode strings successfully: {:?}",
+            result.err()
+        );
     }
 
     #[test]
@@ -446,7 +450,11 @@ public class Main {
         let result = tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(async { plugin.parse(&source).await });
-        assert!(result.is_ok(), "Should parse long method signatures successfully: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Should parse long method signatures successfully: {:?}",
+            result.err()
+        );
     }
 
     // ========================================================================
@@ -493,9 +501,7 @@ public class App {
             .expect("Should create App.java");
 
         // Verify structure
-        let pom_content = harness
-            .read_file("pom.xml")
-            .expect("Should read pom.xml");
+        let pom_content = harness.read_file("pom.xml").expect("Should read pom.xml");
         assert!(pom_content.contains("project"));
         assert!(pom_content.contains("modelVersion"));
         assert!(pom_content.contains("dependencies"));

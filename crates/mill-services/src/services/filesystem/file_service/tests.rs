@@ -6,9 +6,7 @@ mod tests {
     use crate::services::filesystem::file_service::FileService;
     use mill_ast::AstCache;
     use mill_foundation::errors::MillError;
-    use mill_foundation::protocol::{
-        DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit,
-    };
+    use mill_foundation::protocol::{DependencyUpdate, EditPlan, EditPlanMetadata, TextEdit};
     use std::path::Path;
     use std::sync::Arc;
     use tempfile::TempDir;
@@ -23,9 +21,7 @@ mod tests {
                     let result: Result<(), MillError> = match op.operation_type {
                         OperationType::CreateDir => {
                             fs::create_dir_all(&op.file_path).await.map_err(|e| {
-                                MillError::internal(format!(
-                                    "Failed to create directory: {}", e
-                                ))
+                                MillError::internal(format!("Failed to create directory: {}", e))
                             })
                         }
                         OperationType::CreateFile | OperationType::Write => {
@@ -35,34 +31,26 @@ mod tests {
                                 .and_then(|v| v.as_str())
                                 .unwrap_or("");
                             fs::write(&op.file_path, content).await.map_err(|e| {
-                                MillError::internal(format!(
-                                    "Failed to write file: {}", e
-                                ))
+                                MillError::internal(format!("Failed to write file: {}", e))
                             })
                         }
                         OperationType::Delete => {
                             if op.file_path.exists() {
                                 fs::remove_file(&op.file_path).await.map_err(|e| {
-                                    MillError::internal(format!(
-                                        "Failed to delete file: {}", e
-                                    ))
+                                    MillError::internal(format!("Failed to delete file: {}", e))
                                 })
                             } else {
                                 Ok(())
                             }
                         }
                         OperationType::Rename => {
-                            let new_path_str = op
-                                .params
-                                .get("new_path")
-                                .and_then(|v| v.as_str())
-                                .ok_or_else(|| {
-                                MillError::internal("Missing new_path")
-                            })?;
+                            let new_path_str =
+                                op.params
+                                    .get("new_path")
+                                    .and_then(|v| v.as_str())
+                                    .ok_or_else(|| MillError::internal("Missing new_path"))?;
                             fs::rename(&op.file_path, new_path_str).await.map_err(|e| {
-                                MillError::internal(format!(
-                                    "Failed to rename file: {}", e
-                                ))
+                                MillError::internal(format!("Failed to rename file: {}", e))
                             })
                         }
                         _ => Ok(()),
@@ -593,8 +581,6 @@ mod move_tests {
     use std::path::Path;
 
     use tempfile::TempDir;
-
-    use mill_foundation::errors::MillError;
 
     use super::tests::create_test_service;
 

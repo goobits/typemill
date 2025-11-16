@@ -277,11 +277,8 @@ pub(crate) async fn add_import_update_edits(
                         use mill_foundation::planning::DependencyUpdateType;
 
                         let old_reference = import_path.clone();
-                        let new_reference = format!(
-                            "{}::{}",
-                            params.target_package_name,
-                            &import_path[6..]
-                        );
+                        let new_reference =
+                            format!("{}::{}", params.target_package_name, &import_path[6..]);
 
                         let update = DependencyUpdate {
                             target_file: file_path.to_string_lossy().to_string(),
@@ -290,7 +287,9 @@ pub(crate) async fn add_import_update_edits(
                             new_reference: new_reference.clone(),
                         };
 
-                        match advanced_support.update_import_reference(&file_path, &content, &update) {
+                        match advanced_support
+                            .update_import_reference(&file_path, &content, &update)
+                        {
                             Ok(updated_content) if updated_content != content => {
                                 // Find what changed to create accurate TextEdit
                                 edits.push(TextEdit {
@@ -347,7 +346,8 @@ pub(crate) async fn add_import_update_edits(
                             );
 
                             let start_column = line.find("use").unwrap_or(0);
-                            let end_column = line.find(';').map(|pos| pos + 1).unwrap_or(line.len());
+                            let end_column =
+                                line.find(';').map(|pos| pos + 1).unwrap_or(line.len());
 
                             edits.push(TextEdit {
                                 file_path: Some(file_path.to_string_lossy().to_string()),

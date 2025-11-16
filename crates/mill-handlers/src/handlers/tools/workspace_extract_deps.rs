@@ -66,8 +66,10 @@ pub(crate) struct ExtractDependenciesOptions {
     #[serde(default)]
     pub dry_run: bool,
     #[serde(default = "default_true")]
+    #[allow(dead_code)]
     pub preserve_versions: bool,
     #[serde(default = "default_true")]
+    #[allow(dead_code)]
     pub preserve_features: bool,
     #[serde(default)]
     pub section: DependencySection,
@@ -361,9 +363,9 @@ fn add_dependency_to_manifest(
         doc[section] = Item::Table(toml_edit::Table::new());
     }
 
-    let table = doc[section].as_table_mut().ok_or_else(|| {
-        ServerError::parse(format!("[{}] is not a table", section))
-    })?;
+    let table = doc[section]
+        .as_table_mut()
+        .ok_or_else(|| ServerError::parse(format!("[{}] is not a table", section)))?;
 
     // Clone the dependency item
     table[dep_name] = dep_item.clone();

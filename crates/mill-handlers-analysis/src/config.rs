@@ -213,7 +213,7 @@ impl AnalysisConfig {
             .merge(Toml::file(config_path))
             .merge(Env::prefixed("TYPEMILL_ANALYSIS_").split("__"))
             .extract()
-            .map_err(ConfigError::from)
+            .map_err(|e| ConfigError::Figment(Box::new(e)))
     }
 
     /// Checks if a specific analysis kind is enabled in the configuration.
@@ -249,7 +249,7 @@ impl AnalysisConfig {
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error("Figment error: {0}")]
-    Figment(#[from] figment::Error),
+    Figment(#[from] Box<figment::Error>),
 
     #[error("TOML serialization error: {0}")]
     Toml(#[from] toml::ser::Error),

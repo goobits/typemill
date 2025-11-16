@@ -328,6 +328,5 @@ fn write_modules_section<W: std::io::Write>(
     Ok(())
 }
 
-
 // Unit tests deleted - functionality is covered by workspace_harness integration tests
 // See: crates/mill-test-support/src/harness/workspace_harness.rs

@@ -182,8 +182,12 @@ pub(crate) fn generate_unified_diff(
         }
 
         // Add context lines after change
-        for k in old_end..(old_end + context_lines).min(old_lines.len()) {
-            diff.push_str(&format!(" {}\n", old_lines[k]));
+        for line in old_lines
+            .iter()
+            .skip(old_end)
+            .take(context_lines.min(old_lines.len().saturating_sub(old_end)))
+        {
+            diff.push_str(&format!(" {}\n", line));
         }
 
         i = old_end;

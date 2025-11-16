@@ -111,9 +111,7 @@ impl SystemHandler {
         let stats = context.plugin_manager.get_registry_statistics().await;
 
         // Get paused workflow count from executor
-        let paused_workflows = concrete_state
-            .workflow_executor
-            .get_paused_workflow_count();
+        let paused_workflows = concrete_state.workflow_executor.get_paused_workflow_count();
 
         // Calculate success rate
         let success_rate = if metrics.total_requests > 0 {
@@ -220,7 +218,10 @@ impl SystemHandler {
                             error = %e,
                             "Failed to notify LSP server about file"
                         );
-                        Err(ServerError::runtime(format!("Failed to notify LSP server: {}", e)))
+                        Err(ServerError::runtime(format!(
+                            "Failed to notify LSP server: {}",
+                            e
+                        )))
                     }
                 },
                 Err(e) => {
@@ -229,7 +230,10 @@ impl SystemHandler {
                         error = %e,
                         "Failed to get LSP client for extension"
                     );
-                    Err(ServerError::runtime(format!("Failed to get LSP client: {}", e)))
+                    Err(ServerError::runtime(format!(
+                        "Failed to get LSP client: {}",
+                        e
+                    )))
                 }
             }
         } else {

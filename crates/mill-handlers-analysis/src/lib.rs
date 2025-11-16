@@ -4,7 +4,7 @@
 //! mill-handlers for better modularity and faster compilation.
 
 // Re-export handler API types
-pub use mill_handler_api::{ToolHandler, ToolHandlerContext, AppState};
+pub use mill_handler_api::{AppState, ToolHandler, ToolHandlerContext};
 
 // Re-export AnalysisConfig for use by handlers
 pub use config::AnalysisConfig;

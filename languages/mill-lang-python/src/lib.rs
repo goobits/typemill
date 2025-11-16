@@ -161,9 +161,12 @@ impl LanguagePlugin for PythonPlugin {
             .rewrite_imports_for_move(content, old_path, new_path);
 
         // Then, rewrite string literals (path-like strings)
-        let (final_content, literal_count) =
-            string_literal_support::rewrite_string_literals(&content_after_imports, old_path, new_path)
-                .ok()?;
+        let (final_content, literal_count) = string_literal_support::rewrite_string_literals(
+            &content_after_imports,
+            old_path,
+            new_path,
+        )
+        .ok()?;
 
         let total_changes = import_count + literal_count;
 
@@ -749,10 +752,7 @@ def main():
             .expect("Failed to create file");
 
         // 2. Parse and extract symbols
-        let parsed = plugin
-            .parse(source)
-            .await
-            .expect("Failed to parse");
+        let parsed = plugin.parse(source).await.expect("Failed to parse");
 
         assert!(!parsed.symbols.is_empty(), "Should find symbols");
         let has_add = parsed.symbols.iter().any(|s| s.name == "add");
@@ -799,12 +799,12 @@ def hello(name):
             .expect("Failed to create main.py");
 
         // 3. Analyze imports
-        let parsed = plugin
-            .parse(source)
-            .await
-            .expect("Failed to parse");
+        let parsed = plugin.parse(source).await.expect("Failed to parse");
 
-        assert!(!parsed.symbols.is_empty(), "Should parse imports and symbols");
+        assert!(
+            !parsed.symbols.is_empty(),
+            "Should parse imports and symbols"
+        );
 
         // 4. Verify import analysis
         let imports = plugin
@@ -868,24 +868,27 @@ class HelperClass:
             .await
             .expect("Failed to parse __init__.py");
 
-        assert!(!init_parsed.symbols.is_empty(), "Should find symbols in __init__");
+        assert!(
+            !init_parsed.symbols.is_empty(),
+            "Should find symbols in __init__"
+        );
 
         let utils_parsed = plugin
             .parse(utils_source)
             .await
             .expect("Failed to parse utils.py");
 
-        assert!(!utils_parsed.symbols.is_empty(), "Should find symbols in utils");
+        assert!(
+            !utils_parsed.symbols.is_empty(),
+            "Should find symbols in utils"
+        );
 
         // Verify specific symbols
         let has_helper_func = utils_parsed
             .symbols
             .iter()
             .any(|s| s.name == "helper_function");
-        let has_helper_class = utils_parsed
-            .symbols
-            .iter()
-            .any(|s| s.name == "HelperClass");
+        let has_helper_class = utils_parsed.symbols.iter().any(|s| s.name == "HelperClass");
         assert!(has_helper_func, "Should find helper_function");
         assert!(has_helper_class, "Should find HelperClass");
 
@@ -911,6 +914,9 @@ dependencies = [
             .await
             .expect("Failed to analyze manifest");
 
-        assert!(!manifest.dependencies.is_empty(), "Should find dependencies");
+        assert!(
+            !manifest.dependencies.is_empty(),
+            "Should find dependencies"
+        );
     }
 }

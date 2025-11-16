@@ -103,7 +103,9 @@ mod tests {
         #[cfg(unix)]
         {
             assert!(
-                home_path.starts_with("/home") || home_path.starts_with("/Users") || home_path.starts_with("/root"),
+                home_path.starts_with("/home")
+                    || home_path.starts_with("/Users")
+                    || home_path.starts_with("/root"),
                 "Unix home should start with /home, /Users, or /root: {:?}",
                 home_path
             );
@@ -130,7 +132,7 @@ mod tests {
         const EXPECTED_SEP: &str = ";";
 
         // Test separator in a constructed PATH
-        let paths = vec!["/usr/bin", "/usr/local/bin"];
+        let paths = ["/usr/bin", "/usr/local/bin"];
 
         #[cfg(unix)]
         let combined = paths.join(":");

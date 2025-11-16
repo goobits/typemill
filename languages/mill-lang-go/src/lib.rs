@@ -311,7 +311,7 @@ impl mill_plugin_api::AnalysisMetadata for GoPlugin {
 mod tests {
     use super::*;
     use mill_plugin_api::{
-        CreatePackageConfig, LanguagePlugin, LspInstaller, ScanScope, Template, WorkspaceSupport,
+        CreatePackageConfig, LanguagePlugin, ScanScope, Template,
     };
     use tempfile::tempdir;
 
@@ -800,9 +800,7 @@ require (
             .expect("Failed to create main.go");
 
         // 3. Verify file structure
-        let content = harness
-            .read_file("main.go")
-            .expect("Failed to read file");
+        let content = harness.read_file("main.go").expect("Failed to read file");
         assert!(content.contains("package main"));
         assert!(content.contains("func add"));
         assert!(content.contains("func main"));
@@ -813,7 +811,10 @@ require (
             .await
             .expect("Failed to analyze go.mod");
 
-        assert!(!manifest.dependencies.is_empty(), "Should find dependencies");
+        assert!(
+            !manifest.dependencies.is_empty(),
+            "Should find dependencies"
+        );
     }
 
     #[tokio::test]
@@ -878,21 +879,22 @@ func main() {
             .expect("Failed to create math.go");
 
         // 2. Parse to verify valid structure
-        let parsed = plugin
-            .parse(source)
-            .await
-            .expect("Failed to parse");
+        let parsed = plugin.parse(source).await.expect("Failed to parse");
 
         // Verify parsing works (symbols may be empty or partial based on parser)
         let _symbols = parsed.symbols;
 
         // 3. Verify file integrity
-        let content = harness
-            .read_file("math.go")
-            .expect("Failed to read file");
+        let content = harness.read_file("math.go").expect("Failed to read file");
         assert!(content.contains("package main"), "Should preserve package");
-        assert!(content.contains("func main"), "Should preserve main function");
-        assert!(content.contains("import \"fmt\""), "Should preserve imports");
+        assert!(
+            content.contains("func main"),
+            "Should preserve main function"
+        );
+        assert!(
+            content.contains("import \"fmt\""),
+            "Should preserve imports"
+        );
 
         // 4. Verify we can work with the file content
         let scanner = plugin

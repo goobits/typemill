@@ -141,6 +141,7 @@ pub fn read_choice(prompt: &str, options: &[&str], default_choice: usize) -> io:
 /// use mill::cli::user_input;
 /// let name = user_input::read_string("Enter name:", "default").unwrap();
 /// ```
+#[allow(dead_code)]
 pub fn read_string(prompt: &str, default_value: &str) -> io::Result<String> {
     if !is_interactive() {
         return Ok(default_value.to_string());

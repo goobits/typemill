@@ -11,8 +11,7 @@ pub use cache::FileImportInfo;
 
 use mill_foundation::errors::MillError as ServerError;
 use mill_foundation::protocol::{
-    DependencyUpdate, EditLocation, EditPlan,
-    EditPlanMetadata, EditType, TextEdit,
+    DependencyUpdate, EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit,
 };
 
 type ServerResult<T> = Result<T, ServerError>;

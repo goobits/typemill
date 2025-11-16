@@ -4,22 +4,28 @@ use async_trait::async_trait;
 use mill_analysis_circular_deps::{
     builder::DependencyGraphBuilder, find_circular_dependencies, Cycle,
 };
-#[cfg(feature = "analysis-circular-deps")]
-use mill_plugin_api::PluginDiscovery;
-#[cfg(feature = "analysis-circular-deps")]
-use std::sync::Arc;
 use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 #[cfg(feature = "analysis-circular-deps")]
 use mill_foundation::protocol::analysis_result::{
     AnalysisResult, Finding, FindingLocation, SafetyLevel, Severity, Suggestion,
 };
-use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
+#[cfg(feature = "analysis-circular-deps")]
+use mill_plugin_api::PluginDiscovery;
 use serde_json::{json, Value};
 #[cfg(feature = "analysis-circular-deps")]
 use std::collections::HashMap;
+#[cfg(feature = "analysis-circular-deps")]
+use std::sync::Arc;
 use tracing::debug;
 
 pub struct CircularDependenciesHandler;
+
+impl Default for CircularDependenciesHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl CircularDependenciesHandler {
     pub fn new() -> Self {
@@ -56,12 +62,19 @@ impl ToolHandler for CircularDependenciesHandler {
                 .map(|p| project_root.join(p))
                 .unwrap_or_else(|| project_root.clone());
 
-            let plugin_discovery_arc = context.app_state.language_plugins.inner()
+            let plugin_discovery_arc = context
+                .app_state
+                .language_plugins
+                .inner()
                 .downcast_ref::<Arc<PluginDiscovery>>()
-                .ok_or_else(|| ServerError::internal("Failed to downcast to PluginDiscovery".to_string()))?;
+                .ok_or_else(|| {
+                    ServerError::internal("Failed to downcast to PluginDiscovery".to_string())
+                })?;
             let plugin_discovery = plugin_discovery_arc.as_ref();
             let builder = DependencyGraphBuilder::new(plugin_discovery);
-            let graph = builder.build(&path).map_err(|e| ServerError::internal(e.to_string()))?;
+            let graph = builder
+                .build(&path)
+                .map_err(|e| ServerError::internal(e.to_string()))?;
             let min_size = args
                 .get("min_size")
                 .and_then(|v| v.as_u64())

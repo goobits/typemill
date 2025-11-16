@@ -1,5 +1,5 @@
 use crate::CPlugin;
-use mill_plugin_api::{LanguagePlugin, ManifestUpdater};
+use mill_plugin_api::LanguagePlugin;
 use std::fs;
 use tempfile::tempdir;
 

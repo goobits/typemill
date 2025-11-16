@@ -6,8 +6,8 @@
 use lsp_types::{Uri, WorkspaceEdit};
 use mill_foundation::errors::MillError;
 use mill_foundation::protocol::{
-    ConsolidationMetadata, EditPlan, EditPlanMetadata,
-    EditType, RefactorPlan, RefactorPlanExt, TextEdit,
+    ConsolidationMetadata, EditPlan, EditPlanMetadata, EditType, RefactorPlan, RefactorPlanExt,
+    TextEdit,
 };
 
 type ServerResult<T> = Result<T, MillError>;
@@ -167,9 +167,7 @@ impl PlanConverter {
                 _ => None,
             })
             .ok_or_else(|| {
-                MillError::internal(
-                    "Consolidation plan missing RenameFile operation"
-                )
+                MillError::internal("Consolidation plan missing RenameFile operation")
             })?;
 
         // Convert URIs to paths
@@ -184,9 +182,7 @@ impl PlanConverter {
             .file_name()
             .and_then(|n| n.to_str())
             .ok_or_else(|| {
-                MillError::internal(format!(
-                    "Cannot extract crate name from: {}", old_path
-                ))
+                MillError::internal(format!("Cannot extract crate name from: {}", old_path))
             })?
             .to_string();
 
@@ -198,9 +194,7 @@ impl PlanConverter {
             .file_name()
             .and_then(|n| n.to_str())
             .ok_or_else(|| {
-                MillError::internal(format!(
-                    "Cannot extract module name from: {}", new_path
-                ))
+                MillError::internal(format!("Cannot extract module name from: {}", new_path))
             })?
             .to_string();
 
@@ -213,7 +207,8 @@ impl PlanConverter {
             .and_then(|src_dir| src_dir.parent())
             .ok_or_else(|| {
                 MillError::internal(format!(
-                    "Cannot find target crate root (src/ parent) for: {}", new_path
+                    "Cannot find target crate root (src/ parent) for: {}",
+                    new_path
                 ))
             })?
             .to_string_lossy()
@@ -224,7 +219,8 @@ impl PlanConverter {
             .and_then(|n| n.to_str())
             .ok_or_else(|| {
                 MillError::internal(format!(
-                    "Cannot extract target crate name from: {}", target_crate_path
+                    "Cannot extract target crate name from: {}",
+                    target_crate_path
                 ))
             })?
             .to_string();
@@ -383,9 +379,7 @@ impl PlanConverter {
     /// across platforms and handles paths with spaces correctly (via URL decoding).
     fn uri_to_path_string(uri: &Uri) -> Result<String, MillError> {
         urlencoding::decode(uri.path().as_str())
-            .map_err(|e| MillError::internal(format!(
-                "Failed to decode URI path: {}", e
-            )))
+            .map_err(|e| MillError::internal(format!("Failed to decode URI path: {}", e)))
             .map(|decoded| decoded.into_owned())
     }
 

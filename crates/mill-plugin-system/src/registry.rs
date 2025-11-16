@@ -1,8 +1,6 @@
 //! Plugin registry for managing loaded plugins
 
-use crate::{
-    Capabilities, LanguagePlugin, PluginMetadata, PluginResult, PluginSystemError,
-};
+use crate::{Capabilities, LanguagePlugin, PluginMetadata, PluginResult, PluginSystemError};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;

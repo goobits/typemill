@@ -1,9 +1,9 @@
 //! From implementations for standard library types
 
 use super::MillError;
+use crate::model::mcp::McpError;
 #[allow(deprecated)]
 use crate::protocol::error::ApiError;
-use crate::model::mcp::McpError;
 
 impl From<std::io::Error> for MillError {
     fn from(err: std::io::Error) -> Self {

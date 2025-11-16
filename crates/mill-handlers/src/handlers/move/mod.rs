@@ -38,8 +38,8 @@ use crate::handlers::tools::ToolHandler;
 use async_trait::async_trait;
 use lsp_types::Position;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::planning::{MovePlan, RefactorPlan};
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
+use mill_foundation::planning::{MovePlan, RefactorPlan};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::Path;
@@ -220,8 +220,8 @@ impl ToolHandler for MoveHandler {
                 "Executing move plan"
             );
 
-            use mill_services::services::{ExecutionOptions, PlanExecutor};
             use crate::handlers::tools::extensions::get_concrete_app_state;
+            use mill_services::services::{ExecutionOptions, PlanExecutor};
 
             // Get concrete AppState to access concrete FileService
             let concrete_state = get_concrete_app_state(&context.app_state)?;

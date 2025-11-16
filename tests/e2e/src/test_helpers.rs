@@ -445,14 +445,20 @@ where
     });
 
     if let Some(opts) = options {
-        params.as_object_mut().unwrap().insert("options".to_string(), opts);
+        params
+            .as_object_mut()
+            .unwrap()
+            .insert("options".to_string(), opts);
     }
 
-    let response = client.call_tool(tool, params).await
+    let response = client
+        .call_tool(tool, params)
+        .await
         .map_err(|e| anyhow::anyhow!("Analysis tool '{}' failed: {}", tool, e))?;
 
     let result: AnalysisResult = serde_json::from_value(
-        response.get("result")
+        response
+            .get("result")
             .ok_or_else(|| anyhow::anyhow!("Response missing 'result' field"))?
             .clone(),
     )?;

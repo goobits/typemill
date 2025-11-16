@@ -793,7 +793,7 @@ More content.
                 }),
             )
             .await
-            .expect(&format!("analyze.quality call should succeed for {}", fixer));
+            .unwrap_or_else(|_| panic!("analyze.quality call should succeed for {}", fixer));
 
         let result: AnalysisResult = serde_json::from_value(
             response

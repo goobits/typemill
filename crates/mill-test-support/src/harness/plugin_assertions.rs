@@ -125,7 +125,7 @@ pub fn assert_reference_at_line(refs: &[(&str, usize)], module: &str, line: usiz
 ///
 /// If reference to the module is found
 pub fn assert_no_references_to(refs: &[&str], module: &str, context: &str) {
-    let found = refs.iter().any(|r| *r == module);
+    let found = refs.contains(&module);
     assert!(
         !found,
         "{}: Reference to '{}' should not exist",
@@ -149,7 +149,8 @@ pub fn assert_contains_all(content: &str, patterns: &[&str], context: &str) {
         assert!(
             content.contains(pattern),
             "{}: Expected pattern '{}' not found in content",
-            context, pattern
+            context,
+            pattern
         );
     }
 }
@@ -170,7 +171,8 @@ pub fn assert_contains_none(content: &str, patterns: &[&str], context: &str) {
         assert!(
             !content.contains(pattern),
             "{}: Unexpected pattern '{}' found in content",
-            context, pattern
+            context,
+            pattern
         );
     }
 }
@@ -246,7 +248,7 @@ pub fn assert_files_edited(file_paths: &[&str], expected_files: &[&str], context
     );
 
     for expected in expected_files {
-        let found = file_paths.iter().any(|f| *f == *expected);
+        let found = file_paths.contains(expected);
         assert!(
             found,
             "{}: Expected file '{}' not found in edits",
@@ -266,11 +268,7 @@ pub fn assert_files_edited(file_paths: &[&str], expected_files: &[&str], context
 /// # Panics
 ///
 /// If counts don't match
-pub fn assert_dependency_count(
-    actual_count: usize,
-    expected_count: usize,
-    manifest_type: &str,
-) {
+pub fn assert_dependency_count(actual_count: usize, expected_count: usize, manifest_type: &str) {
     assert_eq!(
         actual_count, expected_count,
         "{}: expected {} dependencies, found {}",
@@ -290,12 +288,8 @@ pub fn assert_dependency_count(
 ///
 /// If symbol is not found
 pub fn assert_symbol_exists(symbol_name: &str, symbols: &[&str], context: &str) {
-    let found = symbols.iter().any(|s| *s == symbol_name);
-    assert!(
-        found,
-        "{}: Symbol '{}' not found",
-        context, symbol_name
-    );
+    let found = symbols.contains(&symbol_name);
+    assert!(found, "{}: Symbol '{}' not found", context, symbol_name);
 }
 
 /// Assert that circular dependency detection works
@@ -333,21 +327,18 @@ pub fn assert_circular_dependency_detection(
 /// # Panics
 ///
 /// If content doesn't reflect the expected changes
-pub fn assert_import_updated(
-    old_import: &str,
-    new_import: &str,
-    content: &str,
-    context: &str,
-) {
+pub fn assert_import_updated(old_import: &str, new_import: &str, content: &str, context: &str) {
     assert!(
         !content.contains(old_import),
         "{}: Old import '{}' still exists in content",
-        context, old_import
+        context,
+        old_import
     );
     assert!(
         content.contains(new_import),
         "{}: New import '{}' not found in content",
-        context, new_import
+        context,
+        new_import
     );
 }
 

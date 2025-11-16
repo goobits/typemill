@@ -8,7 +8,7 @@ pub mod mocks;
 pub use helpers::create_test_config;
 
 // Re-export plugin testing utilities for convenience
-pub use harness::{IntegrationTestHarness, plugin_assertions, plugin_fixtures};
+pub use harness::{plugin_assertions, plugin_fixtures, IntegrationTestHarness};
 
 /// Get the path to test fixtures directory
 pub fn fixtures_dir() -> std::path::PathBuf {

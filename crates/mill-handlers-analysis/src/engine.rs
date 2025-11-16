@@ -11,8 +11,8 @@
 
 use crate::ToolHandlerContext;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::analysis_result::{AnalysisResult, AnalysisScope, Finding};
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
+use mill_foundation::protocol::analysis_result::{AnalysisResult, AnalysisScope, Finding};
 use serde::Deserialize;
 use serde_json::Value;
 use std::path::Path;
@@ -20,11 +20,16 @@ use std::time::Instant;
 use tracing::{debug, info};
 
 /// Helper to downcast AnalysisConfigTrait to concrete AnalysisConfig
-fn get_analysis_config(context: &ToolHandlerContext) -> ServerResult<&super::config::AnalysisConfig> {
-    context.analysis_config
+fn get_analysis_config(
+    context: &ToolHandlerContext,
+) -> ServerResult<&super::config::AnalysisConfig> {
+    context
+        .analysis_config
         .as_any()
         .downcast_ref::<super::config::AnalysisConfig>()
-        .ok_or_else(|| ServerError::internal("Failed to downcast AnalysisConfigTrait to AnalysisConfig"))
+        .ok_or_else(|| {
+            ServerError::internal("Failed to downcast AnalysisConfigTrait to AnalysisConfig")
+        })
 }
 
 /// Analysis function signature - takes parsed data and returns findings
@@ -195,15 +200,7 @@ pub async fn run_analysis(
     analysis_fn: AnalysisFn,
 ) -> ServerResult<Value> {
     let config = get_analysis_config(context)?;
-    run_analysis_with_config(
-        context,
-        tool_call,
-        category,
-        kind,
-        analysis_fn,
-        config,
-    )
-    .await
+    run_analysis_with_config(context, tool_call, category, kind, analysis_fn, config).await
 }
 
 /// Orchestrates the entire analysis workflow with configuration

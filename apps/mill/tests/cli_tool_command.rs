@@ -28,7 +28,7 @@ fn mill_cmd() -> Command {
         );
     }
 
-    Command::cargo_bin("mill").expect("mill binary should exist after check above")
+    Command::new(binary_path)
 }
 
 #[test]

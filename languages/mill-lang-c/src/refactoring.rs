@@ -17,13 +17,11 @@
 
 use mill_plugin_api::PluginResult;
 
-use mill_foundation::protocol::{
-    EditLocation, EditPlan, EditType, TextEdit,
-};
+use mill_foundation::protocol::{EditLocation, EditPlan, EditType, TextEdit};
 use mill_lang_common::{
     find_literal_occurrences, is_valid_code_literal_location,
-    CodeRange, ExtractConstantAnalysis, ExtractConstantEditPlanBuilder,
-    refactoring::edit_plan_builder::EditPlanBuilder,
+    refactoring::edit_plan_builder::EditPlanBuilder, CodeRange, ExtractConstantAnalysis,
+    ExtractConstantEditPlanBuilder,
 };
 #[cfg(test)]
 use mill_lang_common::{is_escaped, is_screaming_snake_case};
@@ -123,11 +121,21 @@ pub fn plan_inline_variable(
     let line = lines[line_index];
 
     if let Some(caps) = INT_VAR_DECL_PATTERN.captures(line) {
-        let var_name = caps.get(1)
-            .ok_or_else(|| mill_plugin_api::PluginApiError::internal("Regex missing capture group 1 (variable name)"))?
+        let var_name = caps
+            .get(1)
+            .ok_or_else(|| {
+                mill_plugin_api::PluginApiError::internal(
+                    "Regex missing capture group 1 (variable name)",
+                )
+            })?
             .as_str();
-        let var_value = caps.get(2)
-            .ok_or_else(|| mill_plugin_api::PluginApiError::internal("Regex missing capture group 2 (variable value)"))?
+        let var_value = caps
+            .get(2)
+            .ok_or_else(|| {
+                mill_plugin_api::PluginApiError::internal(
+                    "Regex missing capture group 2 (variable value)",
+                )
+            })?
             .as_str()
             .trim();
 
@@ -285,7 +293,7 @@ pub fn plan_extract_variable(
 ///
 /// # Returns
 /// * `Ok(ExtractConstantAnalysis)` - Analysis result with literal value, occurrence ranges,
-///                                     validation status, and insertion point
+///   validation status, and insertion point
 /// * `Err(PluginApiError)` - If no literal is found at the cursor position
 pub(crate) fn analyze_extract_constant(
     source: &str,
@@ -296,9 +304,9 @@ pub(crate) fn analyze_extract_constant(
     let lines: Vec<&str> = source.lines().collect();
 
     // Get the line at cursor position
-    let line_text = lines.get(line as usize).ok_or_else(|| {
-        mill_plugin_api::PluginApiError::not_supported("Invalid line number")
-    })?;
+    let line_text = lines
+        .get(line as usize)
+        .ok_or_else(|| mill_plugin_api::PluginApiError::not_supported("Invalid line number"))?;
 
     // Find the numeric literal at the cursor position
     let found_literal = find_c_numeric_literal_at_position(line_text, character as usize)
@@ -317,7 +325,8 @@ pub(crate) fn analyze_extract_constant(
     };
 
     // Find all occurrences of this literal value in the source
-    let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_c_literal_location);
+    let occurrence_ranges =
+        find_literal_occurrences(source, &literal_value, is_valid_c_literal_location);
 
     // Insertion point: after includes, at the top of the file
     let insertion_point = find_c_insertion_point_for_constant(source)?;
@@ -346,7 +355,7 @@ pub(crate) fn analyze_extract_constant(
 ///
 /// # Returns
 /// * `Ok(EditPlan)` - The edit plan with constant declaration inserted and all
-///                    literal occurrences replaced with the constant name
+///   literal occurrences replaced with the constant name
 /// * `Err(PluginApiError)` - If the cursor is not on a literal, the name is invalid, or parsing fails
 ///
 /// # Example
@@ -388,17 +397,15 @@ pub fn plan_extract_constant(
     let analysis = analyze_extract_constant(source, line, character, file_path)?;
 
     if !analysis.is_valid_literal {
-        return Err(mill_plugin_api::PluginApiError::not_supported(&format!(
+        return Err(mill_plugin_api::PluginApiError::not_supported(format!(
             "Cannot extract constant: {}",
             analysis.blocking_reasons.join(", ")
         )));
     }
 
     ExtractConstantEditPlanBuilder::new(analysis, name.to_string(), file_path.to_string())
-        .with_declaration_format(|name, value| {
-            format!("#define {} {}\n", name, value)
-        })
-        .map_err(|e| mill_plugin_api::PluginApiError::invalid_input(e))
+        .with_declaration_format(|name, value| format!("#define {} {}\n", name, value))
+        .map_err(mill_plugin_api::PluginApiError::invalid_input)
 }
 
 /// Finds a numeric literal at a cursor position in C code.
@@ -440,7 +447,10 @@ fn find_c_numeric_literal_at_position(line_text: &str, col: usize) -> Option<(St
     }
 
     // Check if this is a hex literal starting at 'start'
-    if start + 1 < chars.len() && chars[start] == '0' && (chars[start + 1] == 'x' || chars[start + 1] == 'X') {
+    if start + 1 < chars.len()
+        && chars[start] == '0'
+        && (chars[start + 1] == 'x' || chars[start + 1] == 'X')
+    {
         // This is a hex literal
         let mut end = start + 2;
         while end < chars.len() && chars[end].is_ascii_hexdigit() {
@@ -486,9 +496,14 @@ fn find_c_numeric_literal_at_position(line_text: &str, col: usize) -> Option<(St
 
     while end < chars.len() {
         let ch = chars[end];
-        if ch.is_ascii_digit() || ch == '.' || ch == 'e' || ch == 'E' {
-            end += 1;
-        } else if (ch == '-' || ch == '+') && end > 0 && (chars[end - 1] == 'e' || chars[end - 1] == 'E') {
+        if ch.is_ascii_digit()
+            || ch == '.'
+            || ch == 'e'
+            || ch == 'E'
+            || ((ch == '-' || ch == '+')
+                && end > 0
+                && (chars[end - 1] == 'e' || chars[end - 1] == 'E'))
+        {
             end += 1;
         } else {
             break;
@@ -550,16 +565,15 @@ fn is_valid_c_number(text: &str) -> bool {
     // Try to parse as different number types
     if text.starts_with("0x") || text.starts_with("0X") {
         // Hexadecimal
-        return text.len() > 2 && text[2..].chars().all(|c| c.is_ascii_hexdigit());
+        text.len() > 2 && text[2..].chars().all(|c| c.is_ascii_hexdigit())
     } else if text.starts_with('0') && text.len() > 1 && !text.contains('.') {
         // Octal
-        return text.chars().all(|c| c >= '0' && c <= '7');
+        text.chars().all(|c| ('0'..='7').contains(&c))
     } else {
         // Decimal integer or float
-        return text.parse::<f64>().is_ok();
+        text.parse::<f64>().is_ok()
     }
 }
-
 
 /// Validates if a position in a line of code is a valid literal location for C.
 ///
@@ -704,17 +718,31 @@ int main() {
         let plan = result.unwrap();
 
         // Should have 3 edits: 1 declaration + 2 replacements
-        assert_eq!(plan.edits.len(), 3, "Should have 3 edits (1 insert + 2 replacements)");
+        assert_eq!(
+            plan.edits.len(),
+            3,
+            "Should have 3 edits (1 insert + 2 replacements)"
+        );
 
         // Check that the declaration is a #define
-        let declaration_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Insert).unwrap();
-        assert!(declaration_edit.new_text.contains("#define MAGIC_NUMBER 42"));
+        let declaration_edit = plan
+            .edits
+            .iter()
+            .find(|e| e.edit_type == EditType::Insert)
+            .unwrap();
+        assert!(declaration_edit
+            .new_text
+            .contains("#define MAGIC_NUMBER 42"));
 
         // Check that insertion point is after #include
         assert_eq!(declaration_edit.location.start_line, 1);
 
         // Check that both occurrences are replaced
-        let replacements: Vec<_> = plan.edits.iter().filter(|e| e.edit_type == EditType::Replace).collect();
+        let replacements: Vec<_> = plan
+            .edits
+            .iter()
+            .filter(|e| e.edit_type == EditType::Replace)
+            .collect();
         assert_eq!(replacements.len(), 2, "Should have 2 replacements");
 
         for replacement in replacements {
@@ -792,8 +820,14 @@ int main() {
         // Should have 1 insert + 2 replacements
         assert_eq!(plan.edits.len(), 3);
 
-        let declaration_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Insert).unwrap();
-        assert!(declaration_edit.new_text.contains("#define COLOR_PINK 0xFF00AA"));
+        let declaration_edit = plan
+            .edits
+            .iter()
+            .find(|e| e.edit_type == EditType::Insert)
+            .unwrap();
+        assert!(declaration_edit
+            .new_text
+            .contains("#define COLOR_PINK 0xFF00AA"));
     }
 
     #[test]
@@ -817,8 +851,14 @@ int main() {
         let plan = result.unwrap();
         assert_eq!(plan.edits.len(), 3); // 1 insert + 2 replacements
 
-        let declaration_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Insert).unwrap();
-        assert!(declaration_edit.new_text.contains("#define DEFAULT_PERMS 0755"));
+        let declaration_edit = plan
+            .edits
+            .iter()
+            .find(|e| e.edit_type == EditType::Insert)
+            .unwrap();
+        assert!(declaration_edit
+            .new_text
+            .contains("#define DEFAULT_PERMS 0755"));
     }
 
     #[test]
@@ -842,8 +882,14 @@ int main() {
         let plan = result.unwrap();
         assert_eq!(plan.edits.len(), 3);
 
-        let declaration_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Insert).unwrap();
-        assert!(declaration_edit.new_text.contains("#define ABSOLUTE_ZERO -273"));
+        let declaration_edit = plan
+            .edits
+            .iter()
+            .find(|e| e.edit_type == EditType::Insert)
+            .unwrap();
+        assert!(declaration_edit
+            .new_text
+            .contains("#define ABSOLUTE_ZERO -273"));
     }
 
     #[test]
@@ -880,7 +926,11 @@ int y = 42;"#;
         let occurrences = find_literal_occurrences(source, "42", is_valid_c_literal_location);
 
         // Should find only 2 occurrences (not the ones in block comments)
-        assert_eq!(occurrences.len(), 2, "Should skip literals in block comments");
+        assert_eq!(
+            occurrences.len(),
+            2,
+            "Should skip literals in block comments"
+        );
         assert_eq!(occurrences[0].start_line, 1);
         assert_eq!(occurrences[1].start_line, 2);
     }

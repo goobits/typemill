@@ -11,15 +11,15 @@
 //! Uses the shared analysis engine for orchestration and focuses only on
 //! detection logic.
 
-use crate::{ToolHandler, ToolHandlerContext};
 use crate::suggestions::RefactoringCandidate;
+use crate::{ToolHandler, ToolHandlerContext};
 use anyhow::Result;
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_foundation::protocol::analysis_result::{
     Finding, FindingLocation, SafetyLevel, Severity, Suggestion,
 };
-use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_plugin_api::Symbol;
 use regex::Regex;
 use serde_json::{json, Value};
@@ -1357,6 +1357,12 @@ fn find_corresponding_file(
 // ============================================================================
 
 pub struct TestsHandler;
+
+impl Default for TestsHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TestsHandler {
     pub fn new() -> Self {

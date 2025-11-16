@@ -7,7 +7,7 @@
 
 use crate::harness::{TestClient, TestWorkspace};
 use crate::test_helpers;
-use mill_foundation::protocol::analysis_result::{AnalysisResult, Severity};
+use mill_foundation::protocol::analysis_result::Severity;
 use serde_json::json;
 
 #[tokio::test]
@@ -46,41 +46,42 @@ export type UserData = {
         "symbols",
         None,
         |result| {
-        assert_eq!(result.metadata.category, "structure");
-        assert_eq!(result.metadata.kind, "symbols");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.category, "structure");
+            assert_eq!(result.metadata.kind, "symbols");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "symbols");
-        assert_eq!(finding.severity, Severity::Low);
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "symbols");
+            assert_eq!(finding.severity, Severity::Low);
 
-        let metrics = finding.metrics.as_ref().expect("Should have metrics");
-        assert!(metrics.contains_key("total_symbols"));
-        assert!(metrics.contains_key("symbols_by_kind"));
-        assert!(metrics.contains_key("visibility_breakdown"));
+            let metrics = finding.metrics.as_ref().expect("Should have metrics");
+            assert!(metrics.contains_key("total_symbols"));
+            assert!(metrics.contains_key("symbols_by_kind"));
+            assert!(metrics.contains_key("visibility_breakdown"));
 
-        let total_symbols = metrics
-            .get("total_symbols")
-            .and_then(|v| v.as_u64())
-            .expect("Should have total_symbols");
+            let total_symbols = metrics
+                .get("total_symbols")
+                .and_then(|v| v.as_u64())
+                .expect("Should have total_symbols");
 
-        assert!(total_symbols > 0);
+            assert!(total_symbols > 0);
 
-        let symbols_by_kind = metrics
-            .get("symbols_by_kind")
-            .and_then(|v| v.as_object())
-            .expect("Should have symbols_by_kind object");
+            let symbols_by_kind = metrics
+                .get("symbols_by_kind")
+                .and_then(|v| v.as_object())
+                .expect("Should have symbols_by_kind object");
 
-        assert!(!symbols_by_kind.is_empty());
+            assert!(!symbols_by_kind.is_empty());
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }
@@ -114,42 +115,43 @@ export class LeafClass extends MiddleClass {
         "hierarchy",
         None,
         |result| {
-        assert_eq!(result.metadata.kind, "hierarchy");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.kind, "hierarchy");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "hierarchy");
-        assert!(finding.severity == Severity::Medium || finding.severity == Severity::Low);
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "hierarchy");
+            assert!(finding.severity == Severity::Medium || finding.severity == Severity::Low);
 
-        let metrics = finding.metrics.as_ref().expect("Should have metrics");
-        assert!(metrics.contains_key("max_depth"));
-        assert!(metrics.contains_key("total_classes"));
-        assert!(metrics.contains_key("root_classes"));
-        assert!(metrics.contains_key("leaf_classes"));
-        assert!(metrics.contains_key("hierarchy_tree"));
+            let metrics = finding.metrics.as_ref().expect("Should have metrics");
+            assert!(metrics.contains_key("max_depth"));
+            assert!(metrics.contains_key("total_classes"));
+            assert!(metrics.contains_key("root_classes"));
+            assert!(metrics.contains_key("leaf_classes"));
+            assert!(metrics.contains_key("hierarchy_tree"));
 
-        let total_classes = metrics
-            .get("total_classes")
-            .and_then(|v| v.as_u64())
-            .expect("Should have total_classes");
+            let total_classes = metrics
+                .get("total_classes")
+                .and_then(|v| v.as_u64())
+                .expect("Should have total_classes");
 
-        assert!(total_classes >= 3);
+            assert!(total_classes >= 3);
 
-        let max_depth = metrics
-            .get("max_depth")
-            .and_then(|v| v.as_u64())
-            .expect("Should have max_depth");
+            let max_depth = metrics
+                .get("max_depth")
+                .and_then(|v| v.as_u64())
+                .expect("Should have max_depth");
 
-        assert!(max_depth > 0);
+            assert!(max_depth > 0);
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }
@@ -187,40 +189,41 @@ export interface SimpleInterface {
         "interfaces",
         None,
         |result| {
-        assert_eq!(result.metadata.kind, "interfaces");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.kind, "interfaces");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "interfaces");
-        assert!(finding.severity == Severity::Medium || finding.severity == Severity::Low);
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "interfaces");
+            assert!(finding.severity == Severity::Medium || finding.severity == Severity::Low);
 
-        let metrics = finding.metrics.as_ref().expect("Should have metrics");
-        assert!(metrics.contains_key("interface_count"));
-        assert!(metrics.contains_key("methods_per_interface"));
-        assert!(metrics.contains_key("fat_interfaces"));
+            let metrics = finding.metrics.as_ref().expect("Should have metrics");
+            assert!(metrics.contains_key("interface_count"));
+            assert!(metrics.contains_key("methods_per_interface"));
+            assert!(metrics.contains_key("fat_interfaces"));
 
-        let interface_count = metrics
-            .get("interface_count")
-            .and_then(|v| v.as_u64())
-            .expect("Should have interface_count");
+            let interface_count = metrics
+                .get("interface_count")
+                .and_then(|v| v.as_u64())
+                .expect("Should have interface_count");
 
-        assert!(interface_count >= 2);
+            assert!(interface_count >= 2);
 
-        let fat_interfaces = metrics
-            .get("fat_interfaces")
-            .and_then(|v| v.as_array())
-            .expect("Should have fat_interfaces array");
+            let fat_interfaces = metrics
+                .get("fat_interfaces")
+                .and_then(|v| v.as_array())
+                .expect("Should have fat_interfaces array");
 
-        assert!(!fat_interfaces.is_empty());
+            assert!(!fat_interfaces.is_empty());
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }
@@ -266,40 +269,41 @@ export class Level5 extends Level4 {
         "inheritance",
         None,
         |result| {
-        assert_eq!(result.metadata.kind, "inheritance");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.kind, "inheritance");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "inheritance");
-        assert!(finding.severity == Severity::High || finding.severity == Severity::Low);
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "inheritance");
+            assert!(finding.severity == Severity::High || finding.severity == Severity::Low);
 
-        let metrics = finding.metrics.as_ref().expect("Should have metrics");
-        assert!(metrics.contains_key("max_inheritance_depth"));
-        assert!(metrics.contains_key("classes_by_depth"));
-        assert!(metrics.contains_key("inheritance_chains"));
+            let metrics = finding.metrics.as_ref().expect("Should have metrics");
+            assert!(metrics.contains_key("max_inheritance_depth"));
+            assert!(metrics.contains_key("classes_by_depth"));
+            assert!(metrics.contains_key("inheritance_chains"));
 
-        let max_depth = metrics
-            .get("max_inheritance_depth")
-            .and_then(|v| v.as_u64())
-            .expect("Should have max_inheritance_depth");
+            let max_depth = metrics
+                .get("max_inheritance_depth")
+                .and_then(|v| v.as_u64())
+                .expect("Should have max_inheritance_depth");
 
-        assert!(max_depth > 0);
+            assert!(max_depth > 0);
 
-        let inheritance_chains = metrics
-            .get("inheritance_chains")
-            .and_then(|v| v.as_array())
-            .expect("Should have inheritance_chains array");
+            let inheritance_chains = metrics
+                .get("inheritance_chains")
+                .and_then(|v| v.as_array())
+                .expect("Should have inheritance_chains array");
 
-        assert!(!inheritance_chains.is_empty());
+            assert!(!inheritance_chains.is_empty());
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }
@@ -337,35 +341,36 @@ export function helper3() { return "helper3"; }
         "modules",
         None,
         |result| {
-        assert_eq!(result.metadata.kind, "modules");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.kind, "modules");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "modules");
-        assert!(finding.severity == Severity::Medium || finding.severity == Severity::Low);
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "modules");
+            assert!(finding.severity == Severity::Medium || finding.severity == Severity::Low);
 
-        let metrics = finding.metrics.as_ref().expect("Should have metrics");
-        assert!(metrics.contains_key("module_count"));
-        assert!(metrics.contains_key("items_per_module"));
-        assert!(metrics.contains_key("god_modules"));
-        assert!(metrics.contains_key("orphaned_items_count"));
-        assert!(metrics.contains_key("total_items"));
+            let metrics = finding.metrics.as_ref().expect("Should have metrics");
+            assert!(metrics.contains_key("module_count"));
+            assert!(metrics.contains_key("items_per_module"));
+            assert!(metrics.contains_key("god_modules"));
+            assert!(metrics.contains_key("orphaned_items_count"));
+            assert!(metrics.contains_key("total_items"));
 
-        let total_items = metrics
-            .get("total_items")
-            .and_then(|v| v.as_u64())
-            .expect("Should have total_items");
+            let total_items = metrics
+                .get("total_items")
+                .and_then(|v| v.as_u64())
+                .expect("Should have total_items");
 
-        assert!(total_items > 0);
+            assert!(total_items > 0);
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }

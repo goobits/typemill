@@ -3,6 +3,12 @@ use anyhow::Result;
 
 pub struct SafetyClassifier;
 
+impl Default for SafetyClassifier {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SafetyClassifier {
     pub fn new() -> Self {
         Self

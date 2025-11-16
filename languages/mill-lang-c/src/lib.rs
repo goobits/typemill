@@ -140,7 +140,8 @@ impl LanguagePlugin for CPlugin {
         source: &str,
         file_path: Option<&Path>,
     ) -> PluginResult<mill_foundation::protocol::ImportGraph> {
-        self.import_support.analyze_detailed_imports(source, file_path)
+        self.import_support
+            .analyze_detailed_imports(source, file_path)
     }
 
     // Use macro to generate capability delegation methods
@@ -390,10 +391,7 @@ mod tests;
 #[cfg(test)]
 mod inline_tests {
     use super::*;
-    use mill_test_support::harness::{
-        *,
-        edge_cases,
-    };
+    use mill_test_support::harness::{edge_cases, *};
     use std::time::Instant;
 
     // ========================================================================
@@ -495,7 +493,11 @@ int main() {
 
         assert!(result.is_ok(), "Should handle whitespace-only file");
         let parsed = result.unwrap();
-        assert_eq!(parsed.symbols.len(), 0, "Whitespace-only file should have no symbols");
+        assert_eq!(
+            parsed.symbols.len(),
+            0,
+            "Whitespace-only file should have no symbols"
+        );
     }
 
     // ========================================================================
@@ -532,7 +534,10 @@ int main() {{
             .unwrap()
             .block_on(async { plugin.parse(&source).await });
 
-        assert!(result.is_ok(), "Should handle special regex characters in strings");
+        assert!(
+            result.is_ok(),
+            "Should handle special regex characters in strings"
+        );
     }
 
     // ========================================================================
@@ -588,7 +593,10 @@ int main() {
             .block_on(async { plugin.parse(source).await });
         assert!(parse_result.is_ok());
         let parsed = parse_result.unwrap();
-        assert!(parsed.symbols.len() >= 3, "Should find at least 3 functions");
+        assert!(
+            parsed.symbols.len() >= 3,
+            "Should find at least 3 functions"
+        );
 
         // Test list_functions
         let list_result = tokio::runtime::Runtime::new()

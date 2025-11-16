@@ -131,12 +131,13 @@ pub(crate) struct IntentResourceUsage {
 }
 
 /// Intent execution status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 #[allow(dead_code)] // Future feature: Intent-based workflow automation
 pub(crate) enum IntentStatus {
     /// Intent is pending execution
+    #[default]
     Pending,
     /// Intent is currently being executed
     Running,
@@ -388,11 +389,5 @@ impl IntentContext {
     #[allow(dead_code)] // Future feature: Intent-based workflow automation
     pub fn add_child(&mut self, child_id: impl Into<String>) {
         self.child_execution_ids.push(child_id.into());
-    }
-}
-
-impl Default for IntentStatus {
-    fn default() -> Self {
-        Self::Pending
     }
 }

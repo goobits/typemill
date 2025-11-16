@@ -75,7 +75,7 @@ impl MissingCodeLangFixer {
                     // Match [0], [1], [2] etc. at start of line
                     t.starts_with('[')
                         && t.len() >= 3
-                        && t.chars().nth(1).map_or(false, |c| c.is_ascii_digit())
+                        && t.chars().nth(1).is_some_and(|c| c.is_ascii_digit())
                 })
                 .count()
                 >= 2;
@@ -369,14 +369,14 @@ impl MissingCodeLangFixer {
     /// Extract the content of a code block starting at the given line
     fn extract_block_content(lines: &[&str], start_line: usize) -> String {
         let mut content = String::new();
-        for i in (start_line + 1)..lines.len() {
-            if lines[i].trim().starts_with("```") {
+        for line in lines.iter().skip(start_line + 1) {
+            if line.trim().starts_with("```") {
                 break;
             }
             if !content.is_empty() {
                 content.push('\n');
             }
-            content.push_str(lines[i]);
+            content.push_str(line);
         }
         content
     }
