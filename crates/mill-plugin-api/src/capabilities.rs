@@ -221,6 +221,35 @@ pub trait RefactoringProvider: Send + Sync {
         ))
     }
 
+    /// Check if extract constant refactoring is supported
+    fn supports_extract_constant(&self) -> bool {
+        false
+    }
+
+    /// Plan extract constant refactoring
+    ///
+    /// Analyzes the code and generates an edit plan for extracting a constant from a literal value.
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - Source code content
+    /// * `line` - Line number where cursor is positioned (0-based)
+    /// * `character` - Character offset within the line (0-based)
+    /// * `constant_name` - Name for the extracted constant (must be SCREAMING_SNAKE_CASE)
+    /// * `file_path` - Path to the source file
+    async fn plan_extract_constant(
+        &self,
+        _source: &str,
+        _line: u32,
+        _character: u32,
+        _constant_name: &str,
+        _file_path: &str,
+    ) -> PluginResult<mill_foundation::protocol::EditPlan> {
+        Err(crate::PluginApiError::not_supported(
+            "plan_extract_constant",
+        ))
+    }
+
     // ============================================================================
     // Legacy sync methods - DEPRECATED
     // These exist for backwards compatibility but should not be used in new code

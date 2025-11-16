@@ -17,6 +17,7 @@ pub mod manifest;
 pub mod parser;
 pub mod project_factory;
 pub mod refactoring;
+mod string_literal_support;
 pub mod test_fixtures;
 pub mod workspace_support;
 
@@ -141,6 +142,36 @@ impl LanguagePlugin for PythonPlugin {
 
     fn test_fixtures(&self) -> Option<mill_plugin_api::LanguageTestFixtures> {
         Some(test_fixtures::python_test_fixtures())
+    }
+
+    fn rewrite_file_references(
+        &self,
+        content: &str,
+        old_path: &Path,
+        new_path: &Path,
+        _current_file: &Path,
+        _project_root: &Path,
+        _rename_info: Option<&serde_json::Value>,
+    ) -> Option<(String, usize)> {
+        use mill_plugin_api::ImportMoveSupport;
+
+        // First, rewrite imports using move support
+        let (content_after_imports, import_count) = self
+            .import_support
+            .rewrite_imports_for_move(content, old_path, new_path);
+
+        // Then, rewrite string literals (path-like strings)
+        let (final_content, literal_count) =
+            string_literal_support::rewrite_string_literals(&content_after_imports, old_path, new_path)
+                .ok()?;
+
+        let total_changes = import_count + literal_count;
+
+        if total_changes > 0 {
+            Some((final_content, total_changes))
+        } else {
+            None
+        }
     }
 
     // Use macro to generate capability delegation methods
@@ -282,6 +313,22 @@ impl mill_plugin_api::RefactoringProvider for PythonPlugin {
             file_path,
         )
         .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))
+    }
+
+    fn supports_extract_constant(&self) -> bool {
+        true
+    }
+
+    async fn plan_extract_constant(
+        &self,
+        source: &str,
+        line: u32,
+        character: u32,
+        constant_name: &str,
+        file_path: &str,
+    ) -> mill_plugin_api::PluginResult<mill_foundation::protocol::EditPlan> {
+        refactoring::plan_extract_constant(source, line, character, constant_name, file_path)
+            .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))
     }
 }
 

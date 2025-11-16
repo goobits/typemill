@@ -253,14 +253,6 @@ impl ExtractHandler {
         source: &SourceRange,
         options: &ExtractOptions,
     ) -> ServerResult<ExtractPlan> {
-        // Constants use similar logic to variables
-        let code_range = CodeRange {
-            start_line: source.range.start.line,
-            start_col: source.range.start.character,
-            end_line: source.range.end.line,
-            end_col: source.range.end.character,
-        };
-
         let file_path = Path::new(&source.file_path);
         let file_content = context
             .app_state
@@ -269,23 +261,36 @@ impl ExtractHandler {
             .await
             .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;
 
-        // Use AST-only approach for extracting constants
-
         // Get PluginDiscovery from language_plugins by downcasting
         let plugin_discovery = context.app_state.language_plugins.inner()
             .downcast_ref::<mill_plugin_api::PluginDiscovery>()
             .ok_or_else(|| ServerError::internal("Failed to downcast to PluginDiscovery"))?;
 
-        let edit_plan = mill_ast::refactoring::extract_function::plan_extract_function(
-            &file_content,
-            &code_range,
-            &source.name,
-            &source.file_path,
-            None, // No LSP service - use AST-only approach
-            Some(plugin_discovery), // Pass plugin registry
-        )
-        .await
-        .map_err(|e| ServerError::internal(format!("Extract constant failed: {}", e)))?;
+        // Get the refactoring provider for this file type
+        let provider = plugin_discovery
+            .refactoring_provider_for_file(&source.file_path)
+            .ok_or_else(|| ServerError::not_found(format!("No refactoring provider found for: {}", source.file_path)))?;
+
+        // Check if extract_constant is supported
+        if !provider.supports_extract_constant() {
+            return Err(ServerError::not_supported(format!(
+                "Extract constant not supported for: {}",
+                source.file_path
+            )));
+        }
+
+        // Call the language plugin's extract_constant method
+        // For extract constant, we use the cursor position (start of the range)
+        let edit_plan = provider
+            .plan_extract_constant(
+                &file_content,
+                source.range.start.line,
+                source.range.start.character,
+                &source.name,
+                &source.file_path,
+            )
+            .await
+            .map_err(|e| ServerError::internal(format!("Extract constant failed: {}", e)))?;
 
         self.convert_edit_plan_to_extract_plan(
             edit_plan,

@@ -19,6 +19,7 @@ mod path_alias_resolver;
 mod project_factory;
 pub mod refactoring;
 mod regex_patterns; // Re-exports from constants for backward compatibility
+mod string_literal_support;
 mod tsconfig;
 pub mod workspace_support;
 
@@ -123,15 +124,30 @@ impl LanguagePlugin for TypeScriptPlugin {
         project_root: &Path,
         rename_info: Option<&serde_json::Value>,
     ) -> Option<(String, usize)> {
-        self.rewrite_imports_for_rename(
-            content,
-            old_path,
-            new_path,
-            current_file,
-            project_root,
-            rename_info,
-        )
-        .ok()
+        // First, rewrite imports
+        let (content_after_imports, import_count) = self
+            .rewrite_imports_for_rename(
+                content,
+                old_path,
+                new_path,
+                current_file,
+                project_root,
+                rename_info,
+            )
+            .ok()?;
+
+        // Then, rewrite string literals (path-like strings)
+        let (final_content, literal_count) =
+            string_literal_support::rewrite_string_literals(&content_after_imports, old_path, new_path)
+                .ok()?;
+
+        let total_changes = import_count + literal_count;
+
+        if total_changes > 0 {
+            Some((final_content, total_changes))
+        } else {
+            None
+        }
     }
 
     fn analysis_metadata(&self) -> Option<&dyn AnalysisMetadata> {
@@ -252,6 +268,21 @@ impl mill_plugin_api::RefactoringProvider for TypeScriptPlugin {
             variable_name,
             file_path,
         )
+    }
+
+    fn supports_extract_constant(&self) -> bool {
+        true
+    }
+
+    async fn plan_extract_constant(
+        &self,
+        source: &str,
+        line: u32,
+        character: u32,
+        constant_name: &str,
+        file_path: &str,
+    ) -> mill_plugin_api::PluginResult<mill_foundation::protocol::EditPlan> {
+        refactoring::plan_extract_constant(source, line, character, constant_name, file_path)
     }
 }
 
