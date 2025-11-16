@@ -13,11 +13,7 @@ use tree_sitter::{Node, Parser, Point, Query, QueryCursor, StreamingIterator};
 
 /// Get the C# language for tree-sitter
 fn get_language() -> tree_sitter::Language {
-    use tree_sitter::ffi::TSLanguage;
-    extern "C" {
-        fn tree_sitter_c_sharp() -> *const TSLanguage;
-    }
-    unsafe { tree_sitter::Language::from_raw(tree_sitter_c_sharp()) }
+    tree_sitter_c_sharp::LANGUAGE.into()
 }
 
 /// Error type for refactoring operations
@@ -420,19 +416,12 @@ fn extract_csharp_var_info<'a>(
         .find(|n| n.kind() == "identifier")
         .ok_or_else(|| RefactoringError::Analysis("Could not find variable name".to_string()))?;
 
-    // Get the value from equals_value_clause
+    // Get the value - in newer tree-sitter-c-sharp, the value is a direct child
+    // (no equals_value_clause wrapper)
     let mut cursor_value = declarator.walk();
-    let equals_clause = declarator
+    let value_node = declarator
         .children(&mut cursor_value)
-        .find(|n| n.kind() == "equals_value_clause")
-        .ok_or_else(|| {
-            RefactoringError::Analysis("Could not find equals_value_clause".to_string())
-        })?;
-
-    let mut cursor_expr = equals_clause.walk();
-    let value_node = equals_clause
-        .children(&mut cursor_expr)
-        .find(|n| n.kind() != "=")
+        .find(|n| n.kind() != "identifier" && n.kind() != "=")
         .ok_or_else(|| {
             RefactoringError::Analysis("Could not find variable initializer value".to_string())
         })?;

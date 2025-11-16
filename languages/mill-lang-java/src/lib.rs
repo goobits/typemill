@@ -316,8 +316,28 @@ mod tests {
     // PERFORMANCE TESTS (2 tests)
     // ========================================================================
 
+    /// Helper to ensure Java parser JAR is built before running integration tests
+    fn require_java_parser_jar() {
+        #[cfg(not(java_parser_jar_exists))]
+        panic!(
+            "\n╔══════════════════════════════════════════════════════════════════╗\n\
+             ║ Java parser JAR not found!                                       ║\n\
+             ║                                                                  ║\n\
+             ║ To run this test, build the JAR:                                ║\n\
+             ║   cd languages/mill-lang-java/resources/java-parser             ║\n\
+             ║   mvn package                                                    ║\n\
+             ║                                                                  ║\n\
+             ║ Then rebuild:                                                    ║\n\
+             ║   cargo clean -p mill-lang-java                                 ║\n\
+             ║   cargo test -p mill-lang-java                                  ║\n\
+             ╚══════════════════════════════════════════════════════════════════╝\n"
+        );
+    }
+
     #[test]
     fn test_performance_parse_large_file() {
+        require_java_parser_jar();
+
         use std::time::Instant;
         let plugin = JavaPlugin::new();
 
