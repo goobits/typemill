@@ -38,7 +38,10 @@ pub fn test_all_lsp_installers_have_names() {
 
             println!("✓ Plugin '{}' has LSP server: {}", meta.name, lsp_name);
         } else {
-            println!("  Plugin '{}' has no LSP installer (config-only language)", meta.name);
+            println!(
+                "  Plugin '{}' has no LSP installer (config-only language)",
+                meta.name
+            );
         }
     }
 }
@@ -65,11 +68,20 @@ pub fn test_all_lsp_installers_can_check_availability() {
             // Log the result for debugging
             match check_result {
                 Ok(Some(_path)) => println!("✓ Plugin '{}' LSP server is installed", meta.name),
-                Ok(None) => println!("  Plugin '{}' LSP server is not installed (OK for tests)", meta.name),
-                Err(e) => println!("  Plugin '{}' LSP check failed: {} (OK for tests)", meta.name, e),
+                Ok(None) => println!(
+                    "  Plugin '{}' LSP server is not installed (OK for tests)",
+                    meta.name
+                ),
+                Err(e) => println!(
+                    "  Plugin '{}' LSP check failed: {} (OK for tests)",
+                    meta.name, e
+                ),
             }
         } else {
-            println!("  Plugin '{}' has no LSP installer (config-only language)", meta.name);
+            println!(
+                "  Plugin '{}' has no LSP installer (config-only language)",
+                meta.name
+            );
         }
     }
 }

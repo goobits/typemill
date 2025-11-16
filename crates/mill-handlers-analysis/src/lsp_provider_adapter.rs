@@ -63,10 +63,7 @@ impl LspProvider for LspProviderAdapter {
             .map_err(|e| AnalysisError::LspError(format!("workspace/symbol failed: {}", e)))?;
 
         // Extract symbols array from response
-        let symbols = response
-            .as_array()
-            .cloned()
-            .unwrap_or_default();
+        let symbols = response.as_array().cloned().unwrap_or_default();
 
         debug!(
             symbols_count = symbols.len(),
@@ -106,10 +103,7 @@ impl LspProvider for LspProviderAdapter {
             })?;
 
         // Extract references array from response
-        let references = response
-            .as_array()
-            .cloned()
-            .unwrap_or_default();
+        let references = response.as_array().cloned().unwrap_or_default();
 
         debug!(
             references_count = references.len(),
@@ -140,10 +134,7 @@ impl LspProvider for LspProviderAdapter {
             })?;
 
         // Extract symbols array from response
-        let symbols = response
-            .as_array()
-            .cloned()
-            .unwrap_or_default();
+        let symbols = response.as_array().cloned().unwrap_or_default();
 
         debug!(
             symbols_count = symbols.len(),
@@ -186,9 +177,7 @@ impl LspProvider for LspProviderAdapter {
         client
             .send_notification("textDocument/didOpen", params)
             .await
-            .map_err(|e| {
-                AnalysisError::LspError(format!("textDocument/didOpen failed: {}", e))
-            })?;
+            .map_err(|e| AnalysisError::LspError(format!("textDocument/didOpen failed: {}", e)))?;
 
         debug!(
             uri = %uri,
@@ -229,7 +218,10 @@ mod tests {
         // workspace_symbols should fail gracefully
         let result = adapter.workspace_symbols("test").await;
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), mill_analysis_common::AnalysisError::LspError(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            mill_analysis_common::AnalysisError::LspError(_)
+        ));
     }
 
     #[tokio::test]
@@ -240,7 +232,10 @@ mod tests {
 
         let result = adapter.find_references("file:///test.rs", 0, 0).await;
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), mill_analysis_common::AnalysisError::LspError(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            mill_analysis_common::AnalysisError::LspError(_)
+        ));
     }
 
     #[tokio::test]
@@ -251,6 +246,9 @@ mod tests {
 
         let result = adapter.document_symbols("file:///test.rs").await;
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), mill_analysis_common::AnalysisError::LspError(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            mill_analysis_common::AnalysisError::LspError(_)
+        ));
     }
 }

@@ -3,9 +3,9 @@
 //! Provides a reusable test environment for plugin integration testing with
 //! temporary directories, setup/teardown, and common test patterns.
 
+use anyhow::Result;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
-use anyhow::Result;
 
 /// Main test harness for plugin integration testing
 ///
@@ -100,7 +100,12 @@ impl IntegrationTestHarness {
     /// # Returns
     ///
     /// The modified source code
-    pub fn test_parse_modify_verify<F>(&self, filename: &str, source: &str, modify_fn: F) -> Result<String>
+    pub fn test_parse_modify_verify<F>(
+        &self,
+        filename: &str,
+        source: &str,
+        modify_fn: F,
+    ) -> Result<String>
     where
         F: Fn(&str) -> String,
     {
@@ -190,8 +195,10 @@ impl IntegrationTestHarness {
 
         // Verify source exists
         assert!(old_path.exists(), "Source file should exist before move");
-        assert!(source_content.contains(reference_pattern) || reference_pattern.is_empty(),
-                "Reference pattern should exist in content or be empty");
+        assert!(
+            source_content.contains(reference_pattern) || reference_pattern.is_empty(),
+            "Reference pattern should exist in content or be empty"
+        );
 
         Ok((old_path, new_path))
     }
@@ -323,9 +330,8 @@ mod tests {
     #[test]
     fn test_parse_modify_verify() {
         let harness = IntegrationTestHarness::new().unwrap();
-        let result = harness.test_parse_modify_verify("test.rs", "fn main() {}", |s| {
-            s.replace("main", "modified")
-        });
+        let result = harness
+            .test_parse_modify_verify("test.rs", "fn main() {}", |s| s.replace("main", "modified"));
         assert!(result.is_ok());
         assert!(result.unwrap().contains("modified"));
     }
@@ -345,7 +351,8 @@ mod tests {
     #[test]
     fn test_move_file_update_references() {
         let harness = IntegrationTestHarness::new().unwrap();
-        let result = harness.test_move_file_update_references("src/main.rs", "use utils::foo;", "utils");
+        let result =
+            harness.test_move_file_update_references("src/main.rs", "use utils::foo;", "utils");
         assert!(result.is_ok());
         let (old_path, new_path) = result.unwrap();
         assert!(old_path.exists());

@@ -35,4 +35,3 @@ impl LspInstaller for TypeScriptLspInstaller {
             .map_err(|e| PluginApiError::internal(format!("npm install failed: {}", e)))
     }
 }
-

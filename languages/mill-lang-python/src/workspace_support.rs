@@ -372,6 +372,5 @@ fn list_hatch_envs(doc: &DocumentMut) -> Result<Vec<String>, String> {
     Ok(envs.iter().map(|(k, _)| k.to_string()).collect())
 }
 
-
 // Unit tests deleted - functionality is covered by workspace_harness integration tests
 // See: crates/mill-test-support/src/harness/workspace_harness.rs

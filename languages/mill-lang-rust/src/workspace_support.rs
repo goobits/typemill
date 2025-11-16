@@ -400,4 +400,3 @@ fn update_package_name_impl(content: &str, new_name: &str) -> Result<String, Str
 
     Ok(doc.to_string())
 }
-

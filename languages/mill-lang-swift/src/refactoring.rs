@@ -320,7 +320,7 @@ pub fn plan_extract_variable(
 ///
 /// # Returns
 /// * `Ok(ExtractConstantAnalysis)` - Analysis result with literal value, occurrence ranges,
-///                                     validation status, and insertion point
+///   validation status, and insertion point
 /// * `Err(PluginApiError)` - If no literal is found at the cursor position
 pub(crate) fn analyze_extract_constant(
     source: &str,
@@ -386,7 +386,7 @@ pub fn plan_extract_constant(
 
     ExtractConstantEditPlanBuilder::new(analysis, name.to_string(), file_path.to_string())
         .with_declaration_format(|name, value| format!("let {} = {}\n", name, value))
-        .map_err(|e| PluginApiError::invalid_input(e))
+        .map_err(PluginApiError::invalid_input)
 }
 
 /// Finds a Swift literal at a given position in a line of code.
@@ -643,7 +643,7 @@ fn is_valid_number(text: &str) -> bool {
         return cleaned.len() > 2 && cleaned[2..].chars().all(|c| c == '0' || c == '1');
     }
     if cleaned.starts_with("0o") || cleaned.starts_with("0O") {
-        return cleaned.len() > 2 && cleaned[2..].chars().all(|c| c >= '0' && c <= '7');
+        return cleaned.len() > 2 && cleaned[2..].chars().all(|c| ('0'..='7').contains(&c));
     }
 
     // For regular numbers, try parsing as f64
@@ -699,27 +699,27 @@ fn find_swift_boolean_literal(line_text: &str, col: usize) -> Option<(String, u3
     for keyword in &keywords {
         // Try to match keyword at or near cursor
         for start in col.saturating_sub(keyword.len())..=col {
-            if start + keyword.len() <= line_text.len() {
-                if &line_text[start..start + keyword.len()] == *keyword {
-                    // Check word boundaries
-                    let before_ok = start == 0
-                        || line_text[..start]
-                            .chars()
-                            .last()
-                            .map_or(false, |c| !c.is_alphanumeric());
-                    let after_ok = start + keyword.len() == line_text.len()
-                        || line_text[start + keyword.len()..]
-                            .chars()
-                            .next()
-                            .map_or(false, |c| !c.is_alphanumeric());
+            if start + keyword.len() <= line_text.len()
+                && &line_text[start..start + keyword.len()] == *keyword
+            {
+                // Check word boundaries
+                let before_ok = start == 0
+                    || line_text[..start]
+                        .chars()
+                        .last()
+                        .is_some_and(|c| !c.is_alphanumeric());
+                let after_ok = start + keyword.len() == line_text.len()
+                    || line_text[start + keyword.len()..]
+                        .chars()
+                        .next()
+                        .is_some_and(|c| !c.is_alphanumeric());
 
-                    if before_ok && after_ok {
-                        return Some((
-                            keyword.to_string(),
-                            start as u32,
-                            (start + keyword.len()) as u32,
-                        ));
-                    }
+                if before_ok && after_ok {
+                    return Some((
+                        keyword.to_string(),
+                        start as u32,
+                        (start + keyword.len()) as u32,
+                    ));
                 }
             }
         }
@@ -808,7 +808,10 @@ class Calculator {
         let plan = result.unwrap();
         // Check that indentation is preserved
         let insert_edit = &plan.edits[0];
-        assert!(insert_edit.new_text.contains("    private func"), "Should preserve class indentation");
+        assert!(
+            insert_edit.new_text.contains("    private func"),
+            "Should preserve class indentation"
+        );
     }
 
     #[test]
@@ -846,7 +849,15 @@ func example() {
     let total = 100 * 1.08
     return total
 }"#;
-        let result = plan_extract_variable(source, 1, 16, 1, 26, Some("taxRate".to_string()), "test.swift");
+        let result = plan_extract_variable(
+            source,
+            1,
+            16,
+            1,
+            26,
+            Some("taxRate".to_string()),
+            "test.swift",
+        );
         assert!(result.is_ok(), "Should extract simple expression");
         let plan = result.unwrap();
         assert_eq!(plan.edits.len(), 2);
@@ -877,7 +888,8 @@ func compute() {
     )
 }
 "#;
-        let result = plan_extract_variable(source, 2, 17, 4, 5, Some("value".to_string()), "test.swift");
+        let result =
+            plan_extract_variable(source, 2, 17, 4, 5, Some("value".to_string()), "test.swift");
         assert!(result.is_ok(), "Should handle multiline expressions");
     }
 
@@ -911,7 +923,8 @@ class Test {
     }
 }
 "#;
-        let result = plan_extract_variable(source, 3, 16, 3, 23, Some("sum".to_string()), "test.swift");
+        let result =
+            plan_extract_variable(source, 3, 16, 3, 23, Some("sum".to_string()), "test.swift");
         assert!(result.is_ok());
         let plan = result.unwrap();
         // Should preserve indentation
@@ -937,7 +950,9 @@ let total = base * rate
         assert!(plan.edits.len() >= 2, "Should have at least 2 edits");
 
         // Check that we're replacing with the value
-        let replace_edits: Vec<_> = plan.edits.iter()
+        let replace_edits: Vec<_> = plan
+            .edits
+            .iter()
             .filter(|e| e.edit_type == EditType::Replace)
             .collect();
         assert!(replace_edits.iter().any(|e| e.new_text.contains("0.08")));
@@ -976,7 +991,9 @@ let x = 50
         assert!(result.is_ok(), "Should handle unused variables");
         let plan = result.unwrap();
         // Should at least delete the declaration
-        let delete_edits: Vec<_> = plan.edits.iter()
+        let delete_edits: Vec<_> = plan
+            .edits
+            .iter()
             .filter(|e| e.edit_type == EditType::Delete)
             .collect();
         assert_eq!(delete_edits.len(), 1);
@@ -1062,11 +1079,19 @@ if enabled == false {
 let adjustment = -10"#;
         // Cursor on the digit part of the negative number (position 14 is on '1')
         let result = plan_extract_constant(source, 0, 14, "OFFSET_VALUE", "test.swift");
-        assert!(result.is_ok(), "Should handle negative numbers: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Should handle negative numbers: {:?}",
+            result.err()
+        );
 
         let plan = result.unwrap();
         // Should find both -10 occurrences
-        assert_eq!(plan.edits.len(), 3, "Should have 1 insert + 2 replace edits");
+        assert_eq!(
+            plan.edits.len(),
+            3,
+            "Should have 1 insert + 2 replace edits"
+        );
     }
 
     #[test]
@@ -1151,7 +1176,11 @@ let tax = 0.08
         assert!(result.is_ok());
         let plan = result.unwrap();
         // Should find 2 occurrences (lines 1 and 3), not the one inside the string
-        assert_eq!(plan.edits.len(), 3, "Should have 1 insert + 2 replace edits (not the string content)");
+        assert_eq!(
+            plan.edits.len(),
+            3,
+            "Should have 1 insert + 2 replace edits (not the string content)"
+        );
     }
 
     #[test]
@@ -1165,7 +1194,11 @@ let answer = 42
         assert!(result.is_ok());
         let plan = result.unwrap();
         // Should find 2 occurrences (lines 1 and 3), not the one in comment
-        assert_eq!(plan.edits.len(), 3, "Should have 1 insert + 2 replace edits (not the comment)");
+        assert_eq!(
+            plan.edits.len(),
+            3,
+            "Should have 1 insert + 2 replace edits (not the comment)"
+        );
     }
 
     #[test]

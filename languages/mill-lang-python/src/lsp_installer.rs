@@ -35,4 +35,3 @@ impl LspInstaller for PythonLspInstaller {
             .map_err(|e| PluginApiError::internal(format!("pip install failed: {}", e)))
     }
 }
-

@@ -17,7 +17,7 @@ pub async fn install_npm_package(package_name: &str, binary_name: &str) -> Resul
 
     // Run npm install -g
     let status = tokio::process::Command::new("npm")
-        .args(&["install", "-g", package_name])
+        .args(["install", "-g", package_name])
         .status()
         .await
         .map_err(|e| LspError::DownloadFailed(format!("Failed to run npm: {}", e)))?;
@@ -51,7 +51,7 @@ pub async fn install_pip_package(package_name: &str, binary_name: &str) -> Resul
     if which::which("pipx").is_ok() {
         debug!("Using pipx for installation (PEP 668 compliant)");
         let status = tokio::process::Command::new("pipx")
-            .args(&["install", package_name])
+            .args(["install", package_name])
             .status()
             .await
             .map_err(|e| LspError::DownloadFailed(format!("Failed to run pipx: {}", e)))?;
@@ -78,7 +78,7 @@ pub async fn install_pip_package(package_name: &str, binary_name: &str) -> Resul
 
         // Try --user first, then with --break-system-packages if that fails (PEP 668)
         let mut status = tokio::process::Command::new(pip_cmd)
-            .args(&["install", "--user", package_name])
+            .args(["install", "--user", package_name])
             .status()
             .await
             .map_err(|e| LspError::DownloadFailed(format!("Failed to run {}: {}", pip_cmd, e)))?;
@@ -86,7 +86,7 @@ pub async fn install_pip_package(package_name: &str, binary_name: &str) -> Resul
         if !status.success() {
             tracing::warn!("pip install --user failed, trying with --break-system-packages");
             status = tokio::process::Command::new(pip_cmd)
-                .args(&["install", "--user", "--break-system-packages", package_name])
+                .args(["install", "--user", "--break-system-packages", package_name])
                 .status()
                 .await
                 .map_err(|e| {

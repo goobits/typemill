@@ -158,10 +158,7 @@ pub fn derive_package_name(package_path: &Path) -> PluginResult<String> {
         .file_name()
         .and_then(|n| n.to_str())
         .ok_or_else(|| {
-            MillError::invalid_data(format!(
-                "Invalid package path: {}",
-                package_path.display()
-            ))
+            MillError::invalid_data(format!("Invalid package path: {}", package_path.display()))
         })
         .map(|s| s.to_string())
 }

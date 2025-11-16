@@ -9,17 +9,17 @@
 //! Uses the shared analysis engine for orchestration and focuses only on
 //! detection logic.
 
-use crate::{ToolHandler, ToolHandlerContext, AnalysisConfig};
 use crate::suggestions::{
     self, AnalysisContext, EvidenceStrength, Location, RefactorType, RefactoringCandidate, Scope,
     SuggestionGenerator,
 };
+use crate::{AnalysisConfig, ToolHandler, ToolHandlerContext};
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_foundation::protocol::analysis_result::{
     Finding, FindingLocation, Position, Range, SafetyLevel, Severity, Suggestion,
 };
-use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_plugin_api::ParsedSource;
 use regex::Regex;
 use serde_json::{json, Value};
@@ -28,16 +28,19 @@ use tracing::debug;
 
 // Conditional imports for feature-gated analysis
 #[cfg(any(feature = "analysis-dead-code", feature = "analysis-deep-dead-code"))]
-use uuid::Uuid;
-#[cfg(any(feature = "analysis-dead-code", feature = "analysis-deep-dead-code"))]
 use mill_foundation::protocol::{AnalysisMetadata, AnalysisSummary};
+#[cfg(any(feature = "analysis-dead-code", feature = "analysis-deep-dead-code"))]
+use uuid::Uuid;
 
 /// Helper to downcast AnalysisConfigTrait to concrete AnalysisConfig
 fn get_analysis_config(context: &ToolHandlerContext) -> ServerResult<&AnalysisConfig> {
-    context.analysis_config
+    context
+        .analysis_config
         .as_any()
         .downcast_ref::<AnalysisConfig>()
-        .ok_or_else(|| ServerError::internal("Failed to downcast AnalysisConfigTrait to AnalysisConfig"))
+        .ok_or_else(|| {
+            ServerError::internal("Failed to downcast AnalysisConfigTrait to AnalysisConfig")
+        })
 }
 
 /// Detect unused imports in a file
@@ -1521,6 +1524,12 @@ fn generate_dead_code_refactoring_candidates(
 
 pub struct DeadCodeHandler;
 
+impl Default for DeadCodeHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DeadCodeHandler {
     pub fn new() -> Self {
         Self
@@ -1572,10 +1581,8 @@ impl DeadCodeHandler {
         );
 
         // Create LSP provider adapter
-        let lsp_adapter = LspProviderAdapter::new(
-            context.lsp_adapter.clone(),
-            file_extension.clone(),
-        );
+        let lsp_adapter =
+            LspProviderAdapter::new(context.lsp_adapter.clone(), file_extension.clone());
 
         // Configure dead code analysis
         let mut config = DeadCodeConfig::default();
@@ -1644,7 +1651,11 @@ impl DeadCodeHandler {
                 message: format!("{} '{}' is never used", symbol.kind, symbol.name),
                 suggestions: vec![Suggestion {
                     action: "remove_symbol".to_string(),
-                    description: format!("Remove unused {} '{}'", symbol.kind.to_lowercase(), symbol.name),
+                    description: format!(
+                        "Remove unused {} '{}'",
+                        symbol.kind.to_lowercase(),
+                        symbol.name
+                    ),
                     target: None,
                     estimated_impact: "low".to_string(),
                     safety: SafetyLevel::Safe,
@@ -1655,7 +1666,10 @@ impl DeadCodeHandler {
                 metrics: {
                     let mut map = std::collections::HashMap::new();
                     map.insert("symbol_kind".to_string(), serde_json::json!(symbol.kind));
-                    map.insert("reference_count".to_string(), serde_json::json!(symbol.reference_count));
+                    map.insert(
+                        "reference_count".to_string(),
+                        serde_json::json!(symbol.reference_count),
+                    );
                     Some(map)
                 },
             })
@@ -1725,7 +1739,9 @@ impl DeadCodeHandler {
         use crate::lsp_provider_adapter::LspProviderAdapter;
         use mill_analysis_common::AnalysisEngine;
         use mill_analysis_deep_dead_code::{DeepDeadCodeAnalyzer, DeepDeadCodeConfig};
-        use mill_foundation::protocol::analysis_result::{AnalysisResult, AnalysisScope, SeverityBreakdown};
+        use mill_foundation::protocol::analysis_result::{
+            AnalysisResult, AnalysisScope, SeverityBreakdown,
+        };
         use std::path::Path;
         use std::sync::Arc;
         use std::time::Instant;
@@ -1737,23 +1753,24 @@ impl DeadCodeHandler {
         let workspace_path = Path::new(path_str);
 
         // Get file extension for LSP client (default "rs")
-        let file_extension = args.get("file_extension")
+        let file_extension = args
+            .get("file_extension")
             .and_then(|v| v.as_str())
             .unwrap_or("rs")
             .to_string();
 
         // Create LSP provider adapter
-        let lsp_adapter = LspProviderAdapter::new(
-            context.lsp_adapter.clone(),
-            file_extension.clone(),
-        );
+        let lsp_adapter =
+            LspProviderAdapter::new(context.lsp_adapter.clone(), file_extension.clone());
 
         // Configure analysis
         let config = DeepDeadCodeConfig {
-            check_public_exports: args.get("check_public_exports")
+            check_public_exports: args
+                .get("check_public_exports")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false),
-            exclude_patterns: args.get("exclude_patterns")
+            exclude_patterns: args
+                .get("exclude_patterns")
                 .and_then(|v| v.as_array())
                 .map(|arr| {
                     arr.iter()
@@ -1765,67 +1782,90 @@ impl DeadCodeHandler {
         // Run analysis
         let start = Instant::now();
         let analyzer = DeepDeadCodeAnalyzer;
-        let report = analyzer.analyze(Arc::new(lsp_adapter), workspace_path, config).await
+        let report = analyzer
+            .analyze(Arc::new(lsp_adapter), workspace_path, config)
+            .await
             .map_err(|e| ServerError::analysis(format!("Deep dead code analysis failed: {}", e)))?;
         let duration_ms = start.elapsed().as_millis() as u64;
 
         // Convert DeepDeadCodeReport to AnalysisResult
-        let findings: Vec<Finding> = report.dead_symbols.iter().map(|symbol| {
-            // Convert SymbolKind to string
-            let symbol_kind = format!("{:?}", symbol.kind);
-            let severity = if symbol.is_public {
-                Severity::Low  // Public unused exports are lower priority
-            } else {
-                Severity::Medium
-            };
+        let findings: Vec<Finding> = report
+            .dead_symbols
+            .iter()
+            .map(|symbol| {
+                // Convert SymbolKind to string
+                let symbol_kind = format!("{:?}", symbol.kind);
+                let severity = if symbol.is_public {
+                    Severity::Low // Public unused exports are lower priority
+                } else {
+                    Severity::Medium
+                };
 
-            Finding {
-                id: Uuid::new_v4().to_string(),
-                kind: "unused_symbol".to_string(),
-                severity,
-                location: FindingLocation {
-                    file_path: symbol.file_path.clone(),
-                    range: Some(Range {
-                        start: Position {
-                            line: symbol.range.start.line,
-                            character: symbol.range.start.character,
+                Finding {
+                    id: Uuid::new_v4().to_string(),
+                    kind: "unused_symbol".to_string(),
+                    severity,
+                    location: FindingLocation {
+                        file_path: symbol.file_path.clone(),
+                        range: Some(Range {
+                            start: Position {
+                                line: symbol.range.start.line,
+                                character: symbol.range.start.character,
+                            },
+                            end: Position {
+                                line: symbol.range.end.line,
+                                character: symbol.range.end.character,
+                            },
+                        }),
+                        symbol: Some(symbol.name.clone()),
+                        symbol_kind: Some(symbol_kind.clone()),
+                    },
+                    message: format!(
+                        "{} '{}' is never used",
+                        if symbol.is_public {
+                            "Public"
+                        } else {
+                            "Private"
                         },
-                        end: Position {
-                            line: symbol.range.end.line,
-                            character: symbol.range.end.character,
-                        },
-                    }),
-                    symbol: Some(symbol.name.clone()),
-                    symbol_kind: Some(symbol_kind.clone()),
-                },
-                message: format!(
-                    "{} '{}' is never used",
-                    if symbol.is_public { "Public" } else { "Private" },
-                    symbol.name
-                ),
-                suggestions: vec![Suggestion {
-                    action: "remove_symbol".to_string(),
-                    description: format!("Remove unused {} '{}'", symbol_kind.to_lowercase(), symbol.name),
-                    target: None,
-                    estimated_impact: "low".to_string(),
-                    safety: SafetyLevel::Safe,
-                    confidence: if symbol.is_public { 0.7 } else { 0.9 },
-                    reversible: true,
-                    refactor_call: None,
-                }],
-                metrics: {
-                    let mut map = std::collections::HashMap::new();
-                    map.insert("symbol_kind".to_string(), serde_json::json!(symbol_kind));
-                    map.insert("is_public".to_string(), serde_json::json!(symbol.is_public));
-                    map.insert("symbol_id".to_string(), serde_json::json!(symbol.id));
-                    Some(map)
-                },
-            }
-        }).collect();
+                        symbol.name
+                    ),
+                    suggestions: vec![Suggestion {
+                        action: "remove_symbol".to_string(),
+                        description: format!(
+                            "Remove unused {} '{}'",
+                            symbol_kind.to_lowercase(),
+                            symbol.name
+                        ),
+                        target: None,
+                        estimated_impact: "low".to_string(),
+                        safety: SafetyLevel::Safe,
+                        confidence: if symbol.is_public { 0.7 } else { 0.9 },
+                        reversible: true,
+                        refactor_call: None,
+                    }],
+                    metrics: {
+                        let mut map = std::collections::HashMap::new();
+                        map.insert("symbol_kind".to_string(), serde_json::json!(symbol_kind));
+                        map.insert("is_public".to_string(), serde_json::json!(symbol.is_public));
+                        map.insert("symbol_id".to_string(), serde_json::json!(symbol.id));
+                        Some(map)
+                    },
+                }
+            })
+            .collect();
 
-        let high_count = findings.iter().filter(|f| matches!(f.severity, Severity::High)).count();
-        let medium_count = findings.iter().filter(|f| matches!(f.severity, Severity::Medium)).count();
-        let low_count = findings.iter().filter(|f| matches!(f.severity, Severity::Low)).count();
+        let high_count = findings
+            .iter()
+            .filter(|f| matches!(f.severity, Severity::High))
+            .count();
+        let medium_count = findings
+            .iter()
+            .filter(|f| matches!(f.severity, Severity::Medium))
+            .count();
+        let low_count = findings
+            .iter()
+            .filter(|f| matches!(f.severity, Severity::Low))
+            .count();
 
         let result = AnalysisResult {
             metadata: AnalysisMetadata {

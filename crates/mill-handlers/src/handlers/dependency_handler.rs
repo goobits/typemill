@@ -33,13 +33,12 @@ impl DependencyHandler {
     async fn handle_package_json(&self, args: &UpdateDependenciesArgs) -> ServerResult<()> {
         debug!(file_path = %args.file_path, "Handling package.json dependency update");
 
-        let content =
-            fs::read_to_string(&args.file_path)
-                .await
-                .map_err(|e| ServerError::runtime(format!("Failed to read file: {}", e)))?;
+        let content = fs::read_to_string(&args.file_path)
+            .await
+            .map_err(|e| ServerError::runtime(format!("Failed to read file: {}", e)))?;
 
-        let mut json_val: Value =
-            serde_json::from_str(&content).map_err(|e| ServerError::runtime(format!("Failed to parse JSON: {}", e)))?;
+        let mut json_val: Value = serde_json::from_str(&content)
+            .map_err(|e| ServerError::runtime(format!("Failed to parse JSON: {}", e)))?;
 
         if let Some(map) = json_val.as_object_mut() {
             // Update version
@@ -108,8 +107,8 @@ impl DependencyHandler {
             }
         }
 
-        let updated_content =
-            serde_json::to_string_pretty(&json_val).map_err(|e| ServerError::runtime(format!("Failed to serialize JSON: {}", e)))?;
+        let updated_content = serde_json::to_string_pretty(&json_val)
+            .map_err(|e| ServerError::runtime(format!("Failed to serialize JSON: {}", e)))?;
 
         fs::write(&args.file_path, updated_content)
             .await
@@ -120,13 +119,12 @@ impl DependencyHandler {
     async fn handle_cargo_toml(&self, args: &UpdateDependenciesArgs) -> ServerResult<()> {
         debug!(file_path = %args.file_path, "Handling Cargo.toml dependency update");
 
-        let content =
-            fs::read_to_string(&args.file_path)
-                .await
-                .map_err(|e| ServerError::runtime(format!("Failed to read file: {}", e)))?;
+        let content = fs::read_to_string(&args.file_path)
+            .await
+            .map_err(|e| ServerError::runtime(format!("Failed to read file: {}", e)))?;
 
-        let mut toml_val: toml::Value =
-            toml::from_str(&content).map_err(|e| ServerError::runtime(format!("Failed to parse TOML: {}", e)))?;
+        let mut toml_val: toml::Value = toml::from_str(&content)
+            .map_err(|e| ServerError::runtime(format!("Failed to parse TOML: {}", e)))?;
 
         if let Some(table) = toml_val.as_table_mut() {
             // Update version
@@ -178,8 +176,8 @@ impl DependencyHandler {
             }
         }
 
-        let updated_content =
-            toml::to_string_pretty(&toml_val).map_err(|e| ServerError::runtime(format!("Failed to serialize TOML: {}", e)))?;
+        let updated_content = toml::to_string_pretty(&toml_val)
+            .map_err(|e| ServerError::runtime(format!("Failed to serialize TOML: {}", e)))?;
 
         fs::write(&args.file_path, updated_content)
             .await
@@ -190,10 +188,9 @@ impl DependencyHandler {
     async fn handle_requirements_txt(&self, args: &UpdateDependenciesArgs) -> ServerResult<()> {
         debug!(file_path = %args.file_path, "Handling requirements.txt dependency update");
 
-        let content =
-            fs::read_to_string(&args.file_path)
-                .await
-                .map_err(|e| ServerError::runtime(format!("Failed to read file: {}", e)))?;
+        let content = fs::read_to_string(&args.file_path)
+            .await
+            .map_err(|e| ServerError::runtime(format!("Failed to read file: {}", e)))?;
 
         let mut lines: Vec<String> = content.lines().map(String::from).collect();
 
@@ -234,10 +231,12 @@ impl ToolHandler for DependencyHandler {
         _context: &mill_handler_api::ToolHandlerContext,
         tool_call: &ToolCall,
     ) -> ServerResult<Value> {
-        let args: UpdateDependenciesArgs =
-            serde_json::from_value(tool_call.arguments.clone().unwrap_or_default()).map_err(
-                |e| ServerError::invalid_request(format!("Invalid update_dependencies args: {}", e)),
-            )?;
+        let args: UpdateDependenciesArgs = serde_json::from_value(
+            tool_call.arguments.clone().unwrap_or_default(),
+        )
+        .map_err(|e| {
+            ServerError::invalid_request(format!("Invalid update_dependencies args: {}", e))
+        })?;
 
         let is_dry_run = args.dry_run.unwrap_or(false);
 

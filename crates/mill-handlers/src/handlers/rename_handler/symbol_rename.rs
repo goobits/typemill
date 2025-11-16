@@ -1,7 +1,7 @@
 use super::{RenameHandler, RenameOptions, RenameTarget};
 use lsp_types::WorkspaceEdit;
-use mill_foundation::planning::{PlanMetadata, RenamePlan};
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
+use mill_foundation::planning::{PlanMetadata, RenamePlan};
 use serde_json::json;
 use std::path::Path;
 use tracing::{debug, error};

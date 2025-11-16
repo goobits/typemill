@@ -13,17 +13,17 @@
 //! Uses the shared analysis engine for orchestration and focuses only on
 //! detection logic.
 
-use crate::{ToolHandler, ToolHandlerContext};
 use crate::suggestions::{AnalysisContext, RefactoringCandidate, SuggestionGenerator};
+use crate::{ToolHandler, ToolHandlerContext};
 use anyhow::Result;
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
+use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_foundation::protocol::analysis_result::{
     Finding, FindingLocation, Position, Range, Severity, Suggestion,
 };
 #[cfg(feature = "analysis-circular-deps")]
 use mill_foundation::protocol::SafetyLevel;
-use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use regex::Regex;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -1181,6 +1181,12 @@ fn extract_symbols_from_import_info(
 
 pub struct DependenciesHandler;
 
+impl Default for DependenciesHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DependenciesHandler {
     pub fn new() -> Self {
         Self
@@ -1228,12 +1234,19 @@ impl ToolHandler for DependenciesHandler {
             #[cfg(feature = "analysis-circular-deps")]
             {
                 let project_root = &context.app_state.project_root;
-                let plugin_discovery_arc = context.app_state.language_plugins.inner()
+                let plugin_discovery_arc = context
+                    .app_state
+                    .language_plugins
+                    .inner()
                     .downcast_ref::<Arc<PluginDiscovery>>()
-                    .ok_or_else(|| ServerError::internal("Failed to downcast to PluginDiscovery".to_string()))?;
+                    .ok_or_else(|| {
+                        ServerError::internal("Failed to downcast to PluginDiscovery".to_string())
+                    })?;
                 let plugin_discovery = plugin_discovery_arc.as_ref();
                 let builder = DependencyGraphBuilder::new(plugin_discovery);
-                let graph = builder.build(project_root).map_err(|e| ServerError::internal(e.to_string()))?;
+                let graph = builder
+                    .build(project_root)
+                    .map_err(|e| ServerError::internal(e.to_string()))?;
                 let result = find_circular_dependencies(&graph, None)
                     .map_err(|e| ServerError::internal(e.to_string()))?;
 

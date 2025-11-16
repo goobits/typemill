@@ -12,13 +12,13 @@
 //! Uses the shared analysis engine for orchestration and focuses only on
 //! detection logic.
 
-use crate::{ToolHandler, ToolHandlerContext};
 use crate::suggestions::{AnalysisContext, RefactoringCandidate, SuggestionGenerator};
+use crate::{ToolHandler, ToolHandlerContext};
 use anyhow::Result;
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
-use mill_foundation::protocol::analysis_result::{Finding, FindingLocation, Severity, Suggestion};
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
+use mill_foundation::protocol::analysis_result::{Finding, FindingLocation, Severity, Suggestion};
 use mill_plugin_api::{Symbol, SymbolKind};
 use regex::Regex;
 use serde_json::{json, Value};
@@ -1174,6 +1174,12 @@ fn generate_structure_refactoring_candidates(
 // ============================================================================
 
 pub struct StructureHandler;
+
+impl Default for StructureHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl StructureHandler {
     pub fn new() -> Self {

@@ -594,12 +594,12 @@ mod tests {
         let mut config = AppConfig::default();
 
         // Default config has TypeScript server
-        let server = config.find_or_create_server_mut(&vec!["ts".to_string()]);
+        let server = config.find_or_create_server_mut(&["ts".to_string()]);
         assert!(server.extensions.contains(&"ts".to_string()));
 
         // Should return same server
         let initial_count = config.lsp.servers.len();
-        let _server2 = config.find_or_create_server_mut(&vec!["ts".to_string()]);
+        let _server2 = config.find_or_create_server_mut(&["ts".to_string()]);
         assert_eq!(
             config.lsp.servers.len(),
             initial_count,
@@ -614,7 +614,7 @@ mod tests {
 
         // Create new server for a language not in defaults (C++)
         {
-            let server = config.find_or_create_server_mut(&vec!["cpp".to_string()]);
+            let server = config.find_or_create_server_mut(&["cpp".to_string()]);
             server.command = vec!["clangd".to_string()];
             assert!(server.extensions.contains(&"cpp".to_string()));
         }

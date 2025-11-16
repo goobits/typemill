@@ -78,9 +78,7 @@ impl PostApplyValidator {
                 config.timeout_seconds
             ))
         })?
-        .map_err(|e| MillError::internal(format!(
-            "Failed to execute validation command: {}", e
-        )))?;
+        .map_err(|e| MillError::internal(format!("Failed to execute validation command: {}", e)))?;
 
         let duration_ms = start.elapsed().as_millis() as u64;
         let exit_code = output.status.code().unwrap_or(-1);

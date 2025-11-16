@@ -29,23 +29,24 @@ export function MyComponent() {
         "unused_imports",
         None,
         |result| {
-        assert_eq!(result.metadata.category, "dead_code");
-        assert_eq!(result.metadata.kind, "unused_imports");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.category, "dead_code");
+            assert_eq!(result.metadata.kind, "unused_imports");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "unused_import");
-        assert_eq!(finding.severity, Severity::Low);
-        assert!(finding.metrics.is_some());
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "unused_import");
+            assert_eq!(finding.severity, Severity::Low);
+            assert!(finding.metrics.is_some());
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }
@@ -71,20 +72,21 @@ export function publicFunction() {
         "unused_symbols",
         None,
         |result| {
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "unused_function");
-        assert_eq!(finding.severity, Severity::Medium);
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "unused_function");
+            assert_eq!(finding.severity, Severity::Medium);
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }
@@ -109,25 +111,26 @@ export function processData(x: number): number {
         "unreachable_code",
         None,
         |result| {
-        assert_eq!(result.metadata.kind, "unreachable_code");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.kind, "unreachable_code");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "unreachable_code");
-        assert_eq!(finding.severity, Severity::Medium);
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "unreachable_code");
+            assert_eq!(finding.severity, Severity::Medium);
 
-        let metrics = finding.metrics.as_ref().expect("Should have metrics");
-        assert!(metrics.contains_key("lines_unreachable"));
-        assert!(metrics.contains_key("after_statement"));
+            let metrics = finding.metrics.as_ref().expect("Should have metrics");
+            assert!(metrics.contains_key("lines_unreachable"));
+            assert!(metrics.contains_key("after_statement"));
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }
@@ -153,26 +156,27 @@ fn main() {
         "unused_parameters",
         None,
         |result| {
-        assert_eq!(result.metadata.kind, "unused_parameters");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.kind, "unused_parameters");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        for finding in &result.findings {
-            assert_eq!(finding.kind, "unused_parameter");
-            assert_eq!(finding.severity, Severity::Low);
+            for finding in &result.findings {
+                assert_eq!(finding.kind, "unused_parameter");
+                assert_eq!(finding.severity, Severity::Low);
 
-            let metrics = finding.metrics.as_ref().expect("Should have metrics");
-            assert!(metrics.contains_key("parameter_name"));
-            assert!(metrics.contains_key("function_name"));
-        }
+                let metrics = finding.metrics.as_ref().expect("Should have metrics");
+                assert!(metrics.contains_key("parameter_name"));
+                assert!(metrics.contains_key("function_name"));
+            }
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }
@@ -201,25 +205,26 @@ export function getData(): UsedInterface {
         "unused_types",
         None,
         |result| {
-        assert_eq!(result.metadata.kind, "unused_types");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.kind, "unused_types");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "unused_type");
-        assert_eq!(finding.severity, Severity::Low);
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "unused_type");
+            assert_eq!(finding.severity, Severity::Low);
 
-        let metrics = finding.metrics.as_ref().expect("Should have metrics");
-        assert!(metrics.contains_key("type_name"));
-        assert!(metrics.contains_key("type_kind"));
+            let metrics = finding.metrics.as_ref().expect("Should have metrics");
+            assert!(metrics.contains_key("type_name"));
+            assert!(metrics.contains_key("type_kind"));
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }
@@ -244,26 +249,27 @@ export function calculateTotal(price: number, tax: number): number {
         "unused_variables",
         None,
         |result| {
-        assert_eq!(result.metadata.kind, "unused_variables");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.kind, "unused_variables");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        for finding in &result.findings {
-            assert_eq!(finding.kind, "unused_variable");
-            assert_eq!(finding.severity, Severity::Low);
+            for finding in &result.findings {
+                assert_eq!(finding.kind, "unused_variable");
+                assert_eq!(finding.severity, Severity::Low);
 
-            let metrics = finding.metrics.as_ref().expect("Should have metrics");
-            assert!(metrics.contains_key("variable_name"));
-            assert!(metrics.contains_key("scope"));
-        }
+                let metrics = finding.metrics.as_ref().expect("Should have metrics");
+                assert!(metrics.contains_key("variable_name"));
+                assert!(metrics.contains_key("scope"));
+            }
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }

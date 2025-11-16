@@ -165,6 +165,12 @@ pub(crate) struct ImportAnalysisSummary {
 /// Handler for module dependency analysis
 pub struct ModuleDependenciesHandler;
 
+impl Default for ModuleDependenciesHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModuleDependenciesHandler {
     pub fn new() -> Self {
         Self

@@ -82,9 +82,9 @@ impl FileOperationHandler {
         tool_call: ToolCall,
         context: &mill_handler_api::ToolHandlerContext,
     ) -> ServerResult<Value> {
-        let args = tool_call.arguments.ok_or_else(|| {
-            ServerError::invalid_request("Missing arguments for rename_file")
-        })?;
+        let args = tool_call
+            .arguments
+            .ok_or_else(|| ServerError::invalid_request("Missing arguments for rename_file"))?;
 
         let old_path = args
             .get("old_path")
@@ -180,9 +180,9 @@ impl FileOperationHandler {
         tool_call: ToolCall,
         context: &mill_handler_api::ToolHandlerContext,
     ) -> ServerResult<Value> {
-        let args = tool_call.arguments.ok_or_else(|| {
-            ServerError::invalid_request("Missing arguments for create_file")
-        })?;
+        let args = tool_call
+            .arguments
+            .ok_or_else(|| ServerError::invalid_request("Missing arguments for create_file"))?;
 
         let file_path = args
             .get("filePath")
@@ -212,9 +212,9 @@ impl FileOperationHandler {
         tool_call: ToolCall,
         context: &mill_handler_api::ToolHandlerContext,
     ) -> ServerResult<Value> {
-        let args = tool_call.arguments.ok_or_else(|| {
-            ServerError::invalid_request("Missing arguments for delete_file")
-        })?;
+        let args = tool_call
+            .arguments
+            .ok_or_else(|| ServerError::invalid_request("Missing arguments for delete_file"))?;
 
         let file_path = args
             .get("filePath")
@@ -288,9 +288,9 @@ impl FileOperationHandler {
         tool_call: ToolCall,
         context: &mill_handler_api::ToolHandlerContext,
     ) -> ServerResult<Value> {
-        let args = tool_call.arguments.ok_or_else(|| {
-            ServerError::invalid_request("Missing arguments for write_file")
-        })?;
+        let args = tool_call
+            .arguments
+            .ok_or_else(|| ServerError::invalid_request("Missing arguments for write_file"))?;
 
         let file_path = args
             .get("filePath")

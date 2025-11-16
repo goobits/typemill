@@ -31,27 +31,28 @@ export function MyComponent() {
         "imports",
         None,
         |result| {
-        assert_eq!(result.metadata.category, "dependencies");
-        assert_eq!(result.metadata.kind, "imports");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.category, "dependencies");
+            assert_eq!(result.metadata.kind, "imports");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "import");
-        assert_eq!(finding.severity, Severity::Low);
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "import");
+            assert_eq!(finding.severity, Severity::Low);
 
-        let metrics = finding.metrics.as_ref().expect("Should have metrics");
-        assert!(metrics.contains_key("source_module"));
-        assert!(metrics.contains_key("imported_symbols"));
-        assert!(metrics.contains_key("import_category"));
+            let metrics = finding.metrics.as_ref().expect("Should have metrics");
+            assert!(metrics.contains_key("source_module"));
+            assert!(metrics.contains_key("imported_symbols"));
+            assert!(metrics.contains_key("import_category"));
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }
@@ -79,34 +80,35 @@ export function DataProcessor() {
         "graph",
         None,
         |result| {
-        assert_eq!(result.metadata.kind, "graph");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.kind, "graph");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "dependency_graph");
-        assert_eq!(finding.severity, Severity::Low);
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "dependency_graph");
+            assert_eq!(finding.severity, Severity::Low);
 
-        let metrics = finding.metrics.as_ref().expect("Should have metrics");
-        assert!(metrics.contains_key("direct_dependencies"));
-        assert!(metrics.contains_key("fan_in"));
-        assert!(metrics.contains_key("fan_out"));
-        assert!(metrics.contains_key("total_dependencies"));
+            let metrics = finding.metrics.as_ref().expect("Should have metrics");
+            assert!(metrics.contains_key("direct_dependencies"));
+            assert!(metrics.contains_key("fan_in"));
+            assert!(metrics.contains_key("fan_out"));
+            assert!(metrics.contains_key("total_dependencies"));
 
-        let direct_deps = metrics
-            .get("direct_dependencies")
-            .and_then(|v| v.as_array())
-            .expect("Should have direct_dependencies array");
+            let direct_deps = metrics
+                .get("direct_dependencies")
+                .and_then(|v| v.as_array())
+                .expect("Should have direct_dependencies array");
 
-        assert!(!direct_deps.is_empty());
+            assert!(!direct_deps.is_empty());
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }
@@ -129,32 +131,33 @@ pub fn example() {
         "circular",
         None,
         |result| {
-        assert_eq!(result.metadata.kind, "circular");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.kind, "circular");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "circular_dependency");
-        assert_eq!(finding.severity, Severity::High);
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "circular_dependency");
+            assert_eq!(finding.severity, Severity::High);
 
-        let metrics = finding.metrics.as_ref().expect("Should have metrics");
-        assert!(metrics.contains_key("cycle_length"));
-        assert!(metrics.contains_key("cycle_path"));
+            let metrics = finding.metrics.as_ref().expect("Should have metrics");
+            assert!(metrics.contains_key("cycle_length"));
+            assert!(metrics.contains_key("cycle_path"));
 
-        let cycle_path = metrics
-            .get("cycle_path")
-            .and_then(|v| v.as_array())
-            .expect("Should have cycle_path array");
+            let cycle_path = metrics
+                .get("cycle_path")
+                .and_then(|v| v.as_array())
+                .expect("Should have cycle_path array");
 
-        assert!(!cycle_path.is_empty());
+            assert!(!cycle_path.is_empty());
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }
@@ -183,33 +186,34 @@ export function process() {
         "coupling",
         None,
         |result| {
-        assert_eq!(result.metadata.kind, "coupling");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.kind, "coupling");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "coupling_metric");
-        assert!(finding.severity == Severity::Medium || finding.severity == Severity::Low);
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "coupling_metric");
+            assert!(finding.severity == Severity::Medium || finding.severity == Severity::Low);
 
-        let metrics = finding.metrics.as_ref().expect("Should have metrics");
-        assert!(metrics.contains_key("afferent_coupling"));
-        assert!(metrics.contains_key("efferent_coupling"));
-        assert!(metrics.contains_key("instability"));
+            let metrics = finding.metrics.as_ref().expect("Should have metrics");
+            assert!(metrics.contains_key("afferent_coupling"));
+            assert!(metrics.contains_key("efferent_coupling"));
+            assert!(metrics.contains_key("instability"));
 
-        let instability = metrics
-            .get("instability")
-            .and_then(|v| v.as_f64())
-            .expect("Should have instability metric");
+            let instability = metrics
+                .get("instability")
+                .and_then(|v| v.as_f64())
+                .expect("Should have instability metric");
 
-        assert!((0.0..=1.0).contains(&instability));
+            assert!((0.0..=1.0).contains(&instability));
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }
@@ -247,33 +251,34 @@ export function fn21() { return 21; }
         "cohesion",
         None,
         |result| {
-        assert_eq!(result.metadata.kind, "cohesion");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.kind, "cohesion");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "cohesion_metric");
-        assert!(finding.severity == Severity::Medium || finding.severity == Severity::Low);
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "cohesion_metric");
+            assert!(finding.severity == Severity::Medium || finding.severity == Severity::Low);
 
-        let metrics = finding.metrics.as_ref().expect("Should have metrics");
-        assert!(metrics.contains_key("lcom_score"));
-        assert!(metrics.contains_key("functions_analyzed"));
-        assert!(metrics.contains_key("shared_data_ratio"));
+            let metrics = finding.metrics.as_ref().expect("Should have metrics");
+            assert!(metrics.contains_key("lcom_score"));
+            assert!(metrics.contains_key("functions_analyzed"));
+            assert!(metrics.contains_key("shared_data_ratio"));
 
-        let lcom_score = metrics
-            .get("lcom_score")
-            .and_then(|v| v.as_f64())
-            .expect("Should have lcom_score metric");
+            let lcom_score = metrics
+                .get("lcom_score")
+                .and_then(|v| v.as_f64())
+                .expect("Should have lcom_score metric");
 
-        assert!((0.0..=1.0).contains(&lcom_score));
+            assert!((0.0..=1.0).contains(&lcom_score));
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }
@@ -300,33 +305,34 @@ export function deepDependency() {
         "depth",
         None,
         |result| {
-        assert_eq!(result.metadata.kind, "depth");
-        assert!(result.summary.symbols_analyzed.is_some());
+            assert_eq!(result.metadata.kind, "depth");
+            assert!(result.summary.symbols_analyzed.is_some());
 
-        if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
-            return Ok(());
-        }
+            if result.summary.symbols_analyzed.unwrap_or(0) == 0 {
+                return Ok(());
+            }
 
-        assert!(!result.findings.is_empty());
+            assert!(!result.findings.is_empty());
 
-        let finding = &result.findings[0];
-        assert_eq!(finding.kind, "dependency_depth");
-        assert!(finding.severity == Severity::Medium || finding.severity == Severity::Low);
+            let finding = &result.findings[0];
+            assert_eq!(finding.kind, "dependency_depth");
+            assert!(finding.severity == Severity::Medium || finding.severity == Severity::Low);
 
-        let metrics = finding.metrics.as_ref().expect("Should have metrics");
-        assert!(metrics.contains_key("max_depth"));
-        assert!(metrics.contains_key("dependency_chain"));
-        assert!(metrics.contains_key("direct_dependencies_count"));
+            let metrics = finding.metrics.as_ref().expect("Should have metrics");
+            assert!(metrics.contains_key("max_depth"));
+            assert!(metrics.contains_key("dependency_chain"));
+            assert!(metrics.contains_key("direct_dependencies_count"));
 
-        let dependency_chain = metrics
-            .get("dependency_chain")
-            .and_then(|v| v.as_array())
-            .expect("Should have dependency_chain array");
+            let dependency_chain = metrics
+                .get("dependency_chain")
+                .and_then(|v| v.as_array())
+                .expect("Should have dependency_chain array");
 
-        assert!(!dependency_chain.is_empty());
+            assert!(!dependency_chain.is_empty());
 
-        Ok(())
-    })
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 }

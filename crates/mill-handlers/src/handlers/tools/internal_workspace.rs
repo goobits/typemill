@@ -37,9 +37,7 @@ impl InternalWorkspaceHandler {
         let changes = args
             .get("changes")
             .and_then(|v| v.as_object())
-            .ok_or_else(|| {
-                ServerError::invalid_request("Missing required parameter: changes")
-            })?;
+            .ok_or_else(|| ServerError::invalid_request("Missing required parameter: changes"))?;
 
         let dry_run = args
             .get("dryRun")
@@ -62,9 +60,10 @@ impl InternalWorkspaceHandler {
                     .as_u64()
                     .ok_or_else(|| ServerError::invalid_request("Invalid start line"))?
                     as u32;
-                let start_char = range["start"]["character"].as_u64().ok_or_else(|| {
-                    ServerError::invalid_request("Invalid start character")
-                })? as u32;
+                let start_char = range["start"]["character"]
+                    .as_u64()
+                    .ok_or_else(|| ServerError::invalid_request("Invalid start character"))?
+                    as u32;
                 let end_line = range["end"]["line"]
                     .as_u64()
                     .ok_or_else(|| ServerError::invalid_request("Invalid end line"))?

@@ -31,9 +31,9 @@ pub async fn read_manifest(path: &Path) -> PluginResult<String> {
 pub async fn read_source(path: &Path) -> PluginResult<String> {
     debug!(path = %path.display(), "Reading source file");
 
-    fs::read_to_string(path).await.map_err(|e| {
-        MillError::internal(format!("Failed to read file {}: {}", path.display(), e))
-    })
+    fs::read_to_string(path)
+        .await
+        .map_err(|e| MillError::internal(format!("Failed to read file {}: {}", path.display(), e)))
 }
 
 /// Find all source files recursively with extension filtering

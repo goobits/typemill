@@ -12,9 +12,7 @@ use crate::handlers::workspace::{case_preserving, literal_matcher, regex_matcher
 use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
-use mill_foundation::protocol::{
-    EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit,
-};
+use mill_foundation::protocol::{EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit};
 use regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -151,8 +149,9 @@ impl ToolHandler for FindReplaceHandler {
 
         // Validate regex pattern early (before processing any files)
         if params.mode == SearchMode::Regex {
-            regex::Regex::new(&params.pattern)
-                .map_err(|e| ServerError::invalid_request(format!("Invalid regex pattern: {}", e)))?;
+            regex::Regex::new(&params.pattern).map_err(|e| {
+                ServerError::invalid_request(format!("Invalid regex pattern: {}", e))
+            })?;
         }
 
         info!(
@@ -260,15 +259,16 @@ async fn discover_files(
         let mut include_builder = GlobSetBuilder::new();
         for pattern in &scope.include_patterns {
             let glob = Glob::new(pattern).map_err(|e| {
-                ServerError::invalid_request(format!("Invalid include pattern '{}': {}", pattern, e))
+                ServerError::invalid_request(format!(
+                    "Invalid include pattern '{}': {}",
+                    pattern, e
+                ))
             })?;
             include_builder.add(glob);
         }
-        Some(
-            include_builder.build().map_err(|e| {
-                ServerError::internal(format!("Failed to build include matcher: {}", e))
-            })?,
-        )
+        Some(include_builder.build().map_err(|e| {
+            ServerError::internal(format!("Failed to build include matcher: {}", e))
+        })?)
     };
 
     // Walk the workspace using ignore crate (respects .gitignore)

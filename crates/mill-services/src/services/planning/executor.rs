@@ -6,9 +6,7 @@
 use crate::services::filesystem::file_service::EditPlanResult;
 use crate::{ChecksumValidator, PlanConverter, PostApplyValidator};
 use mill_foundation::errors::MillError;
-use mill_foundation::protocol::{
-    EditPlan, EditType, RefactorPlan, RefactorPlanExt,
-};
+use mill_foundation::protocol::{EditPlan, EditType, RefactorPlan, RefactorPlanExt};
 
 type ServerResult<T> = Result<T, MillError>;
 use mill_foundation::validation::{ValidationConfig, ValidationResult};

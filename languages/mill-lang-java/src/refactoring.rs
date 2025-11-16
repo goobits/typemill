@@ -9,8 +9,8 @@ use mill_foundation::protocol::{EditPlan, EditType, TextEdit};
 use mill_lang_common::find_literal_occurrences;
 use mill_lang_common::is_escaped;
 use mill_lang_common::is_valid_code_literal_location;
-use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
 use mill_lang_common::refactoring::edit_plan_builder::EditPlanBuilder;
+use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
 use mill_lang_common::{ExtractConstantAnalysis, LineExtractor};
 use mill_plugin_api::{PluginApiError, PluginResult};
 use serde::{Deserialize, Serialize};
@@ -69,7 +69,8 @@ pub(crate) fn plan_extract_function(
             PluginApiError::invalid_input("Selection is not inside a method.".to_string())
         })?;
 
-    let indent = LineExtractor::get_indentation_str(source, enclosing_method.start_position().row as u32);
+    let indent =
+        LineExtractor::get_indentation_str(source, enclosing_method.start_position().row as u32);
     let method_indent = format!("{}    ", indent);
 
     let new_method_text = format!(
@@ -154,7 +155,8 @@ pub(crate) fn plan_extract_variable(
             PluginApiError::invalid_input("Could not find statement to insert before.".to_string())
         })?;
 
-    let indent = LineExtractor::get_indentation_str(source, insertion_node.start_position().row as u32);
+    let indent =
+        LineExtractor::get_indentation_str(source, insertion_node.start_position().row as u32);
     let var_name = variable_name.unwrap_or_else(|| "extracted".to_string());
 
     let var_type = if expression_text.starts_with('"') {
@@ -336,7 +338,6 @@ fn find_ancestor_of_kind<'a>(node: Node<'a>, kind: &str) -> Option<Node<'a>> {
     None
 }
 
-
 fn node_to_location(node: Node) -> CommonCodeRange {
     let range = node.range();
     CommonCodeRange::new(
@@ -369,9 +370,9 @@ fn extract_java_var_info<'a>(
     let name_node = declarator
         .child_by_field_name("name")
         .ok_or_else(|| PluginApiError::invalid_input("Could not find variable name".to_string()))?;
-    let value_node = declarator
-        .child_by_field_name("value")
-        .ok_or_else(|| PluginApiError::invalid_input("Could not find variable value".to_string()))?;
+    let value_node = declarator.child_by_field_name("value").ok_or_else(|| {
+        PluginApiError::invalid_input("Could not find variable value".to_string())
+    })?;
 
     let name = name_node
         .utf8_text(source.as_bytes())
@@ -402,7 +403,7 @@ fn extract_java_var_info<'a>(
 ///
 /// # Returns
 /// * `Ok(ExtractConstantAnalysis)` - Analysis result with literal value, occurrence ranges,
-///                                     validation status, and insertion point
+///   validation status, and insertion point
 /// * `Err(RefactoringError)` - If no literal is found at the cursor position
 pub(crate) fn analyze_extract_constant(
     source: &str,
@@ -418,8 +419,8 @@ pub(crate) fn analyze_extract_constant(
         .ok_or_else(|| PluginApiError::invalid_input("Invalid line number".to_string()))?;
 
     // Find the literal at the cursor position
-    let found_literal = find_java_literal_at_position(line_text, character as usize)
-        .ok_or_else(|| {
+    let found_literal =
+        find_java_literal_at_position(line_text, character as usize).ok_or_else(|| {
             PluginApiError::invalid_input("No literal found at the specified location".to_string())
         })?;
 
@@ -432,7 +433,8 @@ pub(crate) fn analyze_extract_constant(
     };
 
     // Find all occurrences of this literal value in the source
-    let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_java_literal_location);
+    let occurrence_ranges =
+        find_literal_occurrences(source, &literal_value, is_valid_java_literal_location);
 
     // Insertion point: after class declaration, at class level
     let insertion_point = find_java_insertion_point_for_constant(source)?;
@@ -495,7 +497,7 @@ pub(crate) fn plan_extract_constant(
                 indent, java_type, name, value
             )
         })
-        .map_err(|e| PluginApiError::invalid_input(e))
+        .map_err(PluginApiError::invalid_input)
 }
 
 /// Finds a Java literal at a given position in a line of code.
@@ -562,19 +564,31 @@ fn find_java_numeric_literal(line_text: &str, col: usize) -> Option<(String, Cod
     }
 
     // Check for hexadecimal literal (0x or 0X prefix)
-    let is_hex = col >= 2 && chars[col - 1] == 'x' || chars[col - 1] == 'X' && chars[col - 2] == '0'
-        || col >= 1 && chars[col] == 'x' || chars[col] == 'X' && col > 0 && chars[col - 1] == '0'
-        || col > 0 && chars[col - 1].is_ascii_hexdigit() && col >= 2 && (chars[col - 2] == 'x' || chars[col - 2] == 'X');
+    let is_hex = col >= 2 && chars[col - 1] == 'x'
+        || chars[col - 1] == 'X' && chars[col - 2] == '0'
+        || col >= 1 && chars[col] == 'x'
+        || chars[col] == 'X' && col > 0 && chars[col - 1] == '0'
+        || col > 0
+            && chars[col - 1].is_ascii_hexdigit()
+            && col >= 2
+            && (chars[col - 2] == 'x' || chars[col - 2] == 'X');
 
     // If we're in a hex literal, find its boundaries
     if is_hex {
         // Find the start (should be '0x' or '0X')
         let mut start = col;
         while start > 0 {
-            if chars[start] == '0' && start + 1 < chars.len() && (chars[start + 1] == 'x' || chars[start + 1] == 'X') {
+            if chars[start] == '0'
+                && start + 1 < chars.len()
+                && (chars[start + 1] == 'x' || chars[start + 1] == 'X')
+            {
                 break;
             }
-            if !chars[start].is_ascii_hexdigit() && chars[start] != 'x' && chars[start] != 'X' && chars[start] != '_' {
+            if !chars[start].is_ascii_hexdigit()
+                && chars[start] != 'x'
+                && chars[start] != 'X'
+                && chars[start] != '_'
+            {
                 start += 1;
                 break;
             }
@@ -584,11 +598,16 @@ fn find_java_numeric_literal(line_text: &str, col: usize) -> Option<(String, Cod
         // Find the end
         let mut end = col;
         let mut found_x = false;
-        for i in start..chars.len() {
-            if chars[i] == 'x' || chars[i] == 'X' {
+        for (i, &ch) in chars.iter().enumerate().skip(start) {
+            if ch == 'x' || ch == 'X' {
                 found_x = true;
                 end = i + 1;
-            } else if found_x && (chars[i].is_ascii_hexdigit() || chars[i] == '_' || chars[i] == 'L' || chars[i] == 'l') {
+            } else if found_x
+                && (ch.is_ascii_hexdigit()
+                    || ch == '_'
+                    || ch == 'L'
+                    || ch == 'l')
+            {
                 end = i + 1;
             } else if found_x {
                 break;
@@ -638,9 +657,17 @@ fn find_java_numeric_literal(line_text: &str, col: usize) -> Option<(String, Cod
 
     // Find the end of the number
     let mut end = col;
-    for i in col..chars.len() {
-        let c = chars[i];
-        if c.is_ascii_digit() || c == '.' || c == '_' || c == 'f' || c == 'F' || c == 'L' || c == 'l' || c == 'd' || c == 'D' {
+    for (i, &c) in chars.iter().enumerate().skip(col) {
+        if c.is_ascii_digit()
+            || c == '.'
+            || c == '_'
+            || c == 'f'
+            || c == 'F'
+            || c == 'L'
+            || c == 'l'
+            || c == 'd'
+            || c == 'D'
+        {
             end = i + 1;
         } else {
             break;
@@ -703,8 +730,8 @@ fn find_java_string_literal(line_text: &str, col: usize) -> Option<(String, Code
 
     if let Some(start) = opening_quote_pos {
         // Find closing quote after cursor, skipping escaped quotes
-        for j in col..chars.len() {
-            if chars[j] == '"' && !is_escaped(line_text, j) {
+        for (j, &ch) in chars.iter().enumerate().skip(col) {
+            if ch == '"' && !is_escaped(line_text, j) {
                 let end = j + 1;
                 let literal = line_text[start..end].to_string();
                 return Some((
@@ -729,31 +756,29 @@ fn find_java_keyword_literal(line_text: &str, col: usize) -> Option<(String, Cod
 
     for keyword in &keywords {
         // Try to match keyword at or near cursor
-        for start in col
-            .saturating_sub(keyword.len())
+        for start in col.saturating_sub(keyword.len())
             ..=col.min(line_text.len().saturating_sub(keyword.len()))
         {
-            if start + keyword.len() <= line_text.len() {
-                if &line_text[start..start + keyword.len()] == *keyword {
-                    // Check word boundaries
-                    let before_ok = start == 0
-                        || !line_text[..start]
-                            .ends_with(|c: char| c.is_alphanumeric() || c == '_');
-                    let after_ok = start + keyword.len() == line_text.len()
-                        || !line_text[start + keyword.len()..]
-                            .starts_with(|c: char| c.is_alphanumeric() || c == '_');
+            if start + keyword.len() <= line_text.len()
+                && &line_text[start..start + keyword.len()] == *keyword
+            {
+                // Check word boundaries
+                let before_ok = start == 0
+                    || !line_text[..start].ends_with(|c: char| c.is_alphanumeric() || c == '_');
+                let after_ok = start + keyword.len() == line_text.len()
+                    || !line_text[start + keyword.len()..]
+                        .starts_with(|c: char| c.is_alphanumeric() || c == '_');
 
-                    if before_ok && after_ok {
-                        return Some((
-                            keyword.to_string(),
-                            CodeRange {
-                                start_line: 0,
-                                start_col: start as u32,
-                                end_line: 0,
-                                end_col: (start + keyword.len()) as u32,
-                            },
-                        ));
-                    }
+                if before_ok && after_ok {
+                    return Some((
+                        keyword.to_string(),
+                        CodeRange {
+                            start_line: 0,
+                            start_col: start as u32,
+                            end_line: 0,
+                            end_col: (start + keyword.len()) as u32,
+                        },
+                    ));
                 }
             }
         }
@@ -839,7 +864,10 @@ fn infer_java_type(literal_value: &str) -> &'static str {
         } else {
             "int"
         }
-    } else if literal_value.contains('.') || literal_value.ends_with('f') || literal_value.ends_with('F') {
+    } else if literal_value.contains('.')
+        || literal_value.ends_with('f')
+        || literal_value.ends_with('F')
+    {
         if literal_value.ends_with('f') || literal_value.ends_with('F') {
             "float"
         } else {
@@ -962,7 +990,10 @@ public class Main {
         let line = r#"String path = "C:\\Users\\Admin\\file.txt";"#;
         // Position 20 is inside the string literal
         let result = find_java_string_literal(line, 20);
-        assert!(result.is_some(), "Should find string with escaped backslashes");
+        assert!(
+            result.is_some(),
+            "Should find string with escaped backslashes"
+        );
         let (literal, _) = result.unwrap();
         assert_eq!(literal, r#""C:\\Users\\Admin\\file.txt""#);
     }
@@ -1079,7 +1110,10 @@ public class Outer {
         // The insertion point should still be at the class level
         // (We use simple heuristic that finds first class)
         let plan = result.unwrap();
-        assert!(plan.edits.len() >= 2, "Should have insertion and replacement edits");
+        assert!(
+            plan.edits.len() >= 2,
+            "Should have insertion and replacement edits"
+        );
     }
 
     #[test]

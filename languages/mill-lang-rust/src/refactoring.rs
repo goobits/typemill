@@ -3,12 +3,11 @@
 //! This module provides AST-based refactoring capabilities for Rust code.
 
 use crate::constants;
-use mill_foundation::protocol::{
-    EditLocation, EditPlan, EditType, TextEdit,
-};
+use mill_foundation::protocol::{EditLocation, EditPlan, EditType, TextEdit};
 use mill_lang_common::{
-    find_literal_occurrences, is_valid_code_literal_location, CodeRange, ExtractConstantAnalysis,
-    ExtractConstantEditPlanBuilder, LineExtractor, refactoring::edit_plan_builder::EditPlanBuilder,
+    find_literal_occurrences, is_valid_code_literal_location,
+    refactoring::edit_plan_builder::EditPlanBuilder, CodeRange, ExtractConstantAnalysis,
+    ExtractConstantEditPlanBuilder, LineExtractor,
 };
 use mill_plugin_api::{PluginApiError, PluginResult};
 
@@ -391,14 +390,15 @@ fn find_rust_numeric_literal(line_text: &str, col: usize) -> Option<(String, Cod
 
     // Determine where to start scanning for the number
     // If cursor is on a minus sign, start there
-    let scan_start = if bytes[col] == b'-' && col + 1 < bytes.len() && bytes[col + 1].is_ascii_digit() {
-        col
-    } else if bytes[col].is_ascii_digit() || bytes[col] == b'.' {
-        col
-    } else {
-        // Cursor not on a number
-        return None;
-    };
+    let scan_start =
+        if (bytes[col] == b'-' && col + 1 < bytes.len() && bytes[col + 1].is_ascii_digit())
+            || bytes[col].is_ascii_digit()
+            || bytes[col] == b'.' {
+            col
+        } else {
+            // Cursor not on a number
+            return None;
+        };
 
     // Find the start of the number by scanning backwards
     let mut start = scan_start;
@@ -436,9 +436,8 @@ fn find_rust_numeric_literal(line_text: &str, col: usize) -> Option<(String, Cod
         // Validate it's a known numeric type suffix
         let suffix = &line_text[suffix_start..end];
         let valid_suffixes = [
-            "i8", "i16", "i32", "i64", "i128", "isize",
-            "u8", "u16", "u32", "u64", "u128", "usize",
-            "f32", "f64"
+            "i8", "i16", "i32", "i64", "i128", "isize", "u8", "u16", "u32", "u64", "u128", "usize",
+            "f32", "f64",
         ];
 
         if !valid_suffixes.contains(&suffix) {
@@ -479,12 +478,11 @@ fn find_rust_keyword_literal(line_text: &str, col: usize) -> Option<(String, Cod
         for start in col.saturating_sub(keyword.len())
             ..=col.min(line_text.len().saturating_sub(keyword.len()))
         {
-            if start + keyword.len() <= line_text.len() {
-                if &line_text[start..start + keyword.len()] == *keyword {
+            if start + keyword.len() <= line_text.len()
+                && &line_text[start..start + keyword.len()] == *keyword {
                     // Check word boundaries
                     let before_ok = start == 0
-                        || !line_text[..start]
-                            .ends_with(|c: char| c.is_alphanumeric() || c == '_');
+                        || !line_text[..start].ends_with(|c: char| c.is_alphanumeric() || c == '_');
                     let after_ok = start + keyword.len() == line_text.len()
                         || !line_text[start + keyword.len()..]
                             .starts_with(|c: char| c.is_alphanumeric() || c == '_');
@@ -501,7 +499,6 @@ fn find_rust_keyword_literal(line_text: &str, col: usize) -> Option<(String, Cod
                         ));
                     }
                 }
-            }
         }
     }
 
@@ -512,7 +509,6 @@ fn find_rust_keyword_literal(line_text: &str, col: usize) -> Option<(String, Cod
 fn is_valid_rust_literal_location(line: &str, pos: usize, len: usize) -> bool {
     is_valid_code_literal_location(line, pos, len)
 }
-
 
 /// Find the appropriate insertion point for a constant declaration in Rust code
 fn find_rust_insertion_point_for_constant(source: &str) -> PluginResult<CodeRange> {
@@ -567,8 +563,10 @@ pub(crate) fn analyze_extract_constant(
         .ok_or_else(|| PluginApiError::invalid_input("Invalid line number"))?;
 
     // Find the literal at the cursor position
-    let found_literal = find_rust_literal_at_position(line_text, character as usize)
-        .ok_or_else(|| PluginApiError::invalid_input("No literal found at the specified location"))?;
+    let found_literal =
+        find_rust_literal_at_position(line_text, character as usize).ok_or_else(|| {
+            PluginApiError::invalid_input("No literal found at the specified location")
+        })?;
 
     let literal_value = found_literal.0;
     let is_valid_literal = !literal_value.is_empty();
@@ -579,7 +577,8 @@ pub(crate) fn analyze_extract_constant(
     };
 
     // Find all occurrences of this literal value in the source
-    let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_rust_literal_location);
+    let occurrence_ranges =
+        find_literal_occurrences(source, &literal_value, is_valid_rust_literal_location);
 
     // Insertion point: after use statements, at the top of the file
     let insertion_point = find_rust_insertion_point_for_constant(source)?;
@@ -610,7 +609,7 @@ pub fn plan_extract_constant(
         .with_declaration_format(|name, value| {
             format!("const {}: {} = {};\n", name, rust_type, value)
         })
-        .map_err(|e| PluginApiError::invalid_input(e))
+        .map_err(PluginApiError::invalid_input)
 }
 
 /// Plan inline variable refactoring for Rust
@@ -643,18 +642,25 @@ pub fn plan_inline_variable(
     let var_pattern = constants::variable_decl_pattern();
 
     if let Some(captures) = var_pattern.captures(line_text) {
-        let var_name = captures.get(1)
-            .ok_or_else(|| PluginApiError::internal("Regex missing capture group 1 for variable name"))?
+        let var_name = captures
+            .get(1)
+            .ok_or_else(|| {
+                PluginApiError::internal("Regex missing capture group 1 for variable name")
+            })?
             .as_str();
-        let initializer = captures.get(2)
-            .ok_or_else(|| PluginApiError::internal("Regex missing capture group 2 for initializer"))?
+        let initializer = captures
+            .get(2)
+            .ok_or_else(|| {
+                PluginApiError::internal("Regex missing capture group 2 for initializer")
+            })?
             .as_str()
             .trim();
 
         // Find all usages of this variable in the rest of the source
         let mut edits = Vec::new();
-        let var_regex = constants::word_boundary_pattern(var_name)
-            .map_err(|e| PluginApiError::internal(format!("Failed to create regex pattern: {}", e)))?;
+        let var_regex = constants::word_boundary_pattern(var_name).map_err(|e| {
+            PluginApiError::internal(format!("Failed to create regex pattern: {}", e))
+        })?;
 
         // Replace all usages (except the declaration itself)
         for (idx, line) in lines.iter().enumerate() {
@@ -761,7 +767,10 @@ mod tests {
     fn test_plan_extract_constant_valid_number() {
         let source = "let x = 42;\nlet y = 42;\n";
         let result = plan_extract_constant(source, 0, 8, "ANSWER", "test.rs");
-        assert!(result.is_ok(), "Should extract numeric literal successfully");
+        assert!(
+            result.is_ok(),
+            "Should extract numeric literal successfully"
+        );
 
         let plan = result.unwrap();
         assert_eq!(plan.edits.len(), 3); // 1 declaration + 2 replacements
@@ -777,7 +786,10 @@ mod tests {
         let source = "let x = 42;\n";
         let result = plan_extract_constant(source, 0, 8, "answer", "test.rs");
         assert!(result.is_err(), "Should reject lowercase name");
-        assert!(result.unwrap_err().to_string().contains("SCREAMING_SNAKE_CASE"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("SCREAMING_SNAKE_CASE"));
     }
 
     #[test]
@@ -929,7 +941,9 @@ let backup = "https://api.example.com";
 
         // Check that the declaration has the correct type
         assert!(plan.edits[0].new_text.contains("const API_URL: &str"));
-        assert!(plan.edits[0].new_text.contains(r#""https://api.example.com""#));
+        assert!(plan.edits[0]
+            .new_text
+            .contains(r#""https://api.example.com""#));
     }
 
     #[test]

@@ -1,8 +1,8 @@
 use super::{RenameHandler, RenameOptions, RenameTarget};
 use crate::handlers::common::calculate_checksums_for_directory_rename;
 use crate::handlers::tools::extensions::get_concrete_app_state;
-use mill_foundation::planning::{PlanMetadata, PlanSummary, PlanWarning, RenamePlan};
 use mill_foundation::errors::MillResult as ServerResult;
+use mill_foundation::planning::{PlanMetadata, PlanSummary, PlanWarning, RenamePlan};
 use std::path::Path;
 use tracing::{debug, info};
 
@@ -80,14 +80,14 @@ impl RenameHandler {
                 .ancestors()
                 .find(|p| {
                     p.file_name().and_then(|n| n.to_str()) == Some("src")
-                        && p.parent().map(|parent| parent.join("Cargo.toml").exists()).unwrap_or(false)
+                        && p.parent()
+                            .map(|parent| parent.join("Cargo.toml").exists())
+                            .unwrap_or(false)
                 })
                 .and_then(|src| src.parent())
-                .ok_or_else(|| {
-                    mill_foundation::errors::MillError::InvalidRequest {
-                        message: "Could not find target crate root for consolidation".to_string(),
-                        parameter: Some("newName".to_string()),
-                    }
+                .ok_or_else(|| mill_foundation::errors::MillError::InvalidRequest {
+                    message: "Could not find target crate root for consolidation".to_string(),
+                    parameter: Some("newName".to_string()),
                 })?;
 
             // Validate circular dependencies using Rust-specific analysis
@@ -101,13 +101,22 @@ impl RenameHandler {
             {
                 use mill_lang_rust::dependency_analysis::validate_no_circular_dependencies;
 
-                match validate_no_circular_dependencies(&old_path, target_crate_root, workspace_root).await {
+                match validate_no_circular_dependencies(
+                    &old_path,
+                    target_crate_root,
+                    workspace_root,
+                )
+                .await
+                {
                     // Only reject if there are ACTUAL problematic modules that would create circular imports.
                     // It's normal for target to depend on source (e.g., app → lib) during consolidation.
                     // The key question is: are there specific modules in source that would create
                     // circular imports after being merged into target? If problematic_modules is empty,
                     // the consolidation is safe.
-                    Ok(analysis) if analysis.has_circular_dependency && !analysis.problematic_modules.is_empty() => {
+                    Ok(analysis)
+                        if analysis.has_circular_dependency
+                            && !analysis.problematic_modules.is_empty() =>
+                    {
                         return Err(mill_foundation::errors::MillError::InvalidRequest {
                             message: format!(
                                 "Cannot consolidate {} into {}: would create circular dependency.\n\
@@ -138,7 +147,9 @@ impl RenameHandler {
             #[cfg(not(feature = "lang-rust"))]
             {
                 // Rust language support not compiled in, skip validation
-                debug!("Rust language support not available, skipping circular dependency validation");
+                debug!(
+                    "Rust language support not available, skipping circular dependency validation"
+                );
             }
         }
 

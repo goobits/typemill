@@ -12,6 +12,12 @@ use super::*;
 /// Ranks suggestions by priority
 pub struct SuggestionRanker;
 
+impl Default for SuggestionRanker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SuggestionRanker {
     pub fn new() -> Self {
         Self

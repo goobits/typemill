@@ -25,10 +25,10 @@ pub mod lifecycle;
 pub mod navigation;
 pub mod system;
 pub mod workspace;
+pub mod workspace_add_java_dependency;
 pub mod workspace_create;
 pub mod workspace_extract_deps;
 pub mod workspace_update_members;
-pub mod workspace_add_java_dependency;
 
 // Re-export handlers
 pub use advanced::AdvancedToolsHandler;
@@ -41,17 +41,17 @@ pub use lifecycle::LifecycleHandler;
 pub use navigation::{InternalNavigationHandler, NavigationHandler};
 pub use system::SystemToolsHandler;
 pub use workspace::WorkspaceToolsHandler;
+pub use workspace_add_java_dependency::WorkspaceAddJavaDependencyHandler;
 pub use workspace_create::WorkspaceCreateHandler;
 pub use workspace_extract_deps::WorkspaceExtractDepsHandler;
 pub use workspace_update_members::WorkspaceUpdateMembersHandler;
-pub use workspace_add_java_dependency::WorkspaceAddJavaDependencyHandler;
 
 // Re-export dispatch helpers
 pub use dispatch::dispatch_to_language_plugin;
 
 /// Dispatch helpers for language plugin operations
 mod dispatch {
-    
+
     use mill_foundation::errors::{MillError, MillResult};
     use std::path::Path;
 
@@ -122,12 +122,8 @@ mod dispatch {
         operation(plugin, content).await.map_err(|e| {
             // Convert PluginApiError to MillError
             match e {
-                mill_plugin_api::PluginApiError::Parse { message, .. } => {
-                    MillError::parse(message)
-                }
-                mill_plugin_api::PluginApiError::Manifest { message } => {
-                    MillError::parse(message)
-                }
+                mill_plugin_api::PluginApiError::Parse { message, .. } => MillError::parse(message),
+                mill_plugin_api::PluginApiError::Manifest { message } => MillError::parse(message),
                 mill_plugin_api::PluginApiError::NotSupported { operation } => {
                     MillError::not_supported(operation)
                 }
@@ -173,13 +169,19 @@ impl ToolHandlerContext {
     /// - Provides access to the full concrete AppState via the extensions field
     /// - Allows handlers to downcast to access concrete types when needed
     pub async fn to_api_context(&self) -> mill_handler_api::ToolHandlerContext {
-        use super::plugin_dispatcher::{FileServiceWrapper, LanguagePluginRegistryWrapper, AnalysisConfigWrapper};
+        use super::plugin_dispatcher::{
+            AnalysisConfigWrapper, FileServiceWrapper, LanguagePluginRegistryWrapper,
+        };
 
         mill_handler_api::ToolHandlerContext {
             user_id: self.user_id.clone(),
             app_state: Arc::new(mill_handler_api::AppState {
-                file_service: Arc::new(FileServiceWrapper(self.app_state.file_service.clone())) as Arc<dyn mill_handler_api::FileService>,
-                language_plugins: Arc::new(LanguagePluginRegistryWrapper(self.app_state.language_plugins.clone())) as Arc<dyn mill_handler_api::LanguagePluginRegistry>,
+                file_service: Arc::new(FileServiceWrapper(self.app_state.file_service.clone()))
+                    as Arc<dyn mill_handler_api::FileService>,
+                language_plugins: Arc::new(LanguagePluginRegistryWrapper(
+                    self.app_state.language_plugins.clone(),
+                ))
+                    as Arc<dyn mill_handler_api::LanguagePluginRegistry>,
                 project_root: self.app_state.project_root.clone(),
                 extensions: Some(self.app_state.clone() as Arc<dyn std::any::Any + Send + Sync>),
             }),
@@ -187,11 +189,14 @@ impl ToolHandlerContext {
             lsp_adapter: Arc::new(Mutex::new(
                 // Convert Option<Arc<DirectLspAdapter>> to Option<Arc<dyn LspAdapter>>
                 // DirectLspAdapter now implements LspAdapter trait directly
-                self.lsp_adapter.lock().await
+                self.lsp_adapter
+                    .lock()
+                    .await
                     .as_ref()
-                    .map(|adapter| adapter.clone() as Arc<dyn mill_handler_api::LspAdapter>)
+                    .map(|adapter| adapter.clone() as Arc<dyn mill_handler_api::LspAdapter>),
             )),
-            analysis_config: Arc::new(AnalysisConfigWrapper((*self.analysis_config).clone())) as Arc<dyn mill_handler_api::AnalysisConfigTrait>,
+            analysis_config: Arc::new(AnalysisConfigWrapper((*self.analysis_config).clone()))
+                as Arc<dyn mill_handler_api::AnalysisConfigTrait>,
         }
     }
 }

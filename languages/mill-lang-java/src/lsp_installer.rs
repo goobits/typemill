@@ -157,4 +157,3 @@ fn check_system_installation() -> Option<PathBuf> {
         .into_iter()
         .find(|location| location.exists())
 }
-

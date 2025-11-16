@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::Args;
 use colored::Colorize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Args)]
 pub struct InstallArgs {
@@ -96,10 +96,10 @@ fn default_install_dir() -> PathBuf {
     }
 }
 
-fn is_in_path(dir: &PathBuf) -> bool {
+fn is_in_path(dir: &Path) -> bool {
     if let Ok(path_var) = std::env::var("PATH") {
         let separator = if cfg!(windows) { ';' } else { ':' };
-        path_var.split(separator).any(|p| PathBuf::from(p) == *dir)
+        path_var.split(separator).any(|p| Path::new(p) == dir)
     } else {
         false
     }

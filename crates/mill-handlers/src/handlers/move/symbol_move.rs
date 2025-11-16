@@ -4,12 +4,11 @@
 //! Falls back to AST-based approach when LSP is unavailable.
 
 use lsp_types::Position;
-use mill_foundation::planning::{MovePlan, PlanMetadata};
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
+use mill_foundation::planning::{MovePlan, PlanMetadata};
 use serde_json::{json, Value};
 use std::path::Path;
 use tracing::{debug, error, info, warn};
-
 
 use super::validation::{analyze_workspace_edit, estimate_impact};
 

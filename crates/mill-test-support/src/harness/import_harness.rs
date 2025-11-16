@@ -22,8 +22,7 @@
 //!
 //! ## Example Usage
 //!
-//! ```rust
-//! #[test]
+//! ```rust,no_run
 //! fn test_parse_imports_all_languages() {
 //!     let test_case = ImportScenarios::parse_simple_imports();
 //!     for fixture in test_case.fixtures {
@@ -455,7 +454,7 @@ mod tests {
     #[test]
     fn test_all_scenarios_defined() {
         // Ensure all core scenarios exist
-        let scenarios = vec![
+        let scenarios = [
             ImportScenarios::parse_simple_imports(),
             ImportScenarios::contains_import_positive(),
             ImportScenarios::contains_import_negative(),
