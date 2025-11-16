@@ -438,6 +438,446 @@ fn extract_csharp_var_info<'a>(
     Ok((name, value, declaration_statement))
 }
 
+// ============================================================================
+// Extract Constant Refactoring
+// ============================================================================
+
+/// Analysis result for extract constant refactoring (C#)
+#[derive(Debug, Clone)]
+pub struct ExtractConstantAnalysis {
+    /// The literal value to extract
+    pub literal_value: String,
+    /// All locations where this same literal value appears
+    pub occurrence_ranges: Vec<CodeRange>,
+    /// Whether this is a valid literal to extract
+    pub is_valid_literal: bool,
+    /// Blocking reasons if extraction is not valid
+    pub blocking_reasons: Vec<String>,
+    /// Where to insert the constant declaration
+    pub insertion_point: CodeRange,
+}
+
+/// Analyzes source code to extract information about a literal value at a cursor position.
+///
+/// This analysis function identifies literals in C# source code and gathers information for
+/// constant extraction. It analyzes:
+/// - The literal value at the specified cursor position (number, string, boolean, or null)
+/// - All occurrences of that literal throughout the file
+/// - A suitable insertion point for the constant declaration (class level)
+/// - Whether extraction is valid and any blocking reasons
+///
+/// # Arguments
+/// * `source` - The C# source code
+/// * `line` - Zero-based line number where the cursor is positioned
+/// * `character` - Zero-based character offset within the line
+/// * `file_path` - Path to the file (used for error reporting)
+///
+/// # Returns
+/// * `Ok(ExtractConstantAnalysis)` - Analysis result with literal value, occurrence ranges,
+///                                     validation status, and insertion point
+/// * `Err(RefactoringError)` - If no literal is found at the cursor position
+pub fn analyze_extract_constant(
+    source: &str,
+    line: u32,
+    character: u32,
+    _file_path: &str,
+) -> RefactoringResult<ExtractConstantAnalysis> {
+    let lines: Vec<&str> = source.lines().collect();
+
+    // Get the line at cursor position
+    let line_text = lines
+        .get(line as usize)
+        .ok_or_else(|| RefactoringError::Analysis("Invalid line number".to_string()))?;
+
+    // Find the literal at the cursor position
+    let found_literal = find_csharp_literal_at_position(line_text, character as usize)
+        .ok_or_else(|| {
+            RefactoringError::Analysis("No literal found at the specified location".to_string())
+        })?;
+
+    let literal_value = found_literal.0;
+    let is_valid_literal = !literal_value.is_empty();
+    let blocking_reasons = if !is_valid_literal {
+        vec!["Could not extract literal at cursor position".to_string()]
+    } else {
+        vec![]
+    };
+
+    // Find all occurrences of this literal value in the source
+    let occurrence_ranges = find_csharp_literal_occurrences(source, &literal_value);
+
+    // Insertion point: at class level (after opening brace of class)
+    let insertion_point = find_csharp_insertion_point_for_constant(source)?;
+
+    Ok(ExtractConstantAnalysis {
+        literal_value,
+        occurrence_ranges,
+        is_valid_literal,
+        blocking_reasons,
+        insertion_point,
+    })
+}
+
+/// Extracts a literal value to a named constant in C# code.
+///
+/// This refactoring operation replaces all occurrences of a literal (number, string, boolean, or null)
+/// with a named constant declaration at the class level, improving code maintainability by
+/// eliminating magic values and making it easier to update values globally.
+///
+/// # Arguments
+/// * `source` - The C# source code
+/// * `line` - Zero-based line number where the cursor is positioned
+/// * `character` - Zero-based character offset within the line
+/// * `name` - The constant name (must be SCREAMING_SNAKE_CASE)
+/// * `file_path` - Path to the file being refactored
+///
+/// # Returns
+/// * `Ok(EditPlan)` - The edit plan with constant declaration inserted at class level and all
+///                    literal occurrences replaced with the constant name
+/// * `Err(RefactoringError)` - If the cursor is not on a literal, the name is invalid, or parsing fails
+pub fn plan_extract_constant(
+    source: &str,
+    line: u32,
+    character: u32,
+    name: &str,
+    file_path: &str,
+) -> RefactoringResult<EditPlan> {
+    let analysis = analyze_extract_constant(source, line, character, file_path)?;
+
+    if !analysis.is_valid_literal {
+        return Err(RefactoringError::Analysis(format!(
+            "Cannot extract constant: {}",
+            analysis.blocking_reasons.join(", ")
+        )));
+    }
+
+    // Validate that the name is in SCREAMING_SNAKE_CASE format.
+    if !is_screaming_snake_case(name) {
+        return Err(RefactoringError::Analysis(format!(
+            "Constant name '{}' must be in SCREAMING_SNAKE_CASE format. Valid examples: TAX_RATE, MAX_VALUE, API_KEY, DB_TIMEOUT_MS. Requirements: only uppercase letters (A-Z), digits (0-9), and underscores; must contain at least one uppercase letter; cannot start or end with underscore.",
+            name
+        )));
+    }
+
+    let mut edits = Vec::new();
+
+    // Get indentation for class-level constant
+    let indent = get_indentation(source, analysis.insertion_point.start_line as usize);
+    let const_indent = format!("{}    ", indent); // Add one level of indentation
+
+    // Generate the constant declaration (C# style: private const)
+    let declaration = format!("{}private const int {} = {};\n", const_indent, name, analysis.literal_value);
+    edits.push(TextEdit {
+        file_path: None,
+        edit_type: EditType::Insert,
+        location: analysis.insertion_point.into(),
+        original_text: String::new(),
+        new_text: declaration,
+        priority: 100,
+        description: format!(
+            "Extract '{}' into constant '{}'",
+            analysis.literal_value, name
+        ),
+    });
+
+    // Replace all occurrences of the literal with the constant name
+    for (idx, occurrence_range) in analysis.occurrence_ranges.iter().enumerate() {
+        let priority = 90_u32.saturating_sub(idx as u32);
+        edits.push(TextEdit {
+            file_path: None,
+            edit_type: EditType::Replace,
+            location: (*occurrence_range).into(),
+            original_text: analysis.literal_value.clone(),
+            new_text: name.to_string(),
+            priority,
+            description: format!(
+                "Replace occurrence {} of literal with constant '{}'",
+                idx + 1,
+                name
+            ),
+        });
+    }
+
+    Ok(EditPlan {
+        source_file: file_path.to_string(),
+        edits,
+        dependency_updates: Vec::new(),
+        validations: vec![ValidationRule {
+            rule_type: ValidationType::SyntaxCheck,
+            description: "Verify C# syntax is valid after constant extraction".to_string(),
+            parameters: Default::default(),
+        }],
+        metadata: EditPlanMetadata {
+            intent_name: "extract_constant".to_string(),
+            intent_arguments: serde_json::json!({
+                "literal": analysis.literal_value,
+                "constantName": name,
+                "occurrences": analysis.occurrence_ranges.len(),
+            }),
+            created_at: chrono::Utc::now(),
+            complexity: (analysis.occurrence_ranges.len().min(10)) as u8,
+            impact_areas: vec!["constant_extraction".to_string()],
+            consolidation: None,
+        },
+    })
+}
+
+/// Check if a name follows SCREAMING_SNAKE_CASE convention
+fn is_screaming_snake_case(name: &str) -> bool {
+    if name.is_empty() {
+        return false;
+    }
+
+    // Must not start or end with underscore
+    if name.starts_with('_') || name.ends_with('_') {
+        return false;
+    }
+
+    // Check each character
+    for ch in name.chars() {
+        match ch {
+            'A'..='Z' | '0'..='9' | '_' => continue,
+            _ => return false,
+        }
+    }
+
+    // Must have at least one uppercase letter
+    name.chars().any(|c| c.is_ascii_uppercase())
+}
+
+/// Finds a C# literal at a given position in a line of code.
+fn find_csharp_literal_at_position(line_text: &str, col: usize) -> Option<(String, CodeRange)> {
+    // Try to find different kinds of literals at the cursor position
+
+    // Check for numeric literal (including negative numbers)
+    if let Some((literal, range)) = find_csharp_numeric_literal(line_text, col) {
+        return Some((literal, range));
+    }
+
+    // Check for string literal (quoted with single/double quote support)
+    if let Some((literal, range)) = find_csharp_string_literal(line_text, col) {
+        return Some((literal, range));
+    }
+
+    // Check for boolean (true/false) or null (C# lowercase keywords)
+    if let Some((literal, range)) = find_csharp_keyword_literal(line_text, col) {
+        return Some((literal, range));
+    }
+
+    None
+}
+
+/// Finds a numeric literal at a cursor position.
+fn find_csharp_numeric_literal(line_text: &str, col: usize) -> Option<(String, CodeRange)> {
+    if col >= line_text.len() {
+        return None;
+    }
+
+    // Find the start of the number (handle negative sign)
+    let start = if col > 0 && line_text.chars().nth(col - 1) == Some('-') {
+        col.saturating_sub(1)
+    } else {
+        line_text[..col]
+            .rfind(|c: char| !c.is_ascii_digit() && c != '.' && c != '_')
+            .map(|p| p + 1)
+            .unwrap_or(0)
+    };
+
+    // Adjust start if we found a leading minus sign
+    let actual_start = if start > 0 && line_text.chars().nth(start - 1) == Some('-') {
+        start - 1
+    } else {
+        start
+    };
+
+    // Find the end of the number by scanning right from cursor
+    let end = col
+        + line_text[col..]
+            .find(|c: char| !c.is_ascii_digit() && c != '.' && c != '_')
+            .unwrap_or(line_text.len() - col);
+
+    if actual_start < end && end <= line_text.len() {
+        let text = &line_text[actual_start..end];
+        // Validate: must contain at least one digit and be parseable as a number
+        if text.chars().any(|c| c.is_ascii_digit()) && text.parse::<f64>().is_ok() {
+            return Some((
+                text.to_string(),
+                CodeRange {
+                    start_line: 0,
+                    start_col: actual_start as u32,
+                    end_line: 0,
+                    end_col: end as u32,
+                },
+            ));
+        }
+    }
+
+    None
+}
+
+/// Finds a string literal at a cursor position in C# code.
+fn find_csharp_string_literal(line_text: &str, col: usize) -> Option<(String, CodeRange)> {
+    if col >= line_text.len() {
+        return None;
+    }
+
+    // Look for single or double quoted strings
+    for (i, ch) in line_text[..col].char_indices().rev() {
+        if ch == '"' || ch == '\'' {
+            let quote = ch;
+            // Find closing quote after cursor
+            for (j, ch2) in line_text[col..].char_indices() {
+                if ch2 == quote {
+                    let end = col + j + 1;
+                    if end <= line_text.len() {
+                        let literal = line_text[i..end].to_string();
+                        return Some((
+                            literal,
+                            CodeRange {
+                                start_line: 0,
+                                start_col: i as u32,
+                                end_line: 0,
+                                end_col: end as u32,
+                            },
+                        ));
+                    }
+                }
+            }
+            break;
+        }
+    }
+
+    None
+}
+
+/// Finds a C# keyword literal (true, false, or null) at a cursor position.
+fn find_csharp_keyword_literal(line_text: &str, col: usize) -> Option<(String, CodeRange)> {
+    let keywords = ["true", "false", "null"];
+
+    for keyword in &keywords {
+        // Try to match keyword at or near cursor
+        for start in col.saturating_sub(keyword.len())
+            ..=col.min(line_text.len().saturating_sub(keyword.len()))
+        {
+            if start + keyword.len() <= line_text.len() {
+                if &line_text[start..start + keyword.len()] == *keyword {
+                    // Check word boundaries
+                    let before_ok = start == 0
+                        || !line_text[..start].ends_with(|c: char| c.is_alphanumeric() || c == '_');
+                    let after_ok = start + keyword.len() == line_text.len()
+                        || !line_text[start + keyword.len()..]
+                            .starts_with(|c: char| c.is_alphanumeric() || c == '_');
+
+                    if before_ok && after_ok {
+                        return Some((
+                            keyword.to_string(),
+                            CodeRange {
+                                start_line: 0,
+                                start_col: start as u32,
+                                end_line: 0,
+                                end_col: (start + keyword.len()) as u32,
+                            },
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
+/// Finds all valid occurrences of a literal value in C# source code.
+fn find_csharp_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange> {
+    let mut occurrences = Vec::new();
+    let lines: Vec<&str> = source.lines().collect();
+
+    for (line_idx, line_text) in lines.iter().enumerate() {
+        let mut start_pos = 0;
+        while let Some(pos) = line_text[start_pos..].find(literal_value) {
+            let col = start_pos + pos;
+
+            // Check that this is a valid literal location (not in comment/string)
+            if is_valid_csharp_literal_location(line_text, col, literal_value.len()) {
+                occurrences.push(CodeRange {
+                    start_line: line_idx as u32,
+                    start_col: col as u32,
+                    end_line: line_idx as u32,
+                    end_col: (col + literal_value.len()) as u32,
+                });
+            }
+
+            start_pos = col + 1;
+        }
+    }
+
+    occurrences
+}
+
+/// Validates whether a position in source code is a valid location for a literal.
+fn is_valid_csharp_literal_location(line: &str, pos: usize, _len: usize) -> bool {
+    // Count quotes before position to determine if we're inside a string literal.
+    let before = &line[..pos];
+    let single_quotes = before.matches('\'').count();
+    let double_quotes = before.matches('"').count();
+
+    // If odd number of quotes appear before the position, we're inside a string literal
+    if single_quotes % 2 == 1 || double_quotes % 2 == 1 {
+        return false;
+    }
+
+    // Check for C# single-line comment marker (//). Anything after it is a comment.
+    if let Some(comment_pos) = line.find("//") {
+        if pos > comment_pos {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Finds the appropriate insertion point for a constant declaration in C# code.
+///
+/// The insertion point is at class level, after the opening brace of the class.
+fn find_csharp_insertion_point_for_constant(source: &str) -> RefactoringResult<CodeRange> {
+    let lines: Vec<&str> = source.lines().collect();
+    let mut in_class = false;
+
+    for (idx, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        let line_idx = idx as u32;
+
+        // Look for class declaration
+        if trimmed.starts_with("class ")
+            || trimmed.starts_with("public class ")
+            || trimmed.starts_with("private class ")
+            || trimmed.starts_with("internal class ")
+            || trimmed.starts_with("protected class ")
+        {
+            in_class = true;
+        }
+
+        // Find the opening brace of the class
+        if in_class && trimmed.contains('{') {
+            // Insert after the opening brace line
+            return Ok(CodeRange {
+                start_line: line_idx + 1,
+                start_col: 0,
+                end_line: line_idx + 1,
+                end_col: 0,
+            });
+        }
+    }
+
+    // Default: insert at the beginning of the file
+    Ok(CodeRange {
+        start_line: 0,
+        start_col: 0,
+        end_line: 0,
+        end_col: 0,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -526,5 +966,121 @@ class Program
             .find(|e| e.edit_type == EditType::Delete)
             .unwrap();
         assert!(delete_edit.edit_type == EditType::Delete);
+    }
+
+    // ========================================================================
+    // Extract Constant Tests
+    // ========================================================================
+
+    #[test]
+    fn test_is_screaming_snake_case() {
+        assert!(is_screaming_snake_case("TAX_RATE"));
+        assert!(is_screaming_snake_case("MAX_VALUE"));
+        assert!(is_screaming_snake_case("A"));
+        assert!(is_screaming_snake_case("PI"));
+
+        assert!(!is_screaming_snake_case(""));
+        assert!(!is_screaming_snake_case("_TAX_RATE")); // starts with underscore
+        assert!(!is_screaming_snake_case("TAX_RATE_")); // ends with underscore
+        assert!(!is_screaming_snake_case("tax_rate")); // lowercase
+        assert!(!is_screaming_snake_case("TaxRate")); // camelCase
+        assert!(!is_screaming_snake_case("tax-rate")); // kebab-case
+    }
+
+    #[test]
+    fn test_find_csharp_literal_occurrences() {
+        let source = "var x = 42;\nvar y = 42;\nvar z = 100;";
+        let occurrences = find_csharp_literal_occurrences(source, "42");
+        assert_eq!(occurrences.len(), 2);
+        assert_eq!(occurrences[0].start_line, 0);
+        assert_eq!(occurrences[1].start_line, 1);
+    }
+
+    #[test]
+    fn test_plan_extract_constant_valid_number() {
+        let source = r#"
+class Program
+{
+    static void Main(string[] args)
+    {
+        var x = 42;
+        var y = 42;
+    }
+}"#;
+        let result = plan_extract_constant(source, 5, 16, "ANSWER", "test.cs");
+        assert!(
+            result.is_ok(),
+            "Should extract numeric literal successfully: {:?}",
+            result.err()
+        );
+        let plan = result.unwrap();
+        assert_eq!(plan.edits.len(), 3); // 1 insert + 2 replacements
+
+        // Check constant declaration
+        let insert_edit = plan
+            .edits
+            .iter()
+            .find(|e| e.edit_type == EditType::Insert)
+            .unwrap();
+        assert!(insert_edit.new_text.contains("private const int ANSWER = 42;"));
+    }
+
+    #[test]
+    fn test_plan_extract_constant_string() {
+        let source = r#"
+class Program
+{
+    static void Main(string[] args)
+    {
+        var msg = "hello";
+        var greeting = "hello";
+    }
+}"#;
+        let result = plan_extract_constant(source, 5, 20, "GREETING_MSG", "test.cs");
+        assert!(
+            result.is_ok(),
+            "Should extract string literal: {:?}",
+            result.err()
+        );
+        let plan = result.unwrap();
+        assert!(plan.edits.len() >= 2); // At least 1 insert + replacements
+    }
+
+    #[test]
+    fn test_plan_extract_constant_boolean() {
+        let source = r#"
+class Program
+{
+    static void Main(string[] args)
+    {
+        var debug = true;
+        var verbose = true;
+    }
+}"#;
+        let result = plan_extract_constant(source, 5, 20, "DEBUG_MODE", "test.cs");
+        assert!(
+            result.is_ok(),
+            "Should extract boolean literal: {:?}",
+            result.err()
+        );
+        let plan = result.unwrap();
+        assert!(plan.edits.len() >= 2);
+    }
+
+    #[test]
+    fn test_plan_extract_constant_invalid_name() {
+        let source = r#"
+class Program
+{
+    static void Main(string[] args)
+    {
+        var x = 42;
+    }
+}"#;
+        let result = plan_extract_constant(source, 5, 16, "answer", "test.cs");
+        assert!(result.is_err(), "Should reject lowercase name");
+
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("SCREAMING_SNAKE_CASE"));
     }
 }

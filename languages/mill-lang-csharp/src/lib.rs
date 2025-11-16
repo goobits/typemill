@@ -160,6 +160,22 @@ impl RefactoringProvider for CsharpPlugin {
         self::refactoring::plan_inline_variable(source, variable_line, variable_col, file_path)
             .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))
     }
+
+    fn supports_extract_constant(&self) -> bool {
+        true
+    }
+
+    async fn plan_extract_constant(
+        &self,
+        source: &str,
+        line: u32,
+        character: u32,
+        constant_name: &str,
+        file_path: &str,
+    ) -> PluginResult<EditPlan> {
+        self::refactoring::plan_extract_constant(source, line, character, constant_name, file_path)
+            .map_err(|e| mill_plugin_api::PluginApiError::internal(e.to_string()))
+    }
 }
 
 impl ModuleReferenceScanner for CsharpPlugin {
