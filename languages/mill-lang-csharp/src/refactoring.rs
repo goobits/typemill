@@ -13,6 +13,7 @@ use mill_lang_common::{
     refactoring::find_literal_occurrences, CodeRange, ExtractConstantAnalysis,
     ExtractConstantEditPlanBuilder,
 };
+use mill_plugin_api::{PluginApiError, PluginResult};
 use tree_sitter::{Node, Parser, Point, Query, QueryCursor, StreamingIterator};
 
 /// Get the C# language for tree-sitter
@@ -20,52 +21,39 @@ fn get_language() -> tree_sitter::Language {
     tree_sitter_c_sharp::LANGUAGE.into()
 }
 
-/// Error type for refactoring operations
-#[derive(Debug, thiserror::Error)]
-pub enum RefactoringError {
-    #[error("Analysis error: {0}")]
-    Analysis(String),
-    #[error("Parse error: {0}")]
-    Parse(String),
-    #[error("Query error: {0}")]
-    Query(String),
-}
-
-pub type RefactoringResult<T> = Result<T, RefactoringError>;
-
 /// Generate edit plan for extract method refactoring
 pub fn plan_extract_function(
     source: &str,
     range: &CodeRange,
     function_name: &str, // In C#, this is a method name
     file_path: &str,
-) -> RefactoringResult<EditPlan> {
+) -> PluginResult<EditPlan> {
     let mut parser = Parser::new();
     parser
         .set_language(&get_language())
-        .map_err(|e| RefactoringError::Parse(format!("Failed to load C# grammar: {}", e)))?;
+        .map_err(|e| PluginApiError::parse(format!("Failed to load C# grammar: {}", e)))?;
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| RefactoringError::Parse("Failed to parse C# source".to_string()))?;
+        .ok_or_else(|| PluginApiError::parse("Failed to parse C# source".to_string()))?;
     let root = tree.root_node();
 
     let start_point = Point::new(range.start_line as usize, range.start_col as usize);
     let end_point = Point::new(range.end_line as usize, range.end_col as usize);
 
     let start_node = find_node_at_point(root, start_point).ok_or_else(|| {
-        RefactoringError::Analysis(
+        PluginApiError::invalid_input(
             "Could not find a node at the start of the selection.".to_string(),
         )
     })?;
     let end_node = find_node_at_point(root, end_point).ok_or_else(|| {
-        RefactoringError::Analysis("Could not find a node at the end of the selection.".to_string())
+        PluginApiError::invalid_input("Could not find a node at the end of the selection.".to_string())
     })?;
 
     let selected_text = &source[start_node.start_byte()..end_node.end_byte()];
 
     let enclosing_method =
         find_ancestor_of_kind(start_node, "method_declaration").ok_or_else(|| {
-            RefactoringError::Analysis("Selection is not inside a method.".to_string())
+            PluginApiError::invalid_input("Selection is not inside a method.".to_string())
         })?;
 
     let indent = get_indentation(source, enclosing_method.start_position().row);
@@ -136,14 +124,14 @@ pub fn plan_extract_variable(
     end_col: u32,
     variable_name: Option<String>,
     file_path: &str,
-) -> RefactoringResult<EditPlan> {
+) -> PluginResult<EditPlan> {
     let mut parser = Parser::new();
     parser
         .set_language(&get_language())
-        .map_err(|e| RefactoringError::Parse(format!("Failed to load C# grammar: {}", e)))?;
+        .map_err(|e| PluginApiError::parse(format!("Failed to load C# grammar: {}", e)))?;
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| RefactoringError::Parse("Failed to parse C# source".to_string()))?;
+        .ok_or_else(|| PluginApiError::parse("Failed to parse C# source".to_string()))?;
     let root = tree.root_node();
 
     let start_point = Point::new(start_line as usize, start_col as usize);
@@ -151,12 +139,12 @@ pub fn plan_extract_variable(
 
     let selected_node = find_smallest_node_containing_range(root, start_point, end_point)
         .ok_or_else(|| {
-            RefactoringError::Analysis("Could not find a node for the selection.".to_string())
+            PluginApiError::invalid_input("Could not find a node for the selection.".to_string())
         })?;
 
     let expression_text = selected_node
         .utf8_text(source.as_bytes())
-        .map_err(|e| RefactoringError::Parse(format!("Invalid UTF-8 in source: {}", e)))?
+        .map_err(|e| PluginApiError::parse(format!("Invalid UTF-8 in source: {}", e)))?
         .to_string();
 
     let insertion_statement = find_ancestor_of_kind(selected_node, "local_declaration_statement")
@@ -165,7 +153,7 @@ pub fn plan_extract_variable(
         .or_else(|| find_ancestor_of_kind(selected_node, "assignment_expression"))
         .or_else(|| find_ancestor_of_kind(selected_node, "argument"))
         .ok_or_else(|| {
-            RefactoringError::Analysis(
+            PluginApiError::invalid_input(
                 "Could not find an appropriate statement to insert the variable before."
                     .to_string(),
             )
@@ -231,32 +219,32 @@ pub fn plan_inline_variable(
     variable_line: u32,
     variable_col: u32,
     file_path: &str,
-) -> RefactoringResult<EditPlan> {
+) -> PluginResult<EditPlan> {
     let mut parser = Parser::new();
     parser
         .set_language(&get_language())
-        .map_err(|e| RefactoringError::Parse(format!("Failed to load C# grammar: {}", e)))?;
+        .map_err(|e| PluginApiError::parse(format!("Failed to load C# grammar: {}", e)))?;
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| RefactoringError::Parse("Failed to parse C# source".to_string()))?;
+        .ok_or_else(|| PluginApiError::parse("Failed to parse C# source".to_string()))?;
     let root = tree.root_node();
     let point = Point::new(variable_line as usize, variable_col as usize);
 
     let var_ident_node = find_node_at_point(root, point).ok_or_else(|| {
-        RefactoringError::Analysis("Could not find variable at specified location.".to_string())
+        PluginApiError::invalid_input("Could not find variable at specified location.".to_string())
     })?;
 
     let (var_name, var_value, declaration_node) = extract_csharp_var_info(var_ident_node, source)?;
 
     let scope_node =
         find_ancestor_of_kind(declaration_node, "method_declaration").ok_or_else(|| {
-            RefactoringError::Analysis("Variable is not inside a method.".to_string())
+            PluginApiError::invalid_input("Variable is not inside a method.".to_string())
         })?;
 
     let mut edits = Vec::new();
     let query_str = format!(r#"((identifier) @ref (#eq? @ref "{}"))"#, var_name);
     let query = Query::new(&get_language(), &query_str)
-        .map_err(|e| RefactoringError::Query(e.to_string()))?;
+        .map_err(|e| PluginApiError::internal(e.to_string()))?;
     let mut cursor = QueryCursor::new();
 
     cursor
@@ -284,7 +272,7 @@ pub fn plan_inline_variable(
         location: node_to_location(declaration_node).into(),
         original_text: declaration_node
             .utf8_text(source.as_bytes())
-            .map_err(|e| RefactoringError::Parse(format!("Invalid UTF-8 in source: {}", e)))?
+            .map_err(|e| PluginApiError::parse(format!("Invalid UTF-8 in source: {}", e)))?
             .to_string(),
         new_text: String::new(),
         priority: 100,
@@ -377,10 +365,10 @@ fn node_to_location(node: Node) -> CodeRange {
 fn extract_csharp_var_info<'a>(
     node: Node<'a>,
     source: &str,
-) -> RefactoringResult<(String, String, Node<'a>)> {
+) -> PluginResult<(String, String, Node<'a>)> {
     let declaration_statement = find_ancestor_of_kind(node, "local_declaration_statement")
         .ok_or_else(|| {
-            RefactoringError::Analysis(format!(
+            PluginApiError::invalid_input(format!(
                 "Not a local variable declaration. Node kind: {}",
                 node.kind()
             ))
@@ -396,7 +384,7 @@ fn extract_csharp_var_info<'a>(
                 .children(&mut declaration_statement.walk())
                 .map(|n| n.kind())
                 .collect();
-            RefactoringError::Analysis(format!(
+            PluginApiError::invalid_input(format!(
                 "Invalid declaration statement: missing variable_declaration. Children: {:?}",
                 child_kinds
             ))
@@ -408,7 +396,7 @@ fn extract_csharp_var_info<'a>(
         .children(&mut cursor_decl)
         .find(|n| n.kind() == "variable_declarator")
         .ok_or_else(|| {
-            RefactoringError::Analysis(
+            PluginApiError::invalid_input(
                 "Invalid declaration: missing variable_declarator".to_string(),
             )
         })?;
@@ -418,7 +406,7 @@ fn extract_csharp_var_info<'a>(
     let name_node = declarator
         .children(&mut cursor_name)
         .find(|n| n.kind() == "identifier")
-        .ok_or_else(|| RefactoringError::Analysis("Could not find variable name".to_string()))?;
+        .ok_or_else(|| PluginApiError::invalid_input("Could not find variable name".to_string()))?;
 
     // Get the value - in newer tree-sitter-c-sharp, the value is a direct child
     // (no equals_value_clause wrapper)
@@ -427,16 +415,16 @@ fn extract_csharp_var_info<'a>(
         .children(&mut cursor_value)
         .find(|n| n.kind() != "identifier" && n.kind() != "=")
         .ok_or_else(|| {
-            RefactoringError::Analysis("Could not find variable initializer value".to_string())
+            PluginApiError::invalid_input("Could not find variable initializer value".to_string())
         })?;
 
     let name = name_node
         .utf8_text(source.as_bytes())
-        .map_err(|e| RefactoringError::Parse(format!("Invalid UTF-8 in source: {}", e)))?
+        .map_err(|e| PluginApiError::parse(format!("Invalid UTF-8 in source: {}", e)))?
         .to_string();
     let value = value_node
         .utf8_text(source.as_bytes())
-        .map_err(|e| RefactoringError::Parse(format!("Invalid UTF-8 in source: {}", e)))?
+        .map_err(|e| PluginApiError::parse(format!("Invalid UTF-8 in source: {}", e)))?
         .to_string();
 
     Ok((name, value, declaration_statement))
@@ -470,18 +458,18 @@ pub fn analyze_extract_constant(
     line: u32,
     character: u32,
     _file_path: &str,
-) -> RefactoringResult<ExtractConstantAnalysis> {
+) -> PluginResult<ExtractConstantAnalysis> {
     let lines: Vec<&str> = source.lines().collect();
 
     // Get the line at cursor position
     let line_text = lines
         .get(line as usize)
-        .ok_or_else(|| RefactoringError::Analysis("Invalid line number".to_string()))?;
+        .ok_or_else(|| PluginApiError::invalid_input("Invalid line number".to_string()))?;
 
     // Find the literal at the cursor position
     let found_literal = find_csharp_literal_at_position(line_text, character as usize)
         .ok_or_else(|| {
-            RefactoringError::Analysis("No literal found at the specified location".to_string())
+            PluginApiError::invalid_input("No literal found at the specified location".to_string())
         })?;
 
     let literal_value = found_literal.0;
@@ -576,7 +564,7 @@ pub fn plan_extract_constant(
     character: u32,
     name: &str,
     file_path: &str,
-) -> RefactoringResult<EditPlan> {
+) -> PluginResult<EditPlan> {
     let analysis = analyze_extract_constant(source, line, character, file_path)?;
 
     // C# needs type inference and indentation
@@ -588,7 +576,7 @@ pub fn plan_extract_constant(
         .with_declaration_format(|name, value| {
             format!("{}private const {} {} = {};\n", const_indent, csharp_type, name, value)
         })
-        .map_err(|e| RefactoringError::Analysis(e))
+        .map_err(|e| PluginApiError::invalid_input(e))
 }
 
 /// Finds a C# literal at a given position in a line of code.
@@ -813,7 +801,7 @@ fn is_valid_csharp_literal_location(line: &str, pos: usize, len: usize) -> bool 
 /// Finds the appropriate insertion point for a constant declaration in C# code.
 ///
 /// The insertion point is at class level, after the opening brace of the class.
-fn find_csharp_insertion_point_for_constant(source: &str) -> RefactoringResult<CodeRange> {
+fn find_csharp_insertion_point_for_constant(source: &str) -> PluginResult<CodeRange> {
     let lines: Vec<&str> = source.lines().collect();
     let mut in_class = false;
 

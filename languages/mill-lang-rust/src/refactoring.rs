@@ -10,6 +10,7 @@ use mill_lang_common::{
     find_literal_occurrences, is_valid_code_literal_location, CodeRange, ExtractConstantAnalysis,
     ExtractConstantEditPlanBuilder, LineExtractor,
 };
+use mill_plugin_api::{PluginApiError, PluginResult};
 use std::collections::HashMap;
 
 /// Plan extract function refactoring for Rust
@@ -19,11 +20,11 @@ pub fn plan_extract_function(
     end_line: u32,
     function_name: &str,
     file_path: &str,
-) -> Result<EditPlan, Box<dyn std::error::Error>> {
+) -> PluginResult<EditPlan> {
     let lines: Vec<&str> = source.lines().collect();
 
     if start_line as usize >= lines.len() || end_line as usize >= lines.len() {
-        return Err("Line range out of bounds".into());
+        return Err(PluginApiError::invalid_input("Line range out of bounds"));
     }
 
     // Extract the selected lines
@@ -110,11 +111,11 @@ pub fn plan_extract_variable(
     end_col: u32,
     variable_name: Option<String>,
     file_path: &str,
-) -> Result<EditPlan, Box<dyn std::error::Error>> {
+) -> PluginResult<EditPlan> {
     let lines: Vec<&str> = source.lines().collect();
 
     if start_line as usize >= lines.len() || end_line as usize >= lines.len() {
-        return Err("Line range out of bounds".into());
+        return Err(PluginApiError::invalid_input("Line range out of bounds"));
     }
 
     // Extract the expression
@@ -537,7 +538,7 @@ fn is_valid_rust_literal_location(line: &str, pos: usize, len: usize) -> bool {
 
 
 /// Find the appropriate insertion point for a constant declaration in Rust code
-fn find_rust_insertion_point_for_constant(source: &str) -> Result<CodeRange, Box<dyn std::error::Error>> {
+fn find_rust_insertion_point_for_constant(source: &str) -> PluginResult<CodeRange> {
     let lines: Vec<&str> = source.lines().collect();
     let mut insertion_line = 0;
 
@@ -580,17 +581,17 @@ pub fn analyze_extract_constant(
     line: u32,
     character: u32,
     _file_path: &str,
-) -> Result<ExtractConstantAnalysis, Box<dyn std::error::Error>> {
+) -> PluginResult<ExtractConstantAnalysis> {
     let lines: Vec<&str> = source.lines().collect();
 
     // Get the line at cursor position
     let line_text = lines
         .get(line as usize)
-        .ok_or("Invalid line number")?;
+        .ok_or_else(|| PluginApiError::invalid_input("Invalid line number"))?;
 
     // Find the literal at the cursor position
     let found_literal = find_rust_literal_at_position(line_text, character as usize)
-        .ok_or("No literal found at the specified location")?;
+        .ok_or_else(|| PluginApiError::invalid_input("No literal found at the specified location"))?;
 
     let literal_value = found_literal.0;
     let is_valid_literal = !literal_value.is_empty();
@@ -622,7 +623,7 @@ pub fn plan_extract_constant(
     character: u32,
     name: &str,
     file_path: &str,
-) -> Result<EditPlan, Box<dyn std::error::Error>> {
+) -> PluginResult<EditPlan> {
     let analysis = analyze_extract_constant(source, line, character, file_path)?;
 
     // Rust needs explicit type annotation
@@ -632,7 +633,7 @@ pub fn plan_extract_constant(
         .with_declaration_format(|name, value| {
             format!("const {}: {} = {};\n", name, rust_type, value)
         })
-        .map_err(|e| e.into())
+        .map_err(|e| PluginApiError::invalid_input(e))
 }
 
 /// Plan inline variable refactoring for Rust
@@ -641,11 +642,11 @@ pub fn plan_inline_variable(
     variable_line: u32,
     variable_col: u32,
     file_path: &str,
-) -> Result<EditPlan, Box<dyn std::error::Error>> {
+) -> PluginResult<EditPlan> {
     let lines: Vec<&str> = source.lines().collect();
 
     if variable_line as usize >= lines.len() {
-        return Err("Line number out of bounds".into());
+        return Err(PluginApiError::invalid_input("Line number out of bounds"));
     }
 
     let line_text = lines[variable_line as usize];
@@ -654,11 +655,10 @@ pub fn plan_inline_variable(
     // Prevents catastrophic backtracking on fn declarations
     let trimmed = line_text.trim();
     if !trimmed.starts_with("let ") && !trimmed.starts_with("const ") {
-        return Err(format!(
+        return Err(PluginApiError::invalid_input(format!(
             "Not a `let` binding or `const` declaration at line {}. Only variables and constants can be inlined with this function.",
             variable_line + 1
-        )
-        .into());
+        )));
     }
 
     // Pattern matching for variable declarations and constants
@@ -667,16 +667,17 @@ pub fn plan_inline_variable(
 
     if let Some(captures) = var_pattern.captures(line_text) {
         let var_name = captures.get(1)
-            .ok_or_else(|| "Regex missing capture group 1 for variable name".to_string())?
+            .ok_or_else(|| PluginApiError::internal("Regex missing capture group 1 for variable name"))?
             .as_str();
         let initializer = captures.get(2)
-            .ok_or_else(|| "Regex missing capture group 2 for initializer".to_string())?
+            .ok_or_else(|| PluginApiError::internal("Regex missing capture group 2 for initializer"))?
             .as_str()
             .trim();
 
         // Find all usages of this variable in the rest of the source
         let mut edits = Vec::new();
-        let var_regex = constants::word_boundary_pattern(var_name)?;
+        let var_regex = constants::word_boundary_pattern(var_name)
+            .map_err(|e| PluginApiError::internal(format!("Failed to create regex pattern: {}", e)))?;
 
         // Replace all usages (except the declaration itself)
         for (idx, line) in lines.iter().enumerate() {
@@ -743,11 +744,10 @@ pub fn plan_inline_variable(
             },
         })
     } else {
-        Err(format!(
+        Err(PluginApiError::invalid_input(format!(
             "Could not find variable declaration at {}:{}",
             variable_line, variable_col
-        )
-        .into())
+        )))
     }
 }
 
