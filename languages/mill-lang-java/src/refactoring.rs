@@ -409,5 +409,548 @@ fn extract_java_var_info<'a>(
     Ok((name, value, declaration_node))
 }
 
+/// Analysis result for extract constant refactoring (Java)
+#[derive(Debug, Clone)]
+pub struct ExtractConstantAnalysis {
+    /// The literal value to extract
+    pub literal_value: String,
+    /// All locations where this same literal value appears
+    pub occurrence_ranges: Vec<CodeRange>,
+    /// Whether this is a valid literal to extract
+    pub is_valid_literal: bool,
+    /// Blocking reasons if extraction is not valid
+    pub blocking_reasons: Vec<String>,
+    /// Where to insert the constant declaration
+    pub insertion_point: CodeRange,
+}
+
+/// Analyzes source code to extract information about a literal value at a cursor position.
+///
+/// This analysis function identifies literals in Java source code and gathers information for
+/// constant extraction. It analyzes:
+/// - The literal value at the specified cursor position (number, string, boolean, or null)
+/// - All occurrences of that literal throughout the file
+/// - A suitable insertion point for the constant declaration (class level)
+/// - Whether extraction is valid and any blocking reasons
+///
+/// # Arguments
+/// * `source` - The Java source code
+/// * `line` - Zero-based line number where the cursor is positioned
+/// * `character` - Zero-based character offset within the line
+/// * `file_path` - Path to the file (used for error reporting)
+///
+/// # Returns
+/// * `Ok(ExtractConstantAnalysis)` - Analysis result with literal value, occurrence ranges,
+///                                     validation status, and insertion point
+/// * `Err(RefactoringError)` - If no literal is found at the cursor position
+pub(crate) fn analyze_extract_constant(
+    source: &str,
+    line: u32,
+    character: u32,
+    _file_path: &str,
+) -> RefactoringResult<ExtractConstantAnalysis> {
+    let lines: Vec<&str> = source.lines().collect();
+
+    // Get the line at cursor position
+    let line_text = lines
+        .get(line as usize)
+        .ok_or_else(|| RefactoringError::Analysis("Invalid line number".to_string()))?;
+
+    // Find the literal at the cursor position
+    let found_literal = find_java_literal_at_position(line_text, character as usize)
+        .ok_or_else(|| {
+            RefactoringError::Analysis("No literal found at the specified location".to_string())
+        })?;
+
+    let literal_value = found_literal.0;
+    let is_valid_literal = !literal_value.is_empty();
+    let blocking_reasons = if !is_valid_literal {
+        vec!["Could not extract literal at cursor position".to_string()]
+    } else {
+        vec![]
+    };
+
+    // Find all occurrences of this literal value in the source
+    let occurrence_ranges = find_java_literal_occurrences(source, &literal_value);
+
+    // Insertion point: after class declaration, at class level
+    let insertion_point = find_java_insertion_point_for_constant(source)?;
+
+    Ok(ExtractConstantAnalysis {
+        literal_value,
+        occurrence_ranges,
+        is_valid_literal,
+        blocking_reasons,
+        insertion_point,
+    })
+}
+
+/// Extracts a literal value to a named constant in Java code.
+///
+/// This refactoring operation replaces all occurrences of a literal (number, string, boolean, or null)
+/// with a named constant declaration at the class level, improving code maintainability.
+///
+/// # Arguments
+/// * `source` - The Java source code
+/// * `line` - Zero-based line number where the cursor is positioned
+/// * `character` - Zero-based character offset within the line
+/// * `name` - The constant name (must be SCREAMING_SNAKE_CASE)
+/// * `file_path` - Path to the file being refactored
+///
+/// # Returns
+/// * `Ok(EditPlan)` - The edit plan with constant declaration inserted at class level
+/// * `Err(RefactoringError)` - If the cursor is not on a literal or the name is invalid
+pub(crate) fn plan_extract_constant(
+    source: &str,
+    line: u32,
+    character: u32,
+    name: &str,
+    file_path: &str,
+) -> RefactoringResult<EditPlan> {
+    let analysis = analyze_extract_constant(source, line, character, file_path)?;
+
+    if !analysis.is_valid_literal {
+        return Err(RefactoringError::Analysis(format!(
+            "Cannot extract constant: {}",
+            analysis.blocking_reasons.join(", ")
+        )));
+    }
+
+    // Validate that the name is in SCREAMING_SNAKE_CASE format
+    if !is_screaming_snake_case(name) {
+        return Err(RefactoringError::Analysis(format!(
+            "Constant name '{}' must be in SCREAMING_SNAKE_CASE format. Valid examples: TAX_RATE, MAX_VALUE, API_KEY, DB_TIMEOUT_MS. Requirements: only uppercase letters (A-Z), digits (0-9), and underscores; must contain at least one uppercase letter; cannot start or end with underscore.",
+            name
+        )));
+    }
+
+    let mut edits = Vec::new();
+
+    // Determine constant type based on literal value
+    let java_type = infer_java_type(&analysis.literal_value);
+
+    // Generate the constant declaration (Java style: private static final)
+    let indent = get_indentation(source, analysis.insertion_point.start_line as usize);
+    let declaration = format!(
+        "{}private static final {} {} = {};\n",
+        indent, java_type, name, analysis.literal_value
+    );
+
+    edits.push(TextEdit {
+        file_path: None,
+        edit_type: EditType::Insert,
+        location: CommonCodeRange::new(
+            analysis.insertion_point.start_line + 1,
+            analysis.insertion_point.start_col,
+            analysis.insertion_point.end_line + 1,
+            analysis.insertion_point.end_col,
+        )
+        .into(),
+        original_text: String::new(),
+        new_text: declaration,
+        priority: 100,
+        description: format!(
+            "Extract '{}' into constant '{}'",
+            analysis.literal_value, name
+        ),
+    });
+
+    // Replace all occurrences of the literal with the constant name
+    for (idx, occurrence_range) in analysis.occurrence_ranges.iter().enumerate() {
+        let priority = 90_u32.saturating_sub(idx as u32);
+        edits.push(TextEdit {
+            file_path: None,
+            edit_type: EditType::Replace,
+            location: CommonCodeRange::new(
+                occurrence_range.start_line + 1,
+                occurrence_range.start_col,
+                occurrence_range.end_line + 1,
+                occurrence_range.end_col,
+            )
+            .into(),
+            original_text: analysis.literal_value.clone(),
+            new_text: name.to_string(),
+            priority,
+            description: format!(
+                "Replace occurrence {} of literal with constant '{}'",
+                idx + 1,
+                name
+            ),
+        });
+    }
+
+    Ok(EditPlan {
+        source_file: file_path.to_string(),
+        edits,
+        dependency_updates: Vec::new(),
+        validations: vec![ValidationRule {
+            rule_type: ValidationType::SyntaxCheck,
+            description: "Verify Java syntax is valid after constant extraction".to_string(),
+            parameters: HashMap::new(),
+        }],
+        metadata: EditPlanMetadata {
+            intent_name: "extract_constant".to_string(),
+            intent_arguments: serde_json::json!({
+                "literal": analysis.literal_value,
+                "constantName": name,
+                "occurrences": analysis.occurrence_ranges.len(),
+            }),
+            created_at: chrono::Utc::now(),
+            complexity: (analysis.occurrence_ranges.len().min(10)) as u8,
+            impact_areas: vec!["constant_extraction".to_string()],
+            consolidation: None,
+        },
+    })
+}
+
+/// Check if a name follows SCREAMING_SNAKE_CASE convention
+fn is_screaming_snake_case(name: &str) -> bool {
+    if name.is_empty() {
+        return false;
+    }
+
+    // Must not start or end with underscore
+    if name.starts_with('_') || name.ends_with('_') {
+        return false;
+    }
+
+    // Check each character
+    for ch in name.chars() {
+        match ch {
+            'A'..='Z' | '0'..='9' | '_' => continue,
+            _ => return false,
+        }
+    }
+
+    // Must have at least one uppercase letter
+    name.chars().any(|c| c.is_ascii_uppercase())
+}
+
+/// Finds a Java literal at a given position in a line of code
+fn find_java_literal_at_position(line_text: &str, col: usize) -> Option<(String, CodeRange)> {
+    // Try numeric literal first
+    if let Some((literal, range)) = find_java_numeric_literal(line_text, col) {
+        return Some((literal, range));
+    }
+
+    // Try string literal
+    if let Some((literal, range)) = find_java_string_literal(line_text, col) {
+        return Some((literal, range));
+    }
+
+    // Try boolean/null keywords
+    if let Some((literal, range)) = find_java_keyword_literal(line_text, col) {
+        return Some((literal, range));
+    }
+
+    None
+}
+
+/// Finds a numeric literal at a cursor position in Java code
+fn find_java_numeric_literal(line_text: &str, col: usize) -> Option<(String, CodeRange)> {
+    if col >= line_text.len() {
+        return None;
+    }
+
+    // Find the start of the number (handle negative sign)
+    let start = if col > 0 && line_text.chars().nth(col - 1) == Some('-') {
+        col.saturating_sub(1)
+    } else {
+        line_text[..col]
+            .rfind(|c: char| !c.is_ascii_digit() && c != '.' && c != '_')
+            .map(|p| p + 1)
+            .unwrap_or(0)
+    };
+
+    // Adjust start if we found a leading minus sign
+    let actual_start = if start > 0 && line_text.chars().nth(start - 1) == Some('-') {
+        start - 1
+    } else {
+        start
+    };
+
+    // Find the end of the number
+    let end = col
+        + line_text[col..]
+            .find(|c: char| !c.is_ascii_digit() && c != '.' && c != '_' && c != 'f' && c != 'F' && c != 'L' && c != 'l' && c != 'd' && c != 'D')
+            .unwrap_or(line_text.len() - col);
+
+    if actual_start < end && end <= line_text.len() {
+        let text = &line_text[actual_start..end];
+        // Validate: must contain at least one digit
+        if text.chars().any(|c| c.is_ascii_digit()) {
+            return Some((
+                text.to_string(),
+                CodeRange {
+                    start_line: 0,
+                    start_col: actual_start as u32,
+                    end_line: 0,
+                    end_col: end as u32,
+                },
+            ));
+        }
+    }
+
+    None
+}
+
+/// Finds a string literal at a cursor position in Java code
+fn find_java_string_literal(line_text: &str, col: usize) -> Option<(String, CodeRange)> {
+    if col >= line_text.len() {
+        return None;
+    }
+
+    // Look for opening quote before cursor
+    for (i, ch) in line_text[..col].char_indices().rev() {
+        if ch == '"' {
+            // Find closing quote after cursor
+            for (j, ch2) in line_text[col..].char_indices() {
+                if ch2 == '"' {
+                    let end = col + j + 1;
+                    if end <= line_text.len() {
+                        let literal = line_text[i..end].to_string();
+                        return Some((
+                            literal,
+                            CodeRange {
+                                start_line: 0,
+                                start_col: i as u32,
+                                end_line: 0,
+                                end_col: end as u32,
+                            },
+                        ));
+                    }
+                }
+            }
+            break;
+        }
+    }
+
+    None
+}
+
+/// Finds a Java keyword literal (true, false, or null) at a cursor position
+fn find_java_keyword_literal(line_text: &str, col: usize) -> Option<(String, CodeRange)> {
+    let keywords = ["true", "false", "null"];
+
+    for keyword in &keywords {
+        // Try to match keyword at or near cursor
+        for start in col
+            .saturating_sub(keyword.len())
+            ..=col.min(line_text.len().saturating_sub(keyword.len()))
+        {
+            if start + keyword.len() <= line_text.len() {
+                if &line_text[start..start + keyword.len()] == *keyword {
+                    // Check word boundaries
+                    let before_ok = start == 0
+                        || !line_text[..start]
+                            .ends_with(|c: char| c.is_alphanumeric() || c == '_');
+                    let after_ok = start + keyword.len() == line_text.len()
+                        || !line_text[start + keyword.len()..]
+                            .starts_with(|c: char| c.is_alphanumeric() || c == '_');
+
+                    if before_ok && after_ok {
+                        return Some((
+                            keyword.to_string(),
+                            CodeRange {
+                                start_line: 0,
+                                start_col: start as u32,
+                                end_line: 0,
+                                end_col: (start + keyword.len()) as u32,
+                            },
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
+/// Finds all valid occurrences of a literal value in Java source code
+fn find_java_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange> {
+    let mut occurrences = Vec::new();
+    let lines: Vec<&str> = source.lines().collect();
+
+    for (line_idx, line_text) in lines.iter().enumerate() {
+        let mut start_pos = 0;
+        while let Some(pos) = line_text[start_pos..].find(literal_value) {
+            let col = start_pos + pos;
+
+            // Check that this is a valid literal location (not in comment/string)
+            if is_valid_java_literal_location(line_text, col, literal_value.len()) {
+                occurrences.push(CodeRange {
+                    start_line: line_idx as u32,
+                    start_col: col as u32,
+                    end_line: line_idx as u32,
+                    end_col: (col + literal_value.len()) as u32,
+                });
+            }
+
+            start_pos = col + 1;
+        }
+    }
+
+    occurrences
+}
+
+/// Validates whether a position in source code is a valid location for a literal
+fn is_valid_java_literal_location(line: &str, pos: usize, _len: usize) -> bool {
+    // Count quotes before position to determine if we're inside a string literal
+    let before = &line[..pos];
+    let double_quotes = before.matches('"').count();
+
+    // If odd number of quotes appear before the position, we're inside a string literal
+    if double_quotes % 2 == 1 {
+        return false;
+    }
+
+    // Check for single-line comment marker (//). Anything after it is a comment.
+    if let Some(comment_pos) = line.find("//") {
+        if pos > comment_pos {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Finds the appropriate insertion point for a constant declaration in Java code
+fn find_java_insertion_point_for_constant(source: &str) -> RefactoringResult<CodeRange> {
+    let lines: Vec<&str> = source.lines().collect();
+    let mut insertion_line = 0;
+    let mut found_class = false;
+
+    for (idx, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        let line_idx = idx as u32;
+
+        // Look for class declaration
+        if trimmed.contains("class ") && !found_class {
+            found_class = true;
+            // Look for opening brace
+            if trimmed.contains('{') {
+                insertion_line = line_idx + 1;
+                break;
+            }
+        } else if found_class && trimmed.contains('{') {
+            insertion_line = line_idx + 1;
+            break;
+        }
+    }
+
+    Ok(CodeRange {
+        start_line: insertion_line,
+        start_col: 0,
+        end_line: insertion_line,
+        end_col: 0,
+    })
+}
+
+/// Infer Java type from literal value
+fn infer_java_type(literal_value: &str) -> &'static str {
+    if literal_value.starts_with('"') {
+        "String"
+    } else if literal_value == "true" || literal_value == "false" {
+        "boolean"
+    } else if literal_value == "null" {
+        "Object"
+    } else if literal_value.contains('.') || literal_value.ends_with('f') || literal_value.ends_with('F') {
+        if literal_value.ends_with('f') || literal_value.ends_with('F') {
+            "float"
+        } else {
+            "double"
+        }
+    } else if literal_value.ends_with('L') || literal_value.ends_with('l') {
+        "long"
+    } else {
+        "int"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_screaming_snake_case() {
+        assert!(is_screaming_snake_case("TAX_RATE"));
+        assert!(is_screaming_snake_case("MAX_VALUE"));
+        assert!(is_screaming_snake_case("A"));
+        assert!(is_screaming_snake_case("PI"));
+
+        assert!(!is_screaming_snake_case(""));
+        assert!(!is_screaming_snake_case("_TAX_RATE")); // starts with underscore
+        assert!(!is_screaming_snake_case("TAX_RATE_")); // ends with underscore
+        assert!(!is_screaming_snake_case("tax_rate")); // lowercase
+        assert!(!is_screaming_snake_case("TaxRate")); // camelCase
+        assert!(!is_screaming_snake_case("tax-rate")); // kebab-case
+    }
+
+    #[test]
+    fn test_plan_extract_constant_valid_number() {
+        let source = r#"
+public class Main {
+    public void method() {
+        int x = 42;
+        int y = 42;
+    }
+}
+"#;
+        let result = plan_extract_constant(source, 3, 16, "ANSWER", "Main.java");
+        assert!(
+            result.is_ok(),
+            "Should extract numeric literal successfully: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn test_plan_extract_constant_string() {
+        let source = r#"
+public class Main {
+    public void method() {
+        String msg = "hello";
+        String greeting = "hello";
+    }
+}
+"#;
+        // Column 22 is inside the string literal "hello"
+        let result = plan_extract_constant(source, 3, 22, "GREETING_MSG", "Main.java");
+        assert!(
+            result.is_ok(),
+            "Should extract string literal: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn test_plan_extract_constant_boolean() {
+        let source = r#"
+public class Main {
+    public void method() {
+        boolean debug = true;
+        boolean verbose = true;
+    }
+}
+"#;
+        let result = plan_extract_constant(source, 3, 24, "DEBUG_MODE", "Main.java");
+        assert!(result.is_ok(), "Should extract boolean literal");
+    }
+
+    #[test]
+    fn test_plan_extract_constant_invalid_name() {
+        let source = r#"
+public class Main {
+    public void method() {
+        int x = 42;
+    }
+}
+"#;
+        let result = plan_extract_constant(source, 3, 16, "answer", "Main.java");
+        assert!(result.is_err(), "Should reject lowercase name");
+    }
+}
+
 // Refactoring tests: Core operations (extract/inline) tested in other languages (C++/Python)
 // Kept: Java-specific refactoring tests would go here (if any)
