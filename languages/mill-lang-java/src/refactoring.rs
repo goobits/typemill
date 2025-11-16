@@ -8,6 +8,7 @@
 use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
+use mill_lang_common::find_literal_occurrences;
 use mill_lang_common::is_escaped;
 use mill_lang_common::is_screaming_snake_case;
 use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
@@ -473,7 +474,15 @@ pub(crate) fn analyze_extract_constant(
     };
 
     // Find all occurrences of this literal value in the source
-    let occurrence_ranges = find_java_literal_occurrences(source, &literal_value);
+    let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_java_literal_location)
+        .into_iter()
+        .map(|r| CodeRange {
+            start_line: r.start_line,
+            start_col: r.start_col,
+            end_line: r.end_line,
+            end_col: r.end_col,
+        })
+        .collect();
 
     // Insertion point: after class declaration, at class level
     let insertion_point = find_java_insertion_point_for_constant(source)?;
@@ -817,33 +826,6 @@ fn find_java_keyword_literal(line_text: &str, col: usize) -> Option<(String, Cod
     }
 
     None
-}
-
-/// Finds all valid occurrences of a literal value in Java source code
-fn find_java_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange> {
-    let mut occurrences = Vec::new();
-    let lines: Vec<&str> = source.lines().collect();
-
-    for (line_idx, line_text) in lines.iter().enumerate() {
-        let mut start_pos = 0;
-        while let Some(pos) = line_text[start_pos..].find(literal_value) {
-            let col = start_pos + pos;
-
-            // Check that this is a valid literal location (not in comment/string)
-            if is_valid_java_literal_location(line_text, col, literal_value.len()) {
-                occurrences.push(CodeRange {
-                    start_line: line_idx as u32,
-                    start_col: col as u32,
-                    end_line: line_idx as u32,
-                    end_col: (col + literal_value.len()) as u32,
-                });
-            }
-
-            start_pos = col + 1;
-        }
-    }
-
-    occurrences
 }
 
 /// Validates whether a position in source code is a valid location for a literal

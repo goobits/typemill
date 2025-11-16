@@ -20,31 +20,11 @@ use mill_plugin_api::PluginResult;
 use mill_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
-use mill_lang_common::{is_escaped, is_screaming_snake_case};
+use mill_lang_common::{find_literal_occurrences, is_escaped, is_screaming_snake_case, CodeRange};
 use serde_json::json;
 use std::collections::HashMap;
 
 use crate::constants::INT_VAR_DECL_PATTERN;
-
-/// Code range for refactoring operations
-#[derive(Debug, Clone, Copy)]
-pub struct CodeRange {
-    pub start_line: u32,
-    pub start_col: u32,
-    pub end_line: u32,
-    pub end_col: u32,
-}
-
-impl From<CodeRange> for EditLocation {
-    fn from(range: CodeRange) -> Self {
-        EditLocation {
-            start_line: range.start_line,
-            start_column: range.start_col,
-            end_line: range.end_line,
-            end_column: range.end_col,
-        }
-    }
-}
 
 /// Analysis result for extract constant refactoring (C)
 #[derive(Debug, Clone)]
@@ -369,7 +349,7 @@ pub fn analyze_extract_constant(
     };
 
     // Find all occurrences of this literal value in the source
-    let occurrence_ranges = find_c_literal_occurrences(source, &literal_value);
+    let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_c_literal_location);
 
     // Insertion point: after includes, at the top of the file
     let insertion_point = find_c_insertion_point_for_constant(source)?;
@@ -647,45 +627,6 @@ fn is_valid_c_number(text: &str) -> bool {
     }
 }
 
-/// Finds all valid occurrences of a literal value in C source code.
-///
-/// This function performs a comprehensive search for a literal value throughout the source code,
-/// with safeguards to avoid replacing literals in contexts where they shouldn't be changed:
-/// - Literals inside string content (between quotes)
-/// - Literals inside comments (after //)
-///
-/// # Arguments
-/// * `source` - The complete source code
-/// * `literal_value` - The literal value to search for (e.g., "42", "3.14")
-///
-/// # Returns
-/// A vector of `CodeRange` objects representing each valid occurrence found.
-fn find_c_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange> {
-    let mut occurrences = Vec::new();
-    let lines: Vec<&str> = source.lines().collect();
-
-    for (line_idx, line_text) in lines.iter().enumerate() {
-        let mut start_pos = 0;
-        while let Some(pos) = line_text[start_pos..].find(literal_value) {
-            let col = start_pos + pos;
-
-            // Check that this is a valid literal location (not in comment/string)
-            if is_valid_c_literal_location(line_text, col, literal_value.len()) {
-                occurrences.push(CodeRange {
-                    start_line: line_idx as u32,
-                    start_col: col as u32,
-                    end_line: line_idx as u32,
-                    end_col: (col + literal_value.len()) as u32,
-                });
-            }
-
-            start_pos = col + 1;
-        }
-    }
-
-    occurrences
-}
-
 
 /// Validates whether a position in source code is a valid location for a literal.
 ///
@@ -817,7 +758,7 @@ mod tests {
     #[test]
     fn test_find_c_literal_occurrences() {
         let source = "int x = 42;\nint y = 42;\nint z = 100;";
-        let occurrences = find_c_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_c_literal_location);
         assert_eq!(occurrences.len(), 2);
         assert_eq!(occurrences[0].start_line, 0);
         assert_eq!(occurrences[1].start_line, 1);
@@ -1011,7 +952,7 @@ int main() {
         let source = r#"char* msg = "The answer is 42";
 int x = 42;
 int y = 42;"#;
-        let occurrences = find_c_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_c_literal_location);
 
         // Should find only 2 occurrences (not the one inside the string)
         assert_eq!(occurrences.len(), 2, "Should skip literal inside string");
@@ -1024,7 +965,7 @@ int y = 42;"#;
         let source = r#"// The magic number is 42
 int x = 42;
 int y = 42; // another 42 here"#;
-        let occurrences = find_c_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_c_literal_location);
 
         // Should find only 2 occurrences (not the ones in comments)
         assert_eq!(occurrences.len(), 2, "Should skip literals in comments");
@@ -1037,7 +978,7 @@ int y = 42; // another 42 here"#;
         let source = r#"/* Magic number: 42 */
 int x = /* not 42 */ 42;
 int y = 42;"#;
-        let occurrences = find_c_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_c_literal_location);
 
         // Should find only 2 occurrences (not the ones in block comments)
         assert_eq!(occurrences.len(), 2, "Should skip literals in block comments");

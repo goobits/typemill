@@ -18,6 +18,7 @@ use mill_foundation::protocol::{
 use mill_lang_common::is_screaming_snake_case;
 use mill_lang_common::is_escaped;
 use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
+use mill_lang_common::refactoring::find_literal_occurrences;
 use mill_plugin_api::{PluginApiError, PluginResult, RefactoringProvider};
 use std::collections::HashMap;
 use tree_sitter::{Node, Parser, Point};
@@ -437,7 +438,7 @@ fn plan_extract_constant_impl(
     };
 
     // Find all occurrences of this literal
-    let occurrence_ranges = find_literal_occurrences(source, &literal_value);
+    let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_literal_location);
 
     if occurrence_ranges.is_empty() {
         return Err("No occurrences of literal found".to_string());
@@ -509,34 +510,6 @@ fn plan_extract_constant_impl(
 }
 
 // Helper functions
-
-/// Finds all occurrences of a literal value in the source code
-fn find_literal_occurrences(source: &str, literal_value: &str) -> Vec<CommonCodeRange> {
-    let mut occurrences = Vec::new();
-    let lines: Vec<&str> = source.lines().collect();
-
-    for (line_idx, line_text) in lines.iter().enumerate() {
-        let mut start_pos = 0;
-        while let Some(pos) = line_text[start_pos..].find(literal_value) {
-            let col = start_pos + pos;
-
-            // Validate that this is a valid literal location (not in string or comment)
-            if is_valid_literal_location(line_text, col, literal_value.len()) {
-                occurrences.push(CommonCodeRange::new(
-                    line_idx as u32 + 1,
-                    col as u32,
-                    line_idx as u32 + 1,
-                    (col + literal_value.len()) as u32,
-                ));
-            }
-
-            start_pos = col + 1;
-        }
-    }
-
-    occurrences
-}
-
 
 /// Checks if a position in the line is a valid literal location
 fn is_valid_literal_location(line: &str, pos: usize, len: usize) -> bool {
@@ -1253,10 +1226,10 @@ int x = 42;
         let source = r#"int x = 42;
 int y = 42;
 int z = 100;"#;
-        let occurrences = find_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_literal_location);
         assert_eq!(occurrences.len(), 2);
-        assert_eq!(occurrences[0].start_line, 1);
-        assert_eq!(occurrences[1].start_line, 2);
+        assert_eq!(occurrences[0].start_line, 0);
+        assert_eq!(occurrences[1].start_line, 1);
     }
 
     // ========== Edge Case Tests for Extract Constant (13 tests) ==========

@@ -339,6 +339,103 @@ fn gcd(mut a: usize, mut b: usize) -> usize {
     a
 }
 
+/// Finds all occurrences of a literal value in source code.
+///
+/// This is a generic implementation that works across all languages by accepting
+/// a validation callback to determine whether each match is a valid literal location
+/// (i.e., not inside strings, comments, or other invalid contexts).
+///
+/// # Algorithm
+/// 1. Iterate through each line of source code
+/// 2. Find all substring matches of the literal value
+/// 3. For each match, call the validation function to check if it's a valid location
+/// 4. Collect all valid matches as CodeRange structures
+///
+/// # Arguments
+/// * `source` - The source code to search
+/// * `literal_value` - The literal value to find (e.g., "42", "\"hello\"", "true")
+/// * `is_valid_location` - Validation callback that takes (line_text, column, literal_length)
+///   and returns true if the location is valid for replacement
+///
+/// # Returns
+/// A vector of CodeRange structures representing all valid occurrences
+///
+/// # Performance Note
+/// Currently advances by 1 character after each match to find overlapping occurrences.
+/// This is O(n*m) where n is source length and m is number of matches.
+/// Could be optimized to advance by literal_value.len() if overlapping matches are not needed.
+///
+/// # Example
+/// ```
+/// use mill_lang_common::refactoring::{find_literal_occurrences, CodeRange};
+///
+/// let source = "const x = 42; // The answer is 42";
+/// let literal = "42";
+///
+/// // Define a simple validator (in practice, this would check for strings/comments)
+/// let is_valid = |line: &str, col: usize, _len: usize| {
+///     // Simplified: just check we're not in a comment
+///     let before = &line[..col];
+///     !before.contains("//")
+/// };
+///
+/// let occurrences = find_literal_occurrences(source, literal, is_valid);
+/// assert_eq!(occurrences.len(), 1); // Only the first 42, not the one in comment
+/// assert_eq!(occurrences[0].start_col, 10);
+/// ```
+///
+/// # Language-Specific Usage
+/// Each language plugin should provide its own `is_valid_literal_location` function
+/// that understands the language's syntax for strings, comments, and other contexts.
+///
+/// For example:
+/// ```rust
+/// fn is_valid_typescript_location(line: &str, pos: usize, len: usize) -> bool {
+///     // Check for strings with ", ', `
+///     // Check for comments with //, /* */
+///     // Check for template literal expressions
+///     // etc.
+/// }
+///
+/// let occurrences = find_literal_occurrences(source, literal, is_valid_typescript_location);
+/// ```
+pub fn find_literal_occurrences<F>(
+    source: &str,
+    literal_value: &str,
+    is_valid_location: F,
+) -> Vec<CodeRange>
+where
+    F: Fn(&str, usize, usize) -> bool,
+{
+    let mut occurrences = Vec::new();
+    let lines: Vec<&str> = source.lines().collect();
+
+    // Iterate through each line to find all potential matches
+    for (line_idx, line_text) in lines.iter().enumerate() {
+        let mut start_pos = 0;
+        while let Some(pos) = line_text[start_pos..].find(literal_value) {
+            let col = start_pos + pos;
+
+            // Validate that this match is not inside a string literal, comment, or other invalid context
+            if is_valid_location(line_text, col, literal_value.len()) {
+                occurrences.push(CodeRange {
+                    start_line: line_idx as u32,
+                    start_col: col as u32,
+                    end_line: line_idx as u32,
+                    end_col: (col + literal_value.len()) as u32,
+                });
+            }
+
+            // Advance position to continue searching
+            // Note: Currently advances by 1 to find overlapping matches
+            // Could be optimized to advance by literal_value.len() if overlapping not needed
+            start_pos = col + 1;
+        }
+    }
+
+    occurrences
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -394,5 +491,108 @@ mod tests {
         assert_eq!(LineExtractor::get_indentation(source, 0), 4);
         assert_eq!(LineExtractor::get_indentation(source, 1), 0);
         assert_eq!(LineExtractor::get_indentation(source, 2), 2);
+    }
+
+    #[test]
+    fn test_find_literal_occurrences_basic() {
+        let source = "const x = 42;\nlet y = 42;";
+        let literal = "42";
+
+        // Simple validator that accepts everything
+        let always_valid = |_: &str, _: usize, _: usize| true;
+
+        let occurrences = find_literal_occurrences(source, literal, always_valid);
+        assert_eq!(occurrences.len(), 2);
+
+        // First occurrence
+        assert_eq!(occurrences[0].start_line, 0);
+        assert_eq!(occurrences[0].start_col, 10);
+        assert_eq!(occurrences[0].end_line, 0);
+        assert_eq!(occurrences[0].end_col, 12);
+
+        // Second occurrence
+        assert_eq!(occurrences[1].start_line, 1);
+        assert_eq!(occurrences[1].start_col, 8);
+    }
+
+    #[test]
+    fn test_find_literal_occurrences_with_validation() {
+        let source = r#"const x = 42; // The answer is 42"#;
+        let literal = "42";
+
+        // Validator that rejects anything after '//'
+        let not_in_comment = |line: &str, col: usize, _len: usize| {
+            let before = &line[..col];
+            !before.contains("//")
+        };
+
+        let occurrences = find_literal_occurrences(source, literal, not_in_comment);
+        assert_eq!(occurrences.len(), 1); // Only first occurrence, not the one in comment
+        assert_eq!(occurrences[0].start_col, 10);
+    }
+
+    #[test]
+    fn test_find_literal_occurrences_string_literal() {
+        let source = r#"const msg = "The value is 42";"#;
+        let literal = "42";
+
+        // Validator that rejects anything inside double quotes
+        let not_in_string = |line: &str, col: usize, _len: usize| {
+            let before = &line[..col];
+            let quote_count = before.chars().filter(|&c| c == '"').count();
+            quote_count % 2 == 0 // Even number of quotes = outside string
+        };
+
+        let occurrences = find_literal_occurrences(source, literal, not_in_string);
+        assert_eq!(occurrences.len(), 0); // Should find nothing (42 is inside string)
+    }
+
+    #[test]
+    fn test_find_literal_occurrences_no_matches() {
+        let source = "const x = 100;\nlet y = 200;";
+        let literal = "42";
+
+        let always_valid = |_: &str, _: usize, _: usize| true;
+
+        let occurrences = find_literal_occurrences(source, literal, always_valid);
+        assert_eq!(occurrences.len(), 0);
+    }
+
+    #[test]
+    fn test_find_literal_occurrences_empty_source() {
+        let source = "";
+        let literal = "42";
+
+        let always_valid = |_: &str, _: usize, _: usize| true;
+
+        let occurrences = find_literal_occurrences(source, literal, always_valid);
+        assert_eq!(occurrences.len(), 0);
+    }
+
+    #[test]
+    fn test_find_literal_occurrences_multiple_per_line() {
+        let source = "const x = 42, y = 42, z = 42;";
+        let literal = "42";
+
+        let always_valid = |_: &str, _: usize, _: usize| true;
+
+        let occurrences = find_literal_occurrences(source, literal, always_valid);
+        assert_eq!(occurrences.len(), 3);
+        assert_eq!(occurrences[0].start_col, 10);
+        assert_eq!(occurrences[1].start_col, 18);
+        assert_eq!(occurrences[2].start_col, 26);
+    }
+
+    #[test]
+    fn test_find_literal_occurrences_string_value() {
+        let source = r#"const x = "hello"; const y = "hello";"#;
+        let literal = r#""hello""#;
+
+        let always_valid = |_: &str, _: usize, _: usize| true;
+
+        let occurrences = find_literal_occurrences(source, literal, always_valid);
+        assert_eq!(occurrences.len(), 2);
+        assert_eq!(occurrences[0].start_col, 10);
+        assert_eq!(occurrences[1].start_col, 29);
     }
 }

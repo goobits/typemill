@@ -2,7 +2,9 @@ use lazy_static::lazy_static;
 use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
-use mill_lang_common::{count_unescaped_quotes, is_escaped, is_screaming_snake_case};
+use mill_lang_common::{
+    count_unescaped_quotes, find_literal_occurrences, is_escaped, is_screaming_snake_case,
+};
 use mill_plugin_api::{PluginApiError, PluginResult};
 use regex::Regex;
 
@@ -314,7 +316,8 @@ pub fn plan_extract_constant(
         })?;
 
     // Find all occurrences of this literal value in the source
-    let occurrence_ranges = find_swift_literal_occurrences(source, &literal_value);
+    let occurrence_ranges =
+        find_literal_occurrences(source, &literal_value, is_valid_swift_literal_location);
 
     if occurrence_ranges.is_empty() {
         return Err(PluginApiError::invalid_input(
@@ -342,16 +345,16 @@ pub fn plan_extract_constant(
     });
 
     // Replace all occurrences of the literal with the constant name
-    for (idx, (start_line, start_col, end_col)) in occurrence_ranges.iter().enumerate() {
+    for (idx, range) in occurrence_ranges.iter().enumerate() {
         let priority = 90_u32.saturating_sub(idx as u32);
         edits.push(TextEdit {
             file_path: Some(file_path.to_string()),
             edit_type: EditType::Replace,
             location: mill_foundation::protocol::EditLocation {
-                start_line: *start_line,
-                start_column: *start_col,
-                end_line: *start_line,
-                end_column: *end_col,
+                start_line: range.start_line,
+                start_column: range.start_col,
+                end_line: range.end_line,
+                end_column: range.end_col,
             },
             original_text: literal_value.clone(),
             new_text: name.to_string(),
@@ -659,32 +662,6 @@ fn find_swift_boolean_literal(line_text: &str, col: usize) -> Option<(String, u3
     }
 
     None
-}
-
-/// Finds all valid occurrences of a literal value in Swift source code.
-fn find_swift_literal_occurrences(source: &str, literal_value: &str) -> Vec<(u32, u32, u32)> {
-    let mut occurrences = Vec::new();
-    let lines: Vec<&str> = source.lines().collect();
-
-    for (line_idx, line_text) in lines.iter().enumerate() {
-        let mut start_pos = 0;
-        while let Some(pos) = line_text[start_pos..].find(literal_value) {
-            let col = start_pos + pos;
-
-            // Validate that this match is not inside a string literal or comment
-            if is_valid_swift_literal_location(line_text, col, literal_value.len()) {
-                occurrences.push((
-                    line_idx as u32,
-                    col as u32,
-                    (col + literal_value.len()) as u32,
-                ));
-            }
-
-            start_pos = col + 1;
-        }
-    }
-
-    occurrences
 }
 
 /// Validates whether a position in source code is a valid location for a literal.

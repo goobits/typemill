@@ -9,6 +9,7 @@ use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::{
+    refactoring::find_literal_occurrences,
     validation::{count_unescaped_quotes, is_escaped, is_screaming_snake_case},
     CodeRange,
 };
@@ -507,7 +508,7 @@ pub fn analyze_extract_constant(
     };
 
     // Find all occurrences of this literal value in the source
-    let occurrence_ranges = find_csharp_literal_occurrences(source, &literal_value);
+    let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_csharp_literal_location);
 
     // Insertion point: at class level (after opening brace of class)
     let insertion_point = find_csharp_insertion_point_for_constant(source)?;
@@ -839,33 +840,6 @@ fn find_csharp_keyword_literal(line_text: &str, col: usize) -> Option<(String, C
     None
 }
 
-/// Finds all valid occurrences of a literal value in C# source code.
-fn find_csharp_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange> {
-    let mut occurrences = Vec::new();
-    let lines: Vec<&str> = source.lines().collect();
-
-    for (line_idx, line_text) in lines.iter().enumerate() {
-        let mut start_pos = 0;
-        while let Some(pos) = line_text[start_pos..].find(literal_value) {
-            let col = start_pos + pos;
-
-            // Check that this is a valid literal location (not in comment/string)
-            if is_valid_csharp_literal_location(line_text, col, literal_value.len()) {
-                occurrences.push(CodeRange {
-                    start_line: line_idx as u32,
-                    start_col: col as u32,
-                    end_line: line_idx as u32,
-                    end_col: (col + literal_value.len()) as u32,
-                });
-            }
-
-            start_pos = col + 1;
-        }
-    }
-
-    occurrences
-}
-
 /// Validates whether a position in source code is a valid location for a literal.
 fn is_valid_csharp_literal_location(line: &str, pos: usize, _len: usize) -> bool {
     // Count unescaped quotes before position to determine if we're inside a string literal.
@@ -1060,7 +1034,7 @@ class Program
     #[test]
     fn test_find_csharp_literal_occurrences() {
         let source = "var x = 42;\nvar y = 42;\nvar z = 100;";
-        let occurrences = find_csharp_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_csharp_literal_location);
         assert_eq!(occurrences.len(), 2);
         assert_eq!(occurrences[0].start_line, 0);
         assert_eq!(occurrences[1].start_line, 1);
@@ -1361,7 +1335,7 @@ class Program
         let source = r#"const int TAX_RATE = 8;
 string msg = "Rate is \"8\"";
 int value = 8;"#;
-        let occurrences = find_csharp_literal_occurrences(source, "8");
+        let occurrences = find_literal_occurrences(source, "8", is_valid_csharp_literal_location);
         // Should find 2 occurrences (lines 0 and 2), but not the one inside the string
         assert_eq!(occurrences.len(), 2, "Should find exactly 2 valid occurrences");
         assert_eq!(occurrences[0].start_line, 0);

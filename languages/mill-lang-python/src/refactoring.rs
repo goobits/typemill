@@ -15,8 +15,8 @@ use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::{
-    count_unescaped_quotes, is_screaming_snake_case, ExtractVariableAnalysis, ExtractableFunction,
-    InlineVariableAnalysis, LineExtractor,
+    count_unescaped_quotes, find_literal_occurrences, is_screaming_snake_case,
+    ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis, LineExtractor,
 };
 use std::collections::HashMap;
 
@@ -540,7 +540,7 @@ pub struct ExtractConstantAnalysis {
 ///    - `find_python_numeric_literal()` - Numbers (including floats and negative values)
 ///    - `find_python_string_literal()` - Strings (single/double/triple quoted)
 ///    - `find_python_keyword_literal()` - Booleans and None
-/// 3. Calls `find_python_literal_occurrences()` to identify all matching literals
+/// 3. Calls `find_literal_occurrences()` to identify all matching literals
 /// 4. Validates that the found literal is not empty
 /// 5. Sets insertion point using `find_python_insertion_point_for_constant()` which respects
 ///    module-level structure: placed after imports and module docstring
@@ -574,7 +574,7 @@ pub(crate) fn analyze_extract_constant(
     };
 
     // Find all occurrences of this literal value in the source
-    let occurrence_ranges = find_python_literal_occurrences(source, &literal_value);
+    let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_python_literal_location);
 
     // Insertion point: after imports and docstring, at the top of the file
     let insertion_point = find_python_insertion_point_for_constant(source)?;
@@ -1020,70 +1020,6 @@ fn find_python_keyword_literal(line_text: &str, col: usize) -> Option<(String, C
     None
 }
 
-/// Finds all valid occurrences of a literal value in Python source code.
-///
-/// This function performs a comprehensive search for a literal value throughout the source code,
-/// with safeguards to avoid replacing literals in contexts where they shouldn't be changed:
-/// - Literals inside string content (between quotes)
-/// - Literals inside comments (after `#`)
-///
-/// # Algorithm
-/// 1. Split source into lines
-/// 2. For each line, find all matches of the literal value using string search
-/// 3. Validate each match using `is_valid_python_literal_location()` to exclude false positives
-/// 4. Create a `CodeRange` for each valid occurrence
-///
-/// # Arguments
-/// * `source` - The complete source code
-/// * `literal_value` - The literal value to search for (e.g., "0.08", "True", "None")
-///
-/// # Returns
-/// A vector of `CodeRange` objects representing each valid occurrence found.
-/// If the literal value doesn't appear in the code, an empty vector is returned.
-///
-/// # Examples
-/// ```python
-/// # Source:
-/// TAX_RATE = 0.08
-/// discount = 0.08
-/// description = "Rate is 0.08"  # Won't be matched
-///
-/// # find_python_literal_occurrences(source, "0.08") returns 2 CodeRanges
-/// # (first two lines only, not the one in the string)
-/// ```
-///
-/// # Called By
-/// - `analyze_extract_constant()` - Collects all occurrences for replacement
-///
-/// # Related
-/// - `is_valid_python_literal_location()` - Validates that an occurrence is valid for replacement
-#[allow(dead_code)]
-fn find_python_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange> {
-    let mut occurrences = Vec::new();
-    let lines: Vec<&str> = source.lines().collect();
-
-    for (line_idx, line_text) in lines.iter().enumerate() {
-        let mut start_pos = 0;
-        while let Some(pos) = line_text[start_pos..].find(literal_value) {
-            let col = start_pos + pos;
-
-            // Check that this is a valid literal location (not in comment/string)
-            if is_valid_python_literal_location(line_text, col, literal_value.len()) {
-                occurrences.push(CodeRange {
-                    start_line: line_idx as u32,
-                    start_col: col as u32,
-                    end_line: line_idx as u32,
-                    end_col: (col + literal_value.len()) as u32,
-                });
-            }
-
-            start_pos = col + 1;
-        }
-    }
-
-    occurrences
-}
-
 /// Counts unescaped quotes of a specific type in a string slice.
 ///
 /// This helper function properly handles escaped quotes by tracking backslash sequences.
@@ -1151,7 +1087,7 @@ fn find_python_literal_occurrences(source: &str, literal_value: &str) -> Vec<Cod
 /// ```
 ///
 /// # Called By
-/// - `find_python_literal_occurrences()` - Validates matches before including them in results
+/// - `find_literal_occurrences()` - Validates matches before including them in results
 #[allow(dead_code)]
 fn is_valid_python_literal_location(line: &str, pos: usize, _len: usize) -> bool {
     // Count unescaped quotes before position to determine if we're inside a string literal.
@@ -1380,7 +1316,7 @@ z = x * 2"#;
     #[test]
     fn test_find_python_literal_occurrences() {
         let source = "x = 42\ny = 42\nz = 100";
-        let occurrences = find_python_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_python_literal_location);
         assert_eq!(occurrences.len(), 2);
         assert_eq!(occurrences[0].start_line, 0);
         assert_eq!(occurrences[1].start_line, 1);
@@ -1467,7 +1403,7 @@ greeting = "hello"
         let source = r#"TAX_RATE = 0.08
 msg = "Rate is \"0.08\""
 value = 0.08"#;
-        let occurrences = find_python_literal_occurrences(source, "0.08");
+        let occurrences = find_literal_occurrences(source, "0.08", is_valid_python_literal_location);
         // Should find 2 occurrences (lines 0 and 2), but not the one inside the string
         assert_eq!(occurrences.len(), 2, "Should find exactly 2 valid occurrences");
         assert_eq!(occurrences[0].start_line, 0);

@@ -3,8 +3,8 @@ use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::{
-    is_escaped, is_screaming_snake_case, CodeRange, ExtractVariableAnalysis, ExtractableFunction,
-    InlineVariableAnalysis,
+    find_literal_occurrences, is_escaped, is_screaming_snake_case, CodeRange,
+    ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis,
 };
 use mill_plugin_api::{PluginApiError, PluginResult};
 use std::collections::HashMap;
@@ -503,7 +503,8 @@ pub fn analyze_extract_constant(
             match finder.found_literal {
                 Some((literal_value, _literal_range)) => {
                     // Find all occurrences of this literal value
-                    let occurrence_ranges = find_literal_occurrences(source, &literal_value);
+                    let occurrence_ranges =
+                        find_literal_occurrences(source, &literal_value, is_valid_literal_location);
                     let is_valid_literal = !literal_value.is_empty();
                     let blocking_reasons = if !is_valid_literal {
                         vec!["Could not extract literal at cursor position".to_string()]
@@ -1163,71 +1164,6 @@ fn suggest_variable_name(expression: &str) -> String {
     "extracted".to_string()
 }
 
-/// Finds all valid occurrences of a literal value in source code.
-///
-/// This function performs a comprehensive search for a literal value throughout the source code,
-/// with safeguards to avoid replacing literals in contexts where they shouldn't be changed:
-/// - Literals inside string content (between quotes)
-/// - Literals inside comments (after `//`)
-///
-/// # Algorithm
-/// 1. Split source into lines
-/// 2. For each line, find all matches of the literal value using string search
-/// 3. Validate each match using `is_valid_literal_location()` to exclude false positives
-/// 4. Create a `CodeRange` for each valid occurrence
-///
-/// # Arguments
-/// * `source` - The complete source code
-/// * `literal_value` - The literal value to search for (e.g., "0.08", "TAX_RATE", "true")
-///
-/// # Returns
-/// A vector of `CodeRange` objects representing each valid occurrence found.
-/// If the literal value doesn't appear in the code, an empty vector is returned.
-///
-/// # Examples
-/// ```typescript
-/// // Source:
-/// const x = 0.08;
-/// const y = 0.08;
-/// const z = "0.08"; // Won't be matched
-///
-/// // find_literal_occurrences(source, "0.08") returns 2 CodeRanges (first two lines)
-/// ```
-///
-/// # Called By
-/// - `analyze_extract_constant()` - Collects all occurrences for replacement
-///
-/// # Related
-/// - `is_valid_literal_location()` - Validates that an occurrence is valid for replacement
-#[allow(dead_code)]
-fn find_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange> {
-    let mut occurrences = Vec::new();
-    let lines: Vec<&str> = source.lines().collect();
-
-    // Iterate through each line to find all potential matches
-    for (line_idx, line_text) in lines.iter().enumerate() {
-        let mut start_pos = 0;
-        while let Some(pos) = line_text[start_pos..].find(literal_value) {
-            let col = start_pos + pos;
-
-            // Validate that this match is not inside a string literal or comment
-            // This prevents replacing what looks like the literal but is actually part of a string
-            if is_valid_literal_location(line_text, col, literal_value.len()) {
-                occurrences.push(CodeRange {
-                    start_line: line_idx as u32,
-                    start_col: col as u32,
-                    end_line: line_idx as u32,
-                    end_col: (col + literal_value.len()) as u32,
-                });
-            }
-
-            start_pos = col + 1;
-        }
-    }
-
-    occurrences
-}
-
 /// Validates whether a position in source code is a valid location for a literal.
 ///
 /// A position is considered valid if it's not inside a string literal or comment.
@@ -1346,7 +1282,7 @@ mod tests {
     #[test]
     fn test_find_literal_occurrences() {
         let source = "const x = 42;\nconst y = 42;\nconst z = 100;";
-        let occurrences = find_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_literal_location);
         assert_eq!(occurrences.len(), 2);
         assert_eq!(occurrences[0].start_line, 0);
         assert_eq!(occurrences[1].start_line, 1);
@@ -1441,7 +1377,7 @@ mod tests {
     #[test]
     fn test_find_literal_occurrences_skips_strings() {
         let source = r#"const x = 42; const s = "42";"#;
-        let occurrences = find_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_literal_location);
         // Should only find the numeric 42, not the string "42"
         assert_eq!(occurrences.len(), 1, "Should find only numeric literal, not string");
         assert_eq!(occurrences[0].start_col, 10, "Should find numeric 42 at correct position");
@@ -1450,7 +1386,7 @@ mod tests {
     #[test]
     fn test_find_literal_occurrences_skips_comments() {
         let source = "const x = 42; // 42 in comment";
-        let occurrences = find_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_literal_location);
         // Should only find the first 42, not the one in the comment
         assert_eq!(occurrences.len(), 1, "Should skip literal in comment");
     }

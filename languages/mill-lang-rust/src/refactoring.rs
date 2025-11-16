@@ -6,7 +6,9 @@ use crate::constants;
 use mill_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
-use mill_lang_common::{is_screaming_snake_case, LineExtractor};
+use mill_lang_common::{
+    find_literal_occurrences, is_screaming_snake_case, CodeRange, LineExtractor,
+};
 use std::collections::HashMap;
 
 /// Plan extract function refactoring for Rust
@@ -214,25 +216,6 @@ pub struct ExtractConstantAnalysis {
     pub insertion_point: CodeRange,
 }
 
-/// Helper struct for code ranges
-#[derive(Debug, Clone, Copy)]
-pub struct CodeRange {
-    pub start_line: u32,
-    pub start_col: u32,
-    pub end_line: u32,
-    pub end_col: u32,
-}
-
-impl From<CodeRange> for EditLocation {
-    fn from(range: CodeRange) -> Self {
-        EditLocation {
-            start_line: range.start_line,
-            start_column: range.start_col,
-            end_line: range.end_line,
-            end_column: range.end_col,
-        }
-    }
-}
 
 /// Infer the explicit type from a literal value
 fn infer_literal_type(literal: &str) -> &'static str {
@@ -562,9 +545,9 @@ fn find_rust_keyword_literal(line_text: &str, col: usize) -> Option<(String, Cod
     None
 }
 
-/// Validate whether a position in source code is a valid location for a literal
+/// Validate whether a position in source code is a valid location for a Rust literal
 /// Handles escaped quotes properly by counting backslashes
-fn is_valid_literal_location(line: &str, pos: usize, _len: usize) -> bool {
+fn is_valid_rust_literal_location(line: &str, pos: usize, _len: usize) -> bool {
     let bytes = line.as_bytes();
 
     // Count non-escaped quotes before position to determine if we're inside a string literal
@@ -622,32 +605,6 @@ fn is_valid_literal_location(line: &str, pos: usize, _len: usize) -> bool {
     true
 }
 
-/// Find all valid occurrences of a literal value in Rust source code
-fn find_rust_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange> {
-    let mut occurrences = Vec::new();
-    let lines: Vec<&str> = source.lines().collect();
-
-    for (line_idx, line_text) in lines.iter().enumerate() {
-        let mut start_pos = 0;
-        while let Some(pos) = line_text[start_pos..].find(literal_value) {
-            let col = start_pos + pos;
-
-            // Check that this is a valid literal location (not in comment/string)
-            if is_valid_literal_location(line_text, col, literal_value.len()) {
-                occurrences.push(CodeRange {
-                    start_line: line_idx as u32,
-                    start_col: col as u32,
-                    end_line: line_idx as u32,
-                    end_col: (col + literal_value.len()) as u32,
-                });
-            }
-
-            start_pos = col + 1;
-        }
-    }
-
-    occurrences
-}
 
 /// Find the appropriate insertion point for a constant declaration in Rust code
 fn find_rust_insertion_point_for_constant(source: &str) -> Result<CodeRange, Box<dyn std::error::Error>> {
@@ -714,7 +671,7 @@ pub fn analyze_extract_constant(
     };
 
     // Find all occurrences of this literal value in the source
-    let occurrence_ranges = find_rust_literal_occurrences(source, &literal_value);
+    let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_rust_literal_location);
 
     // Insertion point: after use statements, at the top of the file
     let insertion_point = find_rust_insertion_point_for_constant(source)?;
@@ -959,7 +916,7 @@ mod tests {
     #[test]
     fn test_find_rust_literal_occurrences() {
         let source = "let x = 42;\nlet y = 42;\nlet z = 100;";
-        let occurrences = find_rust_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_rust_literal_location);
         assert_eq!(occurrences.len(), 2);
         assert_eq!(occurrences[0].start_line, 0);
         assert_eq!(occurrences[1].start_line, 1);
@@ -1057,21 +1014,21 @@ fn main() {
     fn test_is_valid_literal_location_inside_string() {
         let line = r#"let msg = "The answer is 42";"#;
         // Position 21 is the '4' inside the string
-        assert!(!is_valid_literal_location(line, 21, 2));
+        assert!(!is_valid_rust_literal_location(line, 21, 2));
     }
 
     #[test]
     fn test_is_valid_literal_location_inside_comment() {
         let line = "let x = 10; // TODO: change to 42";
         // Position 31 is the '4' inside the comment
-        assert!(!is_valid_literal_location(line, 31, 2));
+        assert!(!is_valid_rust_literal_location(line, 31, 2));
     }
 
     #[test]
     fn test_is_valid_literal_location_valid() {
         let line = "let x = 42;";
         // Position 8 is the '4' in the actual literal
-        assert!(is_valid_literal_location(line, 8, 2));
+        assert!(is_valid_rust_literal_location(line, 8, 2));
     }
 
     // New comprehensive tests for string literal support
@@ -1173,16 +1130,16 @@ let backup = "https://api.example.com";
     fn test_is_valid_literal_location_with_escaped_quotes() {
         let line = r#"let s = "escaped \"quote\" here"; let x = 42;"#;
         // Position 44 is the '4' in the literal 42 (outside the string)
-        assert!(is_valid_literal_location(line, 44, 2));
+        assert!(is_valid_rust_literal_location(line, 44, 2));
         // Position 15 is inside the string
-        assert!(!is_valid_literal_location(line, 15, 1));
+        assert!(!is_valid_rust_literal_location(line, 15, 1));
     }
 
     #[test]
     fn test_is_valid_literal_location_comment_after_string() {
         let line = r#"let s = "text"; // comment with "quotes""#;
         // Position 38 is inside the comment
-        assert!(!is_valid_literal_location(line, 38, 1));
+        assert!(!is_valid_rust_literal_location(line, 38, 1));
     }
 
     #[test]

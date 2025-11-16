@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use mill_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
-use mill_lang_common::{is_screaming_snake_case, CodeRange, LineExtractor};
+use mill_lang_common::{find_literal_occurrences, is_screaming_snake_case, CodeRange, LineExtractor};
 use mill_plugin_api::{PluginApiError, PluginResult};
 use std::collections::HashMap;
 
@@ -432,7 +432,7 @@ fn analyze_extract_constant(
 
         // Check for numeric literal
         if let Some((literal_value, _range)) = find_numeric_literal(line_text, line, character) {
-            let occurrence_ranges = find_literal_occurrences(source, &literal_value);
+            let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_literal_location);
             return Ok(ExtractConstantAnalysis {
                 literal_value,
                 occurrence_ranges,
@@ -444,7 +444,7 @@ fn analyze_extract_constant(
 
         // Check for string literal (quoted)
         if let Some((literal_value, _range)) = find_string_literal(line_text, line, character) {
-            let occurrence_ranges = find_literal_occurrences(source, &literal_value);
+            let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_literal_location);
             return Ok(ExtractConstantAnalysis {
                 literal_value,
                 occurrence_ranges,
@@ -456,7 +456,7 @@ fn analyze_extract_constant(
 
         // Check for boolean literal
         if let Some((literal_value, _range)) = find_keyword_literal(line_text, line, character) {
-            let occurrence_ranges = find_literal_occurrences(source, &literal_value);
+            let occurrence_ranges = find_literal_occurrences(source, &literal_value, is_valid_literal_location);
             return Ok(ExtractConstantAnalysis {
                 literal_value,
                 occurrence_ranges,
@@ -662,32 +662,6 @@ fn find_insertion_point(source: &str) -> CodeRange {
     }
 }
 
-/// Find all occurrences of a literal value in source code
-fn find_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange> {
-    let mut occurrences = Vec::new();
-    let lines: Vec<&str> = source.lines().collect();
-
-    for (line_idx, line_text) in lines.iter().enumerate() {
-        let mut start_pos = 0;
-        while let Some(pos) = line_text[start_pos..].find(literal_value) {
-            let col = start_pos + pos;
-
-            // Validate that this match is not inside a string literal or comment
-            if is_valid_literal_location(line_text, col, literal_value.len()) {
-                occurrences.push(CodeRange {
-                    start_line: line_idx as u32,
-                    start_col: col as u32,
-                    end_line: line_idx as u32,
-                    end_col: (col + literal_value.len()) as u32,
-                });
-            }
-
-            start_pos = col + 1;
-        }
-    }
-
-    occurrences
-}
 
 /// Counts unescaped quotes of a specific type before a position
 ///
@@ -995,7 +969,7 @@ func main() {
     z := 100
 }
 "#;
-        let occurrences = find_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_literal_location);
         assert_eq!(occurrences.len(), 2);
         assert_eq!(occurrences[0].start_line, 3);
         assert_eq!(occurrences[1].start_line, 4);
@@ -1010,7 +984,7 @@ func main() {
     msg := "The answer is 42"
 }
 "#;
-        let occurrences = find_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_literal_location);
         // Should only find the first occurrence, not the one inside the string
         assert_eq!(occurrences.len(), 1);
         assert_eq!(occurrences[0].start_line, 3);
@@ -1025,7 +999,7 @@ func main() {
     // The answer is 42
 }
 "#;
-        let occurrences = find_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_literal_location);
         // Should only find the first occurrence, not the one in the comment
         assert_eq!(occurrences.len(), 1);
         assert_eq!(occurrences[0].start_line, 3);
@@ -1101,7 +1075,7 @@ func main() {
     msg := "The answer is \"42\" not 42"
 }
 "#;
-        let occurrences = find_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_literal_location);
         // Should find the literal 42 on line 3 (x := 42)
         // Should NOT find the ones inside the string, even though one is in escaped quotes
         // Both "42" instances in the string are inside the outer quotes
@@ -1119,7 +1093,7 @@ func main() {
     y := 42
 }
 "#;
-        let occurrences = find_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_literal_location);
         // Should find 42 on lines 3 and 5, but not in the block comment on line 4
         assert_eq!(occurrences.len(), 2);
         assert_eq!(occurrences[0].start_line, 3);
@@ -1134,7 +1108,7 @@ func main() {
     x := /* 42 */ 42
 }
 "#;
-        let occurrences = find_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_literal_location);
         // Should find only the real 42, not the one in the inline block comment
         assert_eq!(occurrences.len(), 1);
         assert_eq!(occurrences[0].start_line, 3);
@@ -1150,7 +1124,7 @@ func main() {
     msg := `Raw string with 42 inside`
 }
 "#;
-        let occurrences = find_literal_occurrences(source, "42");
+        let occurrences = find_literal_occurrences(source, "42", is_valid_literal_location);
         // Should only find the first occurrence, not the one inside the raw string
         assert_eq!(occurrences.len(), 1);
         assert_eq!(occurrences[0].start_line, 3);
