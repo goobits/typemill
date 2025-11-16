@@ -54,6 +54,75 @@ pub fn plan_extract_variable(
     ast_extract_variable_ts_js(source, &analysis, variable_name, file_path)
 }
 
+/// Extracts a literal value to a named constant across the entire file.
+///
+/// This refactoring operation replaces all occurrences of a literal (number, string, boolean, or null)
+/// with a named constant declaration at the top of the file, improving code maintainability by
+/// eliminating magic values and making it easier to update values globally.
+///
+/// # Arguments
+/// * `source` - The TypeScript/JavaScript source code
+/// * `line` - Zero-based line number where the cursor is positioned
+/// * `character` - Zero-based character offset within the line
+/// * `name` - The constant name (must be SCREAMING_SNAKE_CASE)
+/// * `file_path` - Path to the file being refactored
+///
+/// # Returns
+/// * `Ok(EditPlan)` - The edit plan with constant declaration inserted at the top and all
+///                    literal occurrences replaced with the constant name
+/// * `Err(PluginError)` - If the cursor is not on a literal, the name is invalid, or parsing fails
+///
+/// # Example
+/// ```typescript
+/// // Before (cursor on 0.08):
+/// function calculateTax(price: number): number {
+///   return price * 0.08;
+/// }
+///
+/// function applyDiscount(price: number): number {
+///   return price * 0.08;
+/// }
+///
+/// // After (name="TAX_RATE"):
+/// const TAX_RATE = 0.08;
+///
+/// function calculateTax(price: number): number {
+///   return price * TAX_RATE;
+/// }
+///
+/// function applyDiscount(price: number): number {
+///   return price * TAX_RATE;
+/// }
+/// ```
+///
+/// # Supported Literals
+/// - **Numbers**: `42`, `3.14`, `-100`, `1e-5`
+/// - **Strings**: `"hello"`, `'world'`, `` `template` ``
+/// - **Booleans**: `true`, `false`
+/// - **Null**: `null`
+///
+/// # Name Validation
+/// Constant names must follow SCREAMING_SNAKE_CASE convention:
+/// - Only uppercase letters (A-Z), digits (0-9), and underscores (_)
+/// - Must contain at least one uppercase letter
+/// - Cannot start or end with underscore
+/// - Examples: `TAX_RATE`, `MAX_USERS`, `API_KEY`, `DB_TIMEOUT_MS`
+///
+/// # Literal Detection Strategy
+/// The function uses the SWC parser to identify the AST position, then scans the source code
+/// at the cursor position to find the literal's exact boundaries. This hybrid approach ensures
+/// accuracy across different literal types (numeric, string, boolean, null).
+///
+/// # Occurrence Finding
+/// All occurrences of the literal value are found using string matching with safeguards:
+/// - Excludes matches inside string literals and comments
+/// - Respects quote boundaries (single, double, backtick)
+/// - Avoids replacing literals inside `//` comments
+///
+/// # Called By
+/// This function is invoked by the extract_handler via dynamic dispatch when a user
+/// requests constant extraction through the MCP interface.
+#[allow(dead_code)]
 pub fn plan_extract_constant(
     source: &str,
     line: u32,
@@ -372,6 +441,36 @@ pub fn analyze_extract_variable(
     }
 }
 
+/// Analyzes source code to extract information about a literal value at a cursor position.
+///
+/// This analysis function parses the TypeScript/JavaScript source code using SWC and identifies:
+/// - The literal value at the specified cursor position (number, string, boolean, or null)
+/// - All occurrences of that literal throughout the file
+/// - A suitable insertion point for the constant declaration (top of file)
+/// - Whether extraction is valid and any blocking reasons
+///
+/// # Arguments
+/// * `source` - The TypeScript/JavaScript source code
+/// * `line` - Zero-based line number where the cursor is positioned
+/// * `character` - Zero-based character offset within the line
+/// * `file_path` - Path to the file (used to detect .tsx files)
+///
+/// # Returns
+/// * `Ok(ExtractConstantAnalysis)` - Analysis result with literal value, occurrence ranges,
+///                                     validation status, and insertion point
+/// * `Err(PluginError)` - If parsing fails or no literal is found at the cursor position
+///
+/// # Implementation Details
+/// 1. Parses the source code using SWC with TypeScript syntax support
+/// 2. Uses `LiteralFinder` visitor to locate the literal at the cursor position
+/// 3. Calls `find_literal_occurrences()` to identify all matching literals
+/// 4. Validates that the found literal is not empty
+/// 5. Sets insertion point to line 0 (top of file) for constant declarations
+///
+/// # Called By
+/// - `plan_extract_constant()` - Main entry point for constant extraction
+/// - Used internally by the refactoring pipeline
+#[allow(dead_code)]
 pub fn analyze_extract_constant(
     source: &str,
     line: u32,
@@ -428,7 +527,7 @@ pub fn analyze_extract_constant(
                     })
                 }
                 None => Err(PluginApiError::internal(
-                    "No literal found at the specified location".to_string(),
+                    "Cursor is not positioned on a literal value. Extract constant only works on numbers, strings, booleans, and null.".to_string(),
                 )),
             }
         }
@@ -439,6 +538,26 @@ pub fn analyze_extract_constant(
     }
 }
 
+/// Generates the EditPlan for constant extraction.
+///
+/// This internal function constructs the actual edits needed to perform the refactoring:
+/// 1. Creates the constant declaration to be inserted at the top of the file
+/// 2. Creates replacement edits for all occurrences of the literal value
+/// 3. Assembles the complete EditPlan with proper priorities and metadata
+///
+/// # Arguments
+/// * `_source` - The source code (not currently used but available for future enhancements)
+/// * `analysis` - The analysis result from `analyze_extract_constant()`
+/// * `name` - The constant name to use (must be SCREAMING_SNAKE_CASE)
+/// * `file_path` - Path to the file being refactored
+///
+/// # Returns
+/// * `Ok(EditPlan)` - The complete edit plan ready for application
+/// * `Err(PluginError)` - If the literal is invalid or the name doesn't match SCREAMING_SNAKE_CASE
+///
+/// # Called By
+/// - `plan_extract_constant()` - Main entry point for constant extraction
+#[allow(dead_code)]
 fn ast_extract_constant_ts_js(
     _source: &str,
     analysis: &ExtractConstantAnalysis,
@@ -452,17 +571,21 @@ fn ast_extract_constant_ts_js(
         )));
     }
 
-    // Validate that the name is in SCREAMING_SNAKE_CASE format
+    // Validate that the name is in SCREAMING_SNAKE_CASE format.
+    // This convention ensures constant names are easily distinguishable from variables,
+    // improving code readability and maintainability.
     if !is_screaming_snake_case(name) {
         return Err(PluginApiError::invalid_input(format!(
-            "Constant name '{}' must be in SCREAMING_SNAKE_CASE format (e.g., TAX_RATE, MAX_VALUE)",
+            "Constant name '{}' must be in SCREAMING_SNAKE_CASE format. Valid examples: TAX_RATE, MAX_VALUE, API_KEY, DB_TIMEOUT_MS. Requirements: only uppercase letters (A-Z), digits (0-9), and underscores; must contain at least one uppercase letter; cannot start or end with underscore.",
             name
         )));
     }
 
     let mut edits = Vec::new();
 
-    // Generate the constant declaration
+    // Generate the constant declaration and insert it at the top of the file.
+    // Using `const` keyword ensures the value cannot be reassigned, preventing accidental mutations.
+    // A newline is appended to separate the declaration from subsequent code.
     let declaration = format!("const {} = {};\n", name, analysis.literal_value);
     edits.push(TextEdit {
         file_path: None,
@@ -477,7 +600,10 @@ fn ast_extract_constant_ts_js(
         ),
     });
 
-    // Replace all occurrences of the literal with the constant name
+    // Replace all occurrences of the literal with the constant name.
+    // Each replacement has a descending priority to ensure the declaration is inserted before
+    // replacements are applied, maintaining correct edit order during execution.
+    // The priority scheme ensures deterministic ordering: declaration (100) > replacements (90, 89, 88, ...)
     for (idx, occurrence_range) in analysis.occurrence_ranges.iter().enumerate() {
         let priority = 90_u32.saturating_sub(idx as u32);
         edits.push(TextEdit {
@@ -867,18 +993,46 @@ fn suggest_variable_name(expression: &str) -> String {
     "extracted".to_string()
 }
 
-/// Check if a name follows SCREAMING_SNAKE_CASE convention
+/// Validates that a constant name follows the SCREAMING_SNAKE_CASE convention.
+///
+/// SCREAMING_SNAKE_CASE is the standard naming convention for constants in TypeScript/JavaScript.
+/// It improves code readability by making constants easily distinguishable from variables at a glance.
+///
+/// # Requirements
+/// - Only uppercase letters (A-Z), digits (0-9), and underscores (_) are allowed
+/// - Must contain at least one uppercase letter (prevents pure numeric names like "123")
+/// - Cannot start with underscore (reserved for private/internal conventions)
+/// - Cannot end with underscore (conventionally implies trailing metadata)
+///
+/// # Valid Examples
+/// - `TAX_RATE` - simple constant
+/// - `MAX_USERS` - multi-word constant
+/// - `API_KEY_V2` - constant with version number
+/// - `DB_TIMEOUT_MS` - constant with unit suffix
+/// - `A` - single-letter constants are valid
+///
+/// # Invalid Examples
+/// - `tax_rate` - lowercase
+/// - `TaxRate` - camelCase
+/// - `_TAX_RATE` - starts with underscore
+/// - `TAX_RATE_` - ends with underscore
+/// - `TAX-RATE` - uses hyphen instead of underscore
+/// - `123` - no uppercase letter
+///
+/// # Called By
+/// - `ast_extract_constant_ts_js()` - Validates constant names before generating edits
+#[allow(dead_code)]
 fn is_screaming_snake_case(name: &str) -> bool {
     if name.is_empty() {
         return false;
     }
 
-    // Must not start or end with underscore
+    // Must not start or end with underscore to maintain style consistency
     if name.starts_with('_') || name.ends_with('_') {
         return false;
     }
 
-    // Check each character
+    // Check each character - only uppercase, digits, and underscores allowed
     for ch in name.chars() {
         match ch {
             'A'..='Z' | '0'..='9' | '_' => continue,
@@ -886,21 +1040,59 @@ fn is_screaming_snake_case(name: &str) -> bool {
         }
     }
 
-    // Must have at least one uppercase letter
+    // Must have at least one uppercase letter to ensure it's not purely numeric
     name.chars().any(|c| c.is_ascii_uppercase())
 }
 
-/// Find all occurrences of a literal value in source code
+/// Finds all valid occurrences of a literal value in source code.
+///
+/// This function performs a comprehensive search for a literal value throughout the source code,
+/// with safeguards to avoid replacing literals in contexts where they shouldn't be changed:
+/// - Literals inside string content (between quotes)
+/// - Literals inside comments (after `//`)
+///
+/// # Algorithm
+/// 1. Split source into lines
+/// 2. For each line, find all matches of the literal value using string search
+/// 3. Validate each match using `is_valid_literal_location()` to exclude false positives
+/// 4. Create a `CodeRange` for each valid occurrence
+///
+/// # Arguments
+/// * `source` - The complete source code
+/// * `literal_value` - The literal value to search for (e.g., "0.08", "TAX_RATE", "true")
+///
+/// # Returns
+/// A vector of `CodeRange` objects representing each valid occurrence found.
+/// If the literal value doesn't appear in the code, an empty vector is returned.
+///
+/// # Examples
+/// ```typescript
+/// // Source:
+/// const x = 0.08;
+/// const y = 0.08;
+/// const z = "0.08"; // Won't be matched
+///
+/// // find_literal_occurrences(source, "0.08") returns 2 CodeRanges (first two lines)
+/// ```
+///
+/// # Called By
+/// - `analyze_extract_constant()` - Collects all occurrences for replacement
+///
+/// # Related
+/// - `is_valid_literal_location()` - Validates that an occurrence is valid for replacement
+#[allow(dead_code)]
 fn find_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange> {
     let mut occurrences = Vec::new();
     let lines: Vec<&str> = source.lines().collect();
 
+    // Iterate through each line to find all potential matches
     for (line_idx, line_text) in lines.iter().enumerate() {
         let mut start_pos = 0;
         while let Some(pos) = line_text[start_pos..].find(literal_value) {
             let col = start_pos + pos;
 
-            // Check that this is not inside a string or comment
+            // Validate that this match is not inside a string literal or comment
+            // This prevents replacing what looks like the literal but is actually part of a string
             if is_valid_literal_location(line_text, col, literal_value.len()) {
                 occurrences.push(CodeRange {
                     start_line: line_idx as u32,
@@ -917,20 +1109,66 @@ fn find_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange>
     occurrences
 }
 
-/// Check if a position in a line is a valid literal location (not in comment/string)
+/// Validates whether a position in source code is a valid location for a literal.
+///
+/// A position is considered valid if it's not inside a string literal or comment.
+/// This prevents replacing:
+/// - Literals that are part of string content (e.g., the "0.08" in `"The rate is 0.08%"`)
+/// - Literals in comments (e.g., the value in `// TODO: update rate from 0.08 to 0.10`)
+///
+/// # Algorithm
+/// 1. Count quote characters before the position to determine if we're inside a string
+/// 2. If an odd number of quotes appear before the position, we're inside a string literal
+/// 3. Check for `//` comments; any position after the comment marker is invalid
+/// 4. Return true only if outside both strings and comments
+///
+/// # Arguments
+/// * `line` - The current line of code
+/// * `pos` - Character position within the line where the potential literal is located
+/// * `_len` - Length of the literal (not currently used but available for future enhancements)
+///
+/// # Returns
+/// `true` if the position is a valid literal location (outside strings and comments),
+/// `false` if the position is inside a string or comment.
+///
+/// # Limitations
+/// This function uses a simple quote-counting approach which works well for most cases but
+/// has edge cases:
+/// - Escaped quotes in strings may not be handled correctly (e.g., `"He said \"hi\""`)
+/// - Template literal syntax edge cases may exist (e.g., `${nested}` expressions)
+/// - Multi-line comments (`/* */`) are not detected (only single-line `//`)
+///
+/// For production use with edge-case handling, consider using the full AST via the SWC parser.
+///
+/// # Examples
+/// ```
+/// // Valid locations (outside strings):
+/// is_valid_literal_location("const x = 42;", 10, 2) -> true
+///
+/// // Invalid locations (inside strings):
+/// is_valid_literal_location("const msg = \"42\";", 14, 2) -> false
+///
+/// // Invalid locations (inside comments):
+/// is_valid_literal_location("const x = 0; // rate is 42", 24, 2) -> false
+/// ```
+///
+/// # Called By
+/// - `find_literal_occurrences()` - Validates matches before including them in results
+#[allow(dead_code)]
 fn is_valid_literal_location(line: &str, pos: usize, _len: usize) -> bool {
-    // Count quotes before position to determine if we're inside a string
+    // Count quotes before position to determine if we're inside a string literal.
+    // This works because quotes toggle "inside string" state as we scan left-to-right.
     let before = &line[..pos];
     let single_quotes = before.matches('\'').count();
     let double_quotes = before.matches('"').count();
     let backticks = before.matches('`').count();
 
-    // If odd number of quotes, we're inside a string
+    // If an odd number of quotes appear before the position, we're inside that quote style
     if single_quotes % 2 == 1 || double_quotes % 2 == 1 || backticks % 2 == 1 {
         return false;
     }
 
-    // Check for comment
+    // Check for single-line comment marker. Anything after "//" is a comment.
     if let Some(comment_pos) = line.find("//") {
         if pos > comment_pos {
             return false;

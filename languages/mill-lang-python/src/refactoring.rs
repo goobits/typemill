@@ -509,7 +509,41 @@ pub struct ExtractConstantAnalysis {
     pub insertion_point: CodeRange,
 }
 
-/// Analyze a literal at cursor position for constant extraction (Python)
+/// Analyzes source code to extract information about a literal value at a cursor position.
+///
+/// This analysis function identifies literals in Python source code and gathers information for
+/// constant extraction. It analyzes:
+/// - The literal value at the specified cursor position (number, string, boolean, or None)
+/// - All occurrences of that literal throughout the file
+/// - A suitable insertion point for the constant declaration (top of module after imports/docstring)
+/// - Whether extraction is valid and any blocking reasons
+///
+/// # Arguments
+/// * `source` - The Python source code
+/// * `line` - Zero-based line number where the cursor is positioned
+/// * `character` - Zero-based character offset within the line
+/// * `file_path` - Path to the file (used for error reporting)
+///
+/// # Returns
+/// * `Ok(ExtractConstantAnalysis)` - Analysis result with literal value, occurrence ranges,
+///                                     validation status, and insertion point
+/// * `Err(RefactoringError)` - If no literal is found at the cursor position
+///
+/// # Implementation Details
+/// 1. Locates the literal at the cursor position by scanning the line
+/// 2. Extracts the literal value using specialized helpers for different types:
+///    - `find_python_numeric_literal()` - Numbers (including floats and negative values)
+///    - `find_python_string_literal()` - Strings (single/double/triple quoted)
+///    - `find_python_keyword_literal()` - Booleans and None
+/// 3. Calls `find_python_literal_occurrences()` to identify all matching literals
+/// 4. Validates that the found literal is not empty
+/// 5. Sets insertion point using `find_python_insertion_point_for_constant()` which respects
+///    module-level structure: placed after imports and module docstring
+///
+/// # Called By
+/// - `plan_extract_constant()` - Main entry point for constant extraction
+/// - Used internally by the refactoring pipeline
+#[allow(dead_code)]
 pub(crate) fn analyze_extract_constant(
     source: &str,
     line: u32,
@@ -549,7 +583,74 @@ pub(crate) fn analyze_extract_constant(
     })
 }
 
-/// Generate edit plan for extract constant refactoring (Python)
+/// Extracts a literal value to a named constant in Python code.
+///
+/// This refactoring operation replaces all occurrences of a literal (number, string, boolean, or None)
+/// with a named constant declaration at the module level, improving code maintainability by
+/// eliminating magic values and making it easier to update values globally.
+///
+/// # Arguments
+/// * `source` - The Python source code
+/// * `line` - Zero-based line number where the cursor is positioned
+/// * `character` - Zero-based character offset within the line
+/// * `name` - The constant name (must be SCREAMING_SNAKE_CASE)
+/// * `file_path` - Path to the file being refactored
+///
+/// # Returns
+/// * `Ok(EditPlan)` - The edit plan with constant declaration inserted at module level and all
+///                    literal occurrences replaced with the constant name
+/// * `Err(RefactoringError)` - If the cursor is not on a literal, the name is invalid, or parsing fails
+///
+/// # Example
+/// ```python
+/// # Before (cursor on 0.08):
+/// def calculate_tax(price):
+///     return price * 0.08
+///
+/// def apply_discount(price):
+///     return price * 0.08
+///
+/// # After (name="TAX_RATE"):
+/// TAX_RATE = 0.08
+///
+/// def calculate_tax(price):
+///     return price * TAX_RATE
+///
+/// def apply_discount(price):
+///     return price * TAX_RATE
+/// ```
+///
+/// # Supported Literals
+/// - **Numbers**: `42`, `3.14`, `-100`, `1e-5`
+/// - **Strings**: `"hello"`, `'world'`, `"""multiline"""`
+/// - **Booleans**: `True`, `False` (Python capitalized)
+/// - **None**: `None`
+///
+/// # Name Validation
+/// Constant names must follow SCREAMING_SNAKE_CASE convention:
+/// - Only uppercase letters (A-Z), digits (0-9), and underscores (_)
+/// - Must contain at least one uppercase letter
+/// - Cannot start or end with underscore
+/// - Examples: `TAX_RATE`, `MAX_USERS`, `API_KEY`, `DB_TIMEOUT_MS`
+///
+/// # Insertion Point
+/// The constant is inserted at the module level:
+/// - After any module-level imports (import/from statements)
+/// - After any module docstring (if present)
+/// - Before the first function or class definition
+///
+/// This follows Python conventions for module-level constant placement.
+///
+/// # Occurrence Finding
+/// All occurrences of the literal value are found using string matching with safeguards:
+/// - Excludes matches inside string literals
+/// - Excludes matches inside comments
+/// - Respects quote boundaries (single, double, triple)
+///
+/// # Called By
+/// This function is invoked by the extract_handler via dynamic dispatch when a user
+/// requests constant extraction through the MCP interface.
+#[allow(dead_code)]
 pub(crate) fn plan_extract_constant(
     source: &str,
     line: u32,
@@ -566,10 +667,12 @@ pub(crate) fn plan_extract_constant(
         )));
     }
 
-    // Validate that the name is in SCREAMING_SNAKE_CASE format
+    // Validate that the name is in SCREAMING_SNAKE_CASE format.
+    // This convention ensures constant names are easily distinguishable from variables,
+    // improving code readability and maintainability.
     if !is_screaming_snake_case(name) {
         return Err(RefactoringError::Analysis(format!(
-            "Constant name '{}' must be in SCREAMING_SNAKE_CASE format (e.g., TAX_RATE, MAX_VALUE)",
+            "Constant name '{}' must be in SCREAMING_SNAKE_CASE format. Valid examples: TAX_RATE, MAX_VALUE, API_KEY, DB_TIMEOUT_MS. Requirements: only uppercase letters (A-Z), digits (0-9), and underscores; must contain at least one uppercase letter; cannot start or end with underscore.",
             name
         )));
     }
@@ -656,7 +759,30 @@ fn is_screaming_snake_case(name: &str) -> bool {
     name.chars().any(|c| c.is_ascii_uppercase())
 }
 
-/// Find a Python literal (number, string, bool, None) at a given position in a line
+/// Finds a Python literal at a given position in a line of code.
+///
+/// This function identifies literals by checking the cursor position against different literal types
+/// in a priority order: numbers, strings, then keyword literals (True, False, None).
+///
+/// # Arguments
+/// * `line_text` - The complete line of code
+/// * `col` - Zero-based character position within the line
+///
+/// # Returns
+/// * `Some((literal_value, range))` - The literal found and its position within the line
+/// * `None` - If no literal is found at the cursor position
+///
+/// # Implementation Details
+/// Uses specialized helper functions for each literal type:
+/// 1. `find_python_numeric_literal()` - Numbers including floats and negative values
+/// 2. `find_python_string_literal()` - String literals with quote handling
+/// 3. `find_python_keyword_literal()` - Python keyword literals (True, False, None)
+///
+/// Note: Searches in priority order and returns immediately on first match.
+///
+/// # Helper For
+/// - `analyze_extract_constant()` - Identifies literal at cursor for extraction
+#[allow(dead_code)]
 fn find_python_literal_at_position(line_text: &str, col: usize) -> Option<(String, CodeRange)> {
     // Try to find different kinds of literals at the cursor position
 
@@ -665,12 +791,12 @@ fn find_python_literal_at_position(line_text: &str, col: usize) -> Option<(Strin
         return Some((literal, range));
     }
 
-    // Check for string literal (quoted)
+    // Check for string literal (quoted with single/double/triple quote support)
     if let Some((literal, range)) = find_python_string_literal(line_text, col) {
         return Some((literal, range));
     }
 
-    // Check for boolean or None
+    // Check for boolean (True/False) or None (Python capitalized keywords)
     if let Some((literal, range)) = find_python_keyword_literal(line_text, col) {
         return Some((literal, range));
     }
@@ -678,7 +804,37 @@ fn find_python_literal_at_position(line_text: &str, col: usize) -> Option<(Strin
     None
 }
 
-/// Find a numeric literal (including negative numbers) at a cursor position
+/// Finds a numeric literal (integer, float, or negative number) at a cursor position.
+///
+/// This function locates numeric literals in a line, handling various Python numeric formats:
+/// - Integers: `42`, `-100`
+/// - Floats: `3.14`, `-2.5`, `1e-5`
+/// - Underscores: `1_000_000` (valid in Python)
+///
+/// # Arguments
+/// * `line_text` - The line of code to search
+/// * `col` - Zero-based cursor position within the line
+///
+/// # Returns
+/// * `Some((literal, range))` - The numeric literal and its position (start_col, end_col on line 0)
+/// * `None` - If no numeric literal is found at the cursor position
+///
+/// # Algorithm
+/// 1. Scans left from cursor to find start boundary (non-digit, non-dot, non-underscore)
+/// 2. Checks if cursor is after a minus sign (handles negative numbers)
+/// 3. Scans right from cursor to find end boundary
+/// 4. Validates the extracted text:
+///    - Contains at least one digit
+///    - Successfully parses as f64
+///
+/// # Edge Cases Handled
+/// - Negative numbers with leading minus sign
+/// - Floating point numbers with decimal points
+/// - Python numeric literals with underscores
+///
+/// # Helper For
+/// - `find_python_literal_at_position()` - Type-specific literal detection
+#[allow(dead_code)]
 fn find_python_numeric_literal(line_text: &str, col: usize) -> Option<(String, CodeRange)> {
     if col >= line_text.len() {
         return None;
@@ -694,21 +850,21 @@ fn find_python_numeric_literal(line_text: &str, col: usize) -> Option<(String, C
             .unwrap_or(0)
     };
 
-    // Adjust start if we found a leading minus sign
+    // Adjust start if we found a leading minus sign (handle negative numbers)
     let actual_start = if start > 0 && line_text.chars().nth(start - 1) == Some('-') {
         start - 1
     } else {
         start
     };
 
-    // Find the end of the number
+    // Find the end of the number by scanning right from cursor
     let end = col + line_text[col..]
         .find(|c: char| !c.is_ascii_digit() && c != '.' && c != '_')
         .unwrap_or(line_text.len() - col);
 
     if actual_start < end && end <= line_text.len() {
         let text = &line_text[actual_start..end];
-        // Check if it contains at least one digit and is a valid number
+        // Validate: must contain at least one digit and be parseable as a number
         if text.chars().any(|c| c.is_ascii_digit()) && text.parse::<f64>().is_ok() {
             return Some((text.to_string(), CodeRange {
                 start_line: 0,
@@ -722,7 +878,41 @@ fn find_python_numeric_literal(line_text: &str, col: usize) -> Option<(String, C
     None
 }
 
-/// Find a string literal at a cursor position (single/double/triple quoted)
+/// Finds a string literal at a cursor position in Python code.
+///
+/// This function handles all Python string quoting styles:
+/// - Single-quoted: `'hello'`
+/// - Double-quoted: `"hello"`
+/// - Triple-quoted: `"""multiline"""` or `'''multiline'''`
+///
+/// Triple-quoted strings are checked first, allowing them to contain single/double quotes
+/// without needing escape characters (Python triple-quote semantics).
+///
+/// # Arguments
+/// * `line_text` - The line of code to search
+/// * `col` - Zero-based cursor position within the line
+///
+/// # Returns
+/// * `Some((literal, range))` - The complete string literal (including quotes) and its position
+/// * `None` - If no string literal is found at the cursor position
+///
+/// # Algorithm
+/// 1. First checks for triple-quoted strings (`"""` or `'''`)
+///    - Scans left to find opening triple quote
+///    - Scans right to find closing triple quote
+///    - Returns if cursor is within the string bounds
+/// 2. Then checks for single/double-quoted strings
+///    - Scans left to find opening quote
+///    - Scans right to find closing matching quote
+///    - Returns the complete string with quotes
+///
+/// # Important: Python-Specific
+/// Python strings support triple quotes for multiline strings and docstrings.
+/// This implementation respects that convention.
+///
+/// # Helper For
+/// - `find_python_literal_at_position()` - Type-specific literal detection
+#[allow(dead_code)]
 fn find_python_string_literal(line_text: &str, col: usize) -> Option<(String, CodeRange)> {
     if col >= line_text.len() {
         return None;
@@ -784,7 +974,37 @@ fn find_python_string_literal(line_text: &str, col: usize) -> Option<(String, Co
     None
 }
 
-/// Find Python keyword literals (True, False, None) at cursor position
+/// Finds a Python keyword literal (True, False, or None) at a cursor position.
+///
+/// This function identifies Python's built-in keyword constants, which are capitalized
+/// unlike their counterparts in other languages:
+/// - `True` - Boolean true value
+/// - `False` - Boolean false value
+/// - `None` - Python's null/nil value
+///
+/// # Arguments
+/// * `line_text` - The line of code to search
+/// * `col` - Zero-based cursor position within the line
+///
+/// # Returns
+/// * `Some((literal, range))` - The keyword literal and its position on the line
+/// * `None` - If no keyword literal is found at the cursor position
+///
+/// # Algorithm
+/// 1. Checks each keyword: `["True", "False", "None"]`
+/// 2. For each keyword, scans positions around the cursor
+/// 3. Validates word boundaries:
+///    - Before: must be preceded by non-alphanumeric and non-underscore character
+///    - After: must be followed by non-alphanumeric and non-underscore character
+/// 4. Returns first match found
+///
+/// # Important: Python Capitalization
+/// Unlike JavaScript (`true`, `false`, `null`), Python keywords are capitalized.
+/// This function specifically looks for `True`, `False`, and `None` with correct casing.
+///
+/// # Helper For
+/// - `find_python_literal_at_position()` - Type-specific literal detection
+#[allow(dead_code)]
 fn find_python_keyword_literal(line_text: &str, col: usize) -> Option<(String, CodeRange)> {
     let keywords = ["True", "False", "None"];
 
@@ -818,7 +1038,44 @@ fn find_python_keyword_literal(line_text: &str, col: usize) -> Option<(String, C
     None
 }
 
-/// Find all occurrences of a literal value in source code
+/// Finds all valid occurrences of a literal value in Python source code.
+///
+/// This function performs a comprehensive search for a literal value throughout the source code,
+/// with safeguards to avoid replacing literals in contexts where they shouldn't be changed:
+/// - Literals inside string content (between quotes)
+/// - Literals inside comments (after `#`)
+///
+/// # Algorithm
+/// 1. Split source into lines
+/// 2. For each line, find all matches of the literal value using string search
+/// 3. Validate each match using `is_valid_python_literal_location()` to exclude false positives
+/// 4. Create a `CodeRange` for each valid occurrence
+///
+/// # Arguments
+/// * `source` - The complete source code
+/// * `literal_value` - The literal value to search for (e.g., "0.08", "True", "None")
+///
+/// # Returns
+/// A vector of `CodeRange` objects representing each valid occurrence found.
+/// If the literal value doesn't appear in the code, an empty vector is returned.
+///
+/// # Examples
+/// ```python
+/// # Source:
+/// TAX_RATE = 0.08
+/// discount = 0.08
+/// description = "Rate is 0.08"  # Won't be matched
+///
+/// # find_python_literal_occurrences(source, "0.08") returns 2 CodeRanges
+/// # (first two lines only, not the one in the string)
+/// ```
+///
+/// # Called By
+/// - `analyze_extract_constant()` - Collects all occurrences for replacement
+///
+/// # Related
+/// - `is_valid_python_literal_location()` - Validates that an occurrence is valid for replacement
+#[allow(dead_code)]
 fn find_python_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRange> {
     let mut occurrences = Vec::new();
     let lines: Vec<&str> = source.lines().collect();
@@ -845,19 +1102,65 @@ fn find_python_literal_occurrences(source: &str, literal_value: &str) -> Vec<Cod
     occurrences
 }
 
-/// Check if a position in a line is a valid literal location (not in comment/string)
+/// Validates whether a position in source code is a valid location for a literal.
+///
+/// A position is considered valid if it's not inside a string literal or comment.
+/// This prevents replacing:
+/// - Literals that are part of string content (e.g., the "0.08" in `"Rate is 0.08%"`)
+/// - Literals in comments (e.g., the value in `# TODO: update rate from 0.08 to 0.10`)
+///
+/// # Algorithm
+/// 1. Count quote characters before the position to determine if we're inside a string
+/// 2. If an odd number of quotes appear before the position, we're inside a string literal
+/// 3. Check for `#` comments; any position after the comment marker is invalid
+/// 4. Return true only if outside both strings and comments
+///
+/// # Arguments
+/// * `line` - The current line of code
+/// * `pos` - Character position within the line where the potential literal is located
+/// * `_len` - Length of the literal (not currently used but available for future enhancements)
+///
+/// # Returns
+/// `true` if the position is a valid literal location (outside strings and comments),
+/// `false` if the position is inside a string or comment.
+///
+/// # Limitations
+/// This function uses a simple quote-counting approach which works well for most cases but
+/// has edge cases:
+/// - Escaped quotes in strings may not be handled correctly (e.g., `"He said \"hi\""`)
+/// - Raw strings and f-strings edge cases may exist
+/// - Block comments (rarely used in Python) are not detected (only single-line `#`)
+///
+/// For production use with edge-case handling, consider using Python AST parsing.
+///
+/// # Examples
+/// ```
+/// // Valid locations (outside strings):
+/// is_valid_python_literal_location("x = 42", 4, 2) -> true
+///
+/// // Invalid locations (inside strings):
+/// is_valid_python_literal_location("msg = \"42\"", 8, 2) -> false
+///
+/// // Invalid locations (inside comments):
+/// is_valid_python_literal_location("x = 0  # value is 42", 18, 2) -> false
+/// ```
+///
+/// # Called By
+/// - `find_python_literal_occurrences()` - Validates matches before including them in results
+#[allow(dead_code)]
 fn is_valid_python_literal_location(line: &str, pos: usize, _len: usize) -> bool {
-    // Count quotes before position to determine if we're inside a string
+    // Count quotes before position to determine if we're inside a string literal.
+    // Each quote toggles the "inside string" state. Odd count = inside string, even = outside.
     let before = &line[..pos];
     let single_quotes = before.matches('\'').count();
     let double_quotes = before.matches('"').count();
 
-    // If odd number of quotes, we're inside a string
+    // If odd number of quotes appear before the position, we're inside a string literal
     if single_quotes % 2 == 1 || double_quotes % 2 == 1 {
         return false;
     }
 
-    // Check for comment (# in Python)
+    // Check for Python comment marker (#). Anything after it is a comment.
     if let Some(comment_pos) = line.find('#') {
         if pos > comment_pos {
             return false;
@@ -867,7 +1170,55 @@ fn is_valid_python_literal_location(line: &str, pos: usize, _len: usize) -> bool
     true
 }
 
-/// Find the appropriate insertion point for a constant declaration in Python
+/// Finds the appropriate insertion point for a constant declaration in Python code.
+///
+/// The insertion point respects Python module structure conventions:
+/// - After module-level imports (import/from statements)
+/// - After module docstring (if present)
+/// - Before the first function or class definition
+///
+/// This placement ensures constants are declared at the module level, following
+/// PEP 8 style guidelines for Python code organization.
+///
+/// # Arguments
+/// * `source` - The complete Python source code
+///
+/// # Returns
+/// * `Ok(CodeRange)` - The line number where the constant should be inserted
+/// * `Err(RefactoringError)` - If the source cannot be analyzed
+///
+/// # Algorithm
+/// 1. Scans through lines sequentially
+/// 2. Tracks docstring state:
+///    - Detects opening/closing triple quotes (`"""` or `'''`)
+///    - Maintains position after docstring ends
+/// 3. Records position after each import statement
+/// 4. Stops when first function or class definition is found
+/// 5. Returns the latest recorded position
+///
+/// # Python Module Structure
+/// Module-level constants should be placed in this order:
+/// ```python
+/// """Module docstring."""
+///
+/// import os
+/// from sys import path
+///
+/// CONSTANT_NAME = value  # <- Insertion point
+///
+/// def function():
+///     pass
+/// ```
+///
+/// # Edge Cases Handled
+/// - Empty files (insertion at line 0)
+/// - Files with only imports (insertion after imports)
+/// - Files with docstring (insertion after docstring)
+/// - Docstrings using `"""` or `'''` (both supported)
+///
+/// # Called By
+/// - `analyze_extract_constant()` - Determines where to insert constant declaration
+#[allow(dead_code)]
 fn find_python_insertion_point_for_constant(source: &str) -> RefactoringResult<CodeRange> {
     let lines: Vec<&str> = source.lines().collect();
     let mut insertion_line = 0;
@@ -878,26 +1229,28 @@ fn find_python_insertion_point_for_constant(source: &str) -> RefactoringResult<C
         let trimmed = line.trim();
         let line_idx = idx as u32;
 
-        // Track docstring state
+        // Track docstring state to skip module-level docstring
         if trimmed.starts_with("\"\"\"") || trimmed.starts_with("'''") {
             let quote = if trimmed.starts_with("\"\"\"") { "\"\"\"" } else { "'''" };
             if in_docstring && docstring_quote == quote {
+                // Found closing triple quote - mark insertion point after docstring
                 in_docstring = false;
                 insertion_line = line_idx + 1;
             } else if !in_docstring {
+                // Found opening triple quote
                 in_docstring = true;
                 docstring_quote = quote;
             }
         } else if in_docstring {
-            // Still inside docstring
+            // Still inside docstring - continue scanning
             continue;
         }
 
-        // Skip import statements
+        // Record position after each import statement
         if trimmed.starts_with("import ") || trimmed.starts_with("from ") {
             insertion_line = line_idx + 1;
         }
-        // Stop at first function or class definition
+        // Stop at first function or class definition (not in docstring)
         else if (trimmed.starts_with("def ") || trimmed.starts_with("class ")) && !in_docstring {
             break;
         }
