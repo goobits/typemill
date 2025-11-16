@@ -3,7 +3,7 @@
 //! Provides comprehensive C language support including:
 //! - AST parsing using tree-sitter
 //! - Import/include management (#include directives)
-//! - Refactoring operations (extract function/variable, inline variable)
+//! - Refactoring operations (extract function/variable/constant, inline variable)
 //! - Workspace operations (Makefile-based projects)
 //! - CMake and Makefile manifest analysis
 //!
@@ -334,6 +334,21 @@ impl mill_plugin_api::RefactoringProvider for CPlugin {
             variable_name,
             file_path,
         )
+    }
+
+    fn supports_extract_constant(&self) -> bool {
+        true
+    }
+
+    async fn plan_extract_constant(
+        &self,
+        source: &str,
+        line: u32,
+        character: u32,
+        name: &str,
+        file_path: &str,
+    ) -> PluginResult<mill_foundation::protocol::EditPlan> {
+        refactoring::plan_extract_constant(source, line, character, name, file_path)
     }
 }
 
