@@ -13,6 +13,9 @@ test-build/
 *.tgz
 *.tsbuildinfo
 
+# Java build artifacts
+languages/*/resources/*/target/
+
 # Root-level JS files (build artifacts from test builds)
 /*.js
 
@@ -74,6 +77,7 @@ mcp/*/storage.json
 # Typemill runtime files
 .typemill/server.pid
 .typemill/config.json
+.typemill/tls/
 
 # Spacebase local database
 .spacebase/
@@ -96,6 +100,7 @@ target/
 
 # Test outputs
 test-results/
+test_mill_*
 
 # Debug and development tools
 .debug/
