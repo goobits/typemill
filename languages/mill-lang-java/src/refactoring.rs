@@ -13,6 +13,7 @@ use mill_lang_common::is_escaped;
 use mill_lang_common::is_valid_code_literal_location;
 use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
 use mill_lang_common::ExtractConstantAnalysis;
+use mill_plugin_api::{PluginApiError, PluginResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tree_sitter::{Node, Parser, Point, Query, QueryCursor, StreamingIterator};
@@ -36,33 +37,20 @@ pub struct CodeRange {
     pub end_col: u32,
 }
 
-/// Error type for refactoring operations
-#[derive(Debug, thiserror::Error)]
-pub enum RefactoringError {
-    #[error("Analysis error: {0}")]
-    Analysis(String),
-    #[error("Parse error: {0}")]
-    Parse(String),
-    #[error("Query error: {0}")]
-    Query(String),
-}
-
-pub type RefactoringResult<T> = Result<T, RefactoringError>;
-
 /// Generate edit plan for extract function refactoring
 pub(crate) fn plan_extract_function(
     source: &str,
     range: &CodeRange,
     function_name: &str,
     file_path: &str,
-) -> RefactoringResult<EditPlan> {
+) -> PluginResult<EditPlan> {
     let mut parser = Parser::new();
     parser
         .set_language(&get_language())
-        .map_err(|e| RefactoringError::Parse(format!("Failed to load Java grammar: {}", e)))?;
+        .map_err(|e| PluginApiError::parse(format!("Failed to load Java grammar: {}", e)))?;
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| RefactoringError::Parse("Failed to parse Java source".to_string()))?;
+        .ok_or_else(|| PluginApiError::parse("Failed to parse Java source".to_string()))?;
     let root = tree.root_node();
 
     let start_point = Point::new(range.start_line as usize - 1, range.start_col as usize);
@@ -70,17 +58,17 @@ pub(crate) fn plan_extract_function(
 
     let selected_node = find_smallest_node_containing_range(root, start_point, end_point)
         .ok_or_else(|| {
-            RefactoringError::Analysis("Could not find a node for the selection.".to_string())
+            PluginApiError::invalid_input("Could not find a node for the selection.".to_string())
         })?;
 
     let selected_text = selected_node
         .utf8_text(source.as_bytes())
-        .map_err(|e| RefactoringError::Parse(format!("Invalid UTF-8 in source: {}", e)))?
+        .map_err(|e| PluginApiError::parse(format!("Invalid UTF-8 in source: {}", e)))?
         .to_string();
 
     let enclosing_method =
         find_ancestor_of_kind(selected_node, "method_declaration").ok_or_else(|| {
-            RefactoringError::Analysis("Selection is not inside a method.".to_string())
+            PluginApiError::invalid_input("Selection is not inside a method.".to_string())
         })?;
 
     let indent = get_indentation(source, enclosing_method.start_position().row);
@@ -150,14 +138,14 @@ pub(crate) fn plan_extract_variable(
     end_col: u32,
     variable_name: Option<String>,
     file_path: &str,
-) -> RefactoringResult<EditPlan> {
+) -> PluginResult<EditPlan> {
     let mut parser = Parser::new();
     parser
         .set_language(&get_language())
-        .map_err(|e| RefactoringError::Parse(format!("Failed to load Java grammar: {}", e)))?;
+        .map_err(|e| PluginApiError::parse(format!("Failed to load Java grammar: {}", e)))?;
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| RefactoringError::Parse("Failed to parse Java source".to_string()))?;
+        .ok_or_else(|| PluginApiError::parse("Failed to parse Java source".to_string()))?;
     let root = tree.root_node();
 
     let start_point = Point::new(start_line as usize - 1, start_col as usize);
@@ -165,18 +153,18 @@ pub(crate) fn plan_extract_variable(
 
     let selected_node = find_smallest_node_containing_range(root, start_point, end_point)
         .ok_or_else(|| {
-            RefactoringError::Analysis("Could not find a node for the selection.".to_string())
+            PluginApiError::invalid_input("Could not find a node for the selection.".to_string())
         })?;
 
     let expression_text = selected_node
         .utf8_text(source.as_bytes())
-        .map_err(|e| RefactoringError::Parse(format!("Invalid UTF-8 in source: {}", e)))?
+        .map_err(|e| PluginApiError::parse(format!("Invalid UTF-8 in source: {}", e)))?
         .to_string();
 
     let insertion_node = find_ancestor_of_kind(selected_node, "statement")
         .or_else(|| find_ancestor_of_kind(selected_node, "local_variable_declaration"))
         .ok_or_else(|| {
-            RefactoringError::Analysis("Could not find statement to insert before.".to_string())
+            PluginApiError::invalid_input("Could not find statement to insert before.".to_string())
         })?;
 
     let indent = get_indentation(source, insertion_node.start_position().row);
@@ -247,32 +235,32 @@ pub(crate) fn plan_inline_variable(
     variable_line: u32,
     variable_col: u32,
     file_path: &str,
-) -> RefactoringResult<EditPlan> {
+) -> PluginResult<EditPlan> {
     let mut parser = Parser::new();
     parser
         .set_language(&get_language())
-        .map_err(|e| RefactoringError::Parse(format!("Failed to load Java grammar: {}", e)))?;
+        .map_err(|e| PluginApiError::parse(format!("Failed to load Java grammar: {}", e)))?;
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| RefactoringError::Parse("Failed to parse Java source".to_string()))?;
+        .ok_or_else(|| PluginApiError::parse("Failed to parse Java source".to_string()))?;
     let root = tree.root_node();
     let point = Point::new(variable_line as usize - 1, variable_col as usize);
 
     let var_ident_node = find_node_at_point(root, point).ok_or_else(|| {
-        RefactoringError::Analysis("Could not find variable at specified location.".to_string())
+        PluginApiError::invalid_input("Could not find variable at specified location.".to_string())
     })?;
 
     let (var_name, var_value, declaration_node) = extract_java_var_info(var_ident_node, source)?;
 
     let scope_node =
         find_ancestor_of_kind(declaration_node, "method_declaration").ok_or_else(|| {
-            RefactoringError::Analysis("Variable is not inside a method.".to_string())
+            PluginApiError::invalid_input("Variable is not inside a method.".to_string())
         })?;
 
     let mut edits = Vec::new();
     let query_str = format!(r#"((identifier) @ref (#eq? @ref "{}"))"#, var_name);
     let query = Query::new(&get_language(), &query_str)
-        .map_err(|e| RefactoringError::Query(e.to_string()))?;
+        .map_err(|e| PluginApiError::internal(e.to_string()))?;
     let mut cursor = QueryCursor::new();
 
     cursor
@@ -300,7 +288,7 @@ pub(crate) fn plan_inline_variable(
         location: node_to_location(declaration_node).into(),
         original_text: declaration_node
             .utf8_text(source.as_bytes())
-            .map_err(|e| RefactoringError::Parse(format!("Invalid UTF-8 in source: {}", e)))?
+            .map_err(|e| PluginApiError::parse(format!("Invalid UTF-8 in source: {}", e)))?
             .to_string(),
         new_text: String::new(),
         priority: 100,
@@ -384,10 +372,10 @@ fn node_to_location(node: Node) -> CommonCodeRange {
 fn extract_java_var_info<'a>(
     node: Node<'a>,
     source: &str,
-) -> RefactoringResult<(String, String, Node<'a>)> {
+) -> PluginResult<(String, String, Node<'a>)> {
     let declaration_node =
         find_ancestor_of_kind(node, "local_variable_declaration").ok_or_else(|| {
-            RefactoringError::Analysis("Not a local variable declaration".to_string())
+            PluginApiError::invalid_input("Not a local variable declaration".to_string())
         })?;
 
     let declarator = declaration_node
@@ -397,23 +385,23 @@ fn extract_java_var_info<'a>(
                 && d.range().end_byte >= node.range().end_byte
         })
         .ok_or_else(|| {
-            RefactoringError::Analysis("Could not find variable declarator".to_string())
+            PluginApiError::invalid_input("Could not find variable declarator".to_string())
         })?;
 
     let name_node = declarator
         .child_by_field_name("name")
-        .ok_or_else(|| RefactoringError::Analysis("Could not find variable name".to_string()))?;
+        .ok_or_else(|| PluginApiError::invalid_input("Could not find variable name".to_string()))?;
     let value_node = declarator
         .child_by_field_name("value")
-        .ok_or_else(|| RefactoringError::Analysis("Could not find variable value".to_string()))?;
+        .ok_or_else(|| PluginApiError::invalid_input("Could not find variable value".to_string()))?;
 
     let name = name_node
         .utf8_text(source.as_bytes())
-        .map_err(|e| RefactoringError::Parse(format!("Invalid UTF-8 in variable name: {}", e)))?
+        .map_err(|e| PluginApiError::parse(format!("Invalid UTF-8 in variable name: {}", e)))?
         .to_string();
     let value = value_node
         .utf8_text(source.as_bytes())
-        .map_err(|e| RefactoringError::Parse(format!("Invalid UTF-8 in variable value: {}", e)))?
+        .map_err(|e| PluginApiError::parse(format!("Invalid UTF-8 in variable value: {}", e)))?
         .to_string();
 
     Ok((name, value, declaration_node))
@@ -443,18 +431,18 @@ pub(crate) fn analyze_extract_constant(
     line: u32,
     character: u32,
     _file_path: &str,
-) -> RefactoringResult<ExtractConstantAnalysis> {
+) -> PluginResult<ExtractConstantAnalysis> {
     let lines: Vec<&str> = source.lines().collect();
 
     // Get the line at cursor position
     let line_text = lines
         .get(line as usize)
-        .ok_or_else(|| RefactoringError::Analysis("Invalid line number".to_string()))?;
+        .ok_or_else(|| PluginApiError::invalid_input("Invalid line number".to_string()))?;
 
     // Find the literal at the cursor position
     let found_literal = find_java_literal_at_position(line_text, character as usize)
         .ok_or_else(|| {
-            RefactoringError::Analysis("No literal found at the specified location".to_string())
+            PluginApiError::invalid_input("No literal found at the specified location".to_string())
         })?;
 
     let literal_value = found_literal.0;
@@ -506,11 +494,11 @@ pub(crate) fn plan_extract_constant(
     character: u32,
     name: &str,
     file_path: &str,
-) -> RefactoringResult<EditPlan> {
+) -> PluginResult<EditPlan> {
     let analysis = analyze_extract_constant(source, line, character, file_path)?;
 
     if !analysis.is_valid_literal {
-        return Err(RefactoringError::Analysis(format!(
+        return Err(PluginApiError::invalid_input(format!(
             "Cannot extract constant: {}",
             analysis.blocking_reasons.join(", ")
         )));
@@ -529,7 +517,7 @@ pub(crate) fn plan_extract_constant(
                 indent, java_type, name, value
             )
         })
-        .map_err(|e| RefactoringError::Analysis(e))
+        .map_err(|e| PluginApiError::invalid_input(e))
 }
 
 /// Finds a Java literal at a given position in a line of code
@@ -752,7 +740,7 @@ fn is_valid_java_literal_location(line: &str, pos: usize, len: usize) -> bool {
 }
 
 /// Finds the appropriate insertion point for a constant declaration in Java code
-fn find_java_insertion_point_for_constant(source: &str) -> RefactoringResult<CodeRange> {
+fn find_java_insertion_point_for_constant(source: &str) -> PluginResult<CodeRange> {
     let lines: Vec<&str> = source.lines().collect();
     let mut insertion_line = 0;
     let mut found_class = false;

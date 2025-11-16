@@ -18,31 +18,18 @@ use mill_lang_common::{
     count_unescaped_quotes, find_literal_occurrences, ExtractConstantAnalysis,
     ExtractVariableAnalysis, ExtractableFunction, InlineVariableAnalysis, LineExtractor,
 };
+use mill_plugin_api::{PluginApiError, PluginResult};
 use std::collections::HashMap;
 
 // Re-export for use within the plugin
 pub use mill_lang_common::CodeRange;
 
-/// Error type for refactoring operations
-#[derive(Debug, thiserror::Error)]
-pub enum RefactoringError {
-    #[error("Analysis error: {0}")]
-    Analysis(String),
-    #[error("Parse error: {0}")]
-    Parse(String),
-}
-pub type RefactoringResult<T> = Result<T, RefactoringError>;
-impl From<mill_plugin_api::PluginApiError> for RefactoringError {
-    fn from(err: mill_plugin_api::PluginApiError) -> Self {
-        RefactoringError::Parse(err.to_string())
-    }
-}
 /// Analyze code selection for function extraction (Python)
 pub(crate) fn analyze_extract_function(
     source: &str,
     range: &CodeRange,
     _file_path: &str,
-) -> RefactoringResult<ExtractableFunction> {
+) -> PluginResult<ExtractableFunction> {
     let lines: Vec<&str> = source.lines().collect();
     let mut required_parameters = Vec::new();
     let mut required_imports = Vec::new();
@@ -96,25 +83,25 @@ pub(crate) fn analyze_inline_variable(
     variable_line: u32,
     variable_col: u32,
     _file_path: &str,
-) -> RefactoringResult<InlineVariableAnalysis> {
+) -> PluginResult<InlineVariableAnalysis> {
     if let Some(variable) = find_variable_at_position(source, variable_line, variable_col)? {
         let lines: Vec<&str> = source.lines().collect();
         let var_line_text = lines
             .get(variable.line as usize)
-            .ok_or_else(|| RefactoringError::Analysis("Invalid line number".to_string()))?;
+            .ok_or_else(|| PluginApiError::invalid_input("Invalid line number".to_string()))?;
         let assign_re = regex::Regex::new(&format!(
             r"^\s*{}\s*=\s*(.+)",
             regex::escape(&variable.name)
         ))
-        .map_err(|e| RefactoringError::Analysis(format!("Invalid regex pattern: {}", e)))?;
+        .map_err(|e| PluginApiError::invalid_input(format!("Invalid regex pattern: {}", e)))?;
         let initializer = if let Some(captures) = assign_re.captures(var_line_text) {
             captures.get(1)
-                .ok_or_else(|| RefactoringError::Analysis("Failed to capture initializer expression".to_string()))?
+                .ok_or_else(|| PluginApiError::invalid_input("Failed to capture initializer expression".to_string()))?
                 .as_str()
                 .trim()
                 .to_string()
         } else {
-            return Err(RefactoringError::Analysis(
+            return Err(PluginApiError::invalid_input(
                 "Could not find variable assignment".to_string(),
             ));
         };
@@ -142,7 +129,7 @@ pub(crate) fn analyze_inline_variable(
             blocking_reasons: Vec::new(),
         })
     } else {
-        Err(RefactoringError::Analysis(
+        Err(PluginApiError::invalid_input(
             "Could not find variable at specified position".to_string(),
         ))
     }
@@ -155,7 +142,7 @@ pub(crate) fn analyze_extract_variable(
     end_line: u32,
     end_col: u32,
     _file_path: &str,
-) -> RefactoringResult<ExtractVariableAnalysis> {
+) -> PluginResult<ExtractVariableAnalysis> {
     let expression_range = CodeRange {
         start_line,
         start_col,
@@ -201,7 +188,7 @@ pub(crate) fn plan_extract_function(
     range: &CodeRange,
     new_function_name: &str,
     file_path: &str,
-) -> RefactoringResult<EditPlan> {
+) -> PluginResult<EditPlan> {
     let analysis = analyze_extract_function(source, range, file_path)?;
     let mut edits = Vec::new();
     let function_code = generate_extracted_function(source, &analysis, new_function_name)?;
@@ -251,10 +238,10 @@ pub(crate) fn plan_inline_variable(
     variable_line: u32,
     variable_col: u32,
     file_path: &str,
-) -> RefactoringResult<EditPlan> {
+) -> PluginResult<EditPlan> {
     let analysis = analyze_inline_variable(source, variable_line, variable_col, file_path)?;
     if !analysis.is_safe_to_inline {
-        return Err(RefactoringError::Analysis(format!(
+        return Err(PluginApiError::invalid_input(format!(
             "Cannot safely inline variable '{}': {}",
             analysis.variable_name,
             analysis.blocking_reasons.join(", ")
@@ -325,11 +312,11 @@ pub(crate) fn plan_extract_variable(
     end_col: u32,
     variable_name: Option<String>,
     file_path: &str,
-) -> RefactoringResult<EditPlan> {
+) -> PluginResult<EditPlan> {
     let analysis =
         analyze_extract_variable(source, start_line, start_col, end_line, end_col, file_path)?;
     if !analysis.can_extract {
-        return Err(RefactoringError::Analysis(format!(
+        return Err(PluginApiError::invalid_input(format!(
             "Cannot extract expression: {}",
             analysis.blocking_reasons.join(", ")
         )));
@@ -383,7 +370,7 @@ pub(crate) fn plan_extract_variable(
     })
 }
 /// Extract text from a Python code range
-fn extract_range_text(source: &str, range: &CodeRange) -> RefactoringResult<String> {
+fn extract_range_text(source: &str, range: &CodeRange) -> PluginResult<String> {
     Ok(analyze_python_expression_range(
         source,
         range.start_line,
@@ -393,7 +380,7 @@ fn extract_range_text(source: &str, range: &CodeRange) -> RefactoringResult<Stri
     )?)
 }
 /// Find proper insertion point for a new Python function
-fn find_insertion_point(source: &str, start_line: u32) -> RefactoringResult<CodeRange> {
+fn find_insertion_point(source: &str, start_line: u32) -> PluginResult<CodeRange> {
     let lines: Vec<&str> = source.lines().collect();
     let mut insertion_line = 0;
     for (idx, line) in lines.iter().enumerate() {
@@ -418,7 +405,7 @@ fn generate_extracted_function(
     source: &str,
     analysis: &ExtractableFunction,
     function_name: &str,
-) -> RefactoringResult<String> {
+) -> PluginResult<String> {
     let params = analysis.required_parameters.join(", ");
     let extracted_code = extract_range_text(source, &analysis.selected_range)?;
     let indented_code = extracted_code
@@ -448,7 +435,7 @@ fn generate_extracted_function(
 fn generate_function_call(
     analysis: &ExtractableFunction,
     function_name: &str,
-) -> RefactoringResult<String> {
+) -> PluginResult<String> {
     let args = analysis.required_parameters.join(", ");
     if analysis.return_variables.is_empty() {
         Ok(format!("{}({})", function_name, args))
@@ -539,16 +526,16 @@ pub(crate) fn analyze_extract_constant(
     line: u32,
     character: u32,
     _file_path: &str,
-) -> RefactoringResult<ExtractConstantAnalysis> {
+) -> PluginResult<ExtractConstantAnalysis> {
     let lines: Vec<&str> = source.lines().collect();
 
     // Get the line at cursor position
     let line_text = lines.get(line as usize)
-        .ok_or_else(|| RefactoringError::Analysis("Invalid line number".to_string()))?;
+        .ok_or_else(|| PluginApiError::invalid_input("Invalid line number".to_string()))?;
 
     // Find the literal at the cursor position
     let found_literal = find_python_literal_at_position(line_text, character as usize)
-        .ok_or_else(|| RefactoringError::Analysis("No literal found at the specified location".to_string()))?;
+        .ok_or_else(|| PluginApiError::invalid_input("No literal found at the specified location".to_string()))?;
 
     let literal_value = found_literal.0;
     let is_valid_literal = !literal_value.is_empty();
@@ -647,11 +634,11 @@ pub(crate) fn plan_extract_constant(
     character: u32,
     name: &str,
     file_path: &str,
-) -> RefactoringResult<EditPlan> {
+) -> PluginResult<EditPlan> {
     let analysis = analyze_extract_constant(source, line, character, file_path)?;
 
     if !analysis.is_valid_literal {
-        return Err(RefactoringError::Analysis(format!(
+        return Err(PluginApiError::invalid_input(format!(
             "Cannot extract constant: {}",
             analysis.blocking_reasons.join(", ")
         )));
@@ -661,7 +648,7 @@ pub(crate) fn plan_extract_constant(
 
     ExtractConstantEditPlanBuilder::new(analysis, name.to_string(), file_path.to_string())
         .with_declaration_format(|name, value| format!("{} = {}\n", name, value))
-        .map_err(|e| RefactoringError::Analysis(e))
+        .map_err(|e| PluginApiError::invalid_input(e))
 }
 
 /// Finds a Python literal at a given position in a line of code.
@@ -1090,7 +1077,7 @@ fn is_valid_python_literal_location(line: &str, pos: usize, _len: usize) -> bool
 /// # Called By
 /// - `analyze_extract_constant()` - Determines where to insert constant declaration
 #[allow(dead_code)]
-fn find_python_insertion_point_for_constant(source: &str) -> RefactoringResult<CodeRange> {
+fn find_python_insertion_point_for_constant(source: &str) -> PluginResult<CodeRange> {
     let lines: Vec<&str> = source.lines().collect();
     let mut insertion_line = 0;
     let mut in_docstring = false;
