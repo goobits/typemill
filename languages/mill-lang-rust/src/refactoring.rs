@@ -732,8 +732,13 @@ pub fn plan_inline_variable(
     let var_pattern = constants::variable_decl_pattern();
 
     if let Some(captures) = var_pattern.captures(line_text) {
-        let var_name = captures.get(1).unwrap().as_str();
-        let initializer = captures.get(2).unwrap().as_str().trim();
+        let var_name = captures.get(1)
+            .ok_or_else(|| "Regex missing capture group 1 for variable name".to_string())?
+            .as_str();
+        let initializer = captures.get(2)
+            .ok_or_else(|| "Regex missing capture group 2 for initializer".to_string())?
+            .as_str()
+            .trim();
 
         // Find all usages of this variable in the rest of the source
         let mut edits = Vec::new();

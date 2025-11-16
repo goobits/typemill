@@ -15,11 +15,12 @@ use async_trait::async_trait;
 use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
-use mill_lang_common::is_escaped;
 use mill_lang_common::is_screaming_snake_case;
 use mill_lang_common::is_valid_code_literal_location;
 use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
 use mill_lang_common::refactoring::find_literal_occurrences;
+#[cfg(test)]
+use mill_lang_common::is_escaped;
 use mill_plugin_api::{PluginApiError, PluginResult, RefactoringProvider};
 use std::collections::HashMap;
 use tree_sitter::{Node, Parser, Point};
@@ -363,7 +364,7 @@ fn plan_inline_variable_impl(
         location: node_to_location(declaration_node).into(),
         original_text: declaration_node
             .utf8_text(source.as_bytes())
-            .unwrap()
+            .map_err(|e| format!("Invalid UTF-8 in source at declaration node: {}", e))?
             .to_string(),
         new_text: String::new(),
         priority: 100,

@@ -76,7 +76,7 @@ pub(crate) fn plan_extract_function(
 
     let selected_text = selected_node
         .utf8_text(source.as_bytes())
-        .unwrap()
+        .map_err(|e| RefactoringError::Parse(format!("Invalid UTF-8 in source: {}", e)))?
         .to_string();
 
     let enclosing_method =
@@ -171,7 +171,7 @@ pub(crate) fn plan_extract_variable(
 
     let expression_text = selected_node
         .utf8_text(source.as_bytes())
-        .unwrap()
+        .map_err(|e| RefactoringError::Parse(format!("Invalid UTF-8 in source: {}", e)))?
         .to_string();
 
     let insertion_node = find_ancestor_of_kind(selected_node, "statement")
@@ -301,7 +301,7 @@ pub(crate) fn plan_inline_variable(
         location: node_to_location(declaration_node).into(),
         original_text: declaration_node
             .utf8_text(source.as_bytes())
-            .unwrap()
+            .map_err(|e| RefactoringError::Parse(format!("Invalid UTF-8 in source: {}", e)))?
             .to_string(),
         new_text: String::new(),
         priority: 100,
@@ -408,8 +408,14 @@ fn extract_java_var_info<'a>(
         .child_by_field_name("value")
         .ok_or_else(|| RefactoringError::Analysis("Could not find variable value".to_string()))?;
 
-    let name = name_node.utf8_text(source.as_bytes()).unwrap().to_string();
-    let value = value_node.utf8_text(source.as_bytes()).unwrap().to_string();
+    let name = name_node
+        .utf8_text(source.as_bytes())
+        .map_err(|e| RefactoringError::Parse(format!("Invalid UTF-8 in variable name: {}", e)))?
+        .to_string();
+    let value = value_node
+        .utf8_text(source.as_bytes())
+        .map_err(|e| RefactoringError::Parse(format!("Invalid UTF-8 in variable value: {}", e)))?
+        .to_string();
 
     Ok((name, value, declaration_node))
 }

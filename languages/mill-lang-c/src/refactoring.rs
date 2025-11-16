@@ -21,9 +21,11 @@ use mill_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::{
-    find_literal_occurrences, is_escaped, is_screaming_snake_case, is_valid_code_literal_location,
+    find_literal_occurrences, is_screaming_snake_case, is_valid_code_literal_location,
     CodeRange, ExtractConstantAnalysis,
 };
+#[cfg(test)]
+use mill_lang_common::is_escaped;
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -130,8 +132,13 @@ pub fn plan_inline_variable(
     let line = lines[line_index];
 
     if let Some(caps) = INT_VAR_DECL_PATTERN.captures(line) {
-        let var_name = caps.get(1).unwrap().as_str();
-        let var_value = caps.get(2).unwrap().as_str().trim();
+        let var_name = caps.get(1)
+            .ok_or_else(|| mill_plugin_api::PluginApiError::internal("Regex missing capture group 1 (variable name)"))?
+            .as_str();
+        let var_value = caps.get(2)
+            .ok_or_else(|| mill_plugin_api::PluginApiError::internal("Regex missing capture group 2 (variable value)"))?
+            .as_str()
+            .trim();
 
         let mut edits = Vec::new();
 

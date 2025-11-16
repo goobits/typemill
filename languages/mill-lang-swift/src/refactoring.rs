@@ -637,17 +637,15 @@ fn find_swift_boolean_literal(line_text: &str, col: usize) -> Option<(String, u3
                 if &line_text[start..start + keyword.len()] == *keyword {
                     // Check word boundaries
                     let before_ok = start == 0
-                        || !line_text[..start]
+                        || line_text[..start]
                             .chars()
                             .last()
-                            .unwrap()
-                            .is_alphanumeric();
+                            .map_or(false, |c| !c.is_alphanumeric());
                     let after_ok = start + keyword.len() == line_text.len()
-                        || !line_text[start + keyword.len()..]
+                        || line_text[start + keyword.len()..]
                             .chars()
                             .next()
-                            .unwrap()
-                            .is_alphanumeric();
+                            .map_or(false, |c| !c.is_alphanumeric());
 
                     if before_ok && after_ok {
                         return Some((
