@@ -18,16 +18,15 @@
 use mill_plugin_api::PluginResult;
 
 use mill_foundation::protocol::{
-    EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
+    EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit,
 };
 use mill_lang_common::{
-    find_literal_occurrences, is_screaming_snake_case, is_valid_code_literal_location,
-    CodeRange, ExtractConstantAnalysis,
+    find_literal_occurrences, is_valid_code_literal_location,
+    CodeRange, ExtractConstantAnalysis, ExtractConstantEditPlanBuilder,
 };
 #[cfg(test)]
-use mill_lang_common::is_escaped;
+use mill_lang_common::{is_escaped, is_screaming_snake_case};
 use serde_json::json;
-use std::collections::HashMap;
 
 use crate::constants::INT_VAR_DECL_PATTERN;
 
@@ -421,71 +420,11 @@ pub fn plan_extract_constant(
         )));
     }
 
-    // Validate that the name is in SCREAMING_SNAKE_CASE format
-    if !is_screaming_snake_case(name) {
-        return Err(mill_plugin_api::PluginApiError::not_supported(&format!(
-            "Constant name '{}' must be in SCREAMING_SNAKE_CASE format. Valid examples: MAX_SIZE, TAX_RATE, BUFFER_LEN. Requirements: only uppercase letters (A-Z), digits (0-9), and underscores; must contain at least one uppercase letter; cannot start or end with underscore.",
-            name
-        )));
-    }
-
-    let mut edits = Vec::new();
-
-    // Generate the constant declaration (C style: #define)
-    let declaration = format!("#define {} {}\n", name, analysis.literal_value);
-    edits.push(TextEdit {
-        file_path: None,
-        edit_type: EditType::Insert,
-        location: analysis.insertion_point.into(),
-        original_text: String::new(),
-        new_text: declaration,
-        priority: 100,
-        description: format!(
-            "Extract '{}' into constant '{}'",
-            analysis.literal_value, name
-        ),
-    });
-
-    // Replace all occurrences of the literal with the constant name
-    for (idx, occurrence_range) in analysis.occurrence_ranges.iter().enumerate() {
-        let priority = 90_u32.saturating_sub(idx as u32);
-        edits.push(TextEdit {
-            file_path: None,
-            edit_type: EditType::Replace,
-            location: (*occurrence_range).into(),
-            original_text: analysis.literal_value.clone(),
-            new_text: name.to_string(),
-            priority,
-            description: format!(
-                "Replace occurrence {} of literal with constant '{}'",
-                idx + 1,
-                name
-            ),
-        });
-    }
-
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits,
-        dependency_updates: Vec::new(),
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify C syntax is valid after constant extraction".to_string(),
-            parameters: HashMap::new(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_constant".to_string(),
-            intent_arguments: json!({
-                "literal": analysis.literal_value,
-                "constantName": name,
-                "occurrences": analysis.occurrence_ranges.len(),
-            }),
-            created_at: chrono::Utc::now(),
-            complexity: (analysis.occurrence_ranges.len().min(10)) as u8,
-            impact_areas: vec!["constant_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    ExtractConstantEditPlanBuilder::new(analysis, name.to_string(), file_path.to_string())
+        .with_declaration_format(|name, value| {
+            format!("#define {} {}\n", name, value)
+        })
+        .map_err(|e| mill_plugin_api::PluginApiError::invalid_input(e))
 }
 
 /// Finds a numeric literal at a cursor position in C code.

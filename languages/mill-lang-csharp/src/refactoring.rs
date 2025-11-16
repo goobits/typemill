@@ -11,6 +11,7 @@ use mill_foundation::protocol::{
 use mill_lang_common::{
     count_unescaped_quotes, is_escaped, is_screaming_snake_case, is_valid_code_literal_location,
     refactoring::find_literal_occurrences, CodeRange, ExtractConstantAnalysis,
+    ExtractConstantEditPlanBuilder,
 };
 use tree_sitter::{Node, Parser, Point, Query, QueryCursor, StreamingIterator};
 
@@ -506,6 +507,52 @@ pub fn analyze_extract_constant(
     })
 }
 
+/// Infer the C# type from a literal value
+fn infer_csharp_type(literal: &str) -> &'static str {
+    // Check for boolean
+    if literal == "true" || literal == "false" {
+        return "bool";
+    }
+
+    // Check for null
+    if literal == "null" {
+        return "object";
+    }
+
+    // Check for string literals
+    if literal.starts_with('"') || literal.starts_with('\'') {
+        return "string";
+    }
+
+    // Check for hexadecimal
+    if literal.starts_with("0x") || literal.starts_with("0X") {
+        return "int";
+    }
+
+    // Check for decimal suffix
+    if literal.ends_with('m') || literal.ends_with('M') {
+        return "decimal";
+    }
+
+    // Check for float suffix
+    if literal.ends_with('f') || literal.ends_with('F') {
+        return "float";
+    }
+
+    // Check for double suffix or contains decimal point
+    if literal.ends_with('d') || literal.ends_with('D') || literal.contains('.') {
+        return "double";
+    }
+
+    // Check for long suffix
+    if literal.ends_with('L') || literal.ends_with('l') {
+        return "long";
+    }
+
+    // Default to int for plain integers
+    "int"
+}
+
 /// Extracts a literal value to a named constant in C# code.
 ///
 /// This refactoring operation replaces all occurrences of a literal (number, string, boolean, or null)
@@ -532,82 +579,16 @@ pub fn plan_extract_constant(
 ) -> RefactoringResult<EditPlan> {
     let analysis = analyze_extract_constant(source, line, character, file_path)?;
 
-    if !analysis.is_valid_literal {
-        return Err(RefactoringError::Analysis(format!(
-            "Cannot extract constant: {}",
-            analysis.blocking_reasons.join(", ")
-        )));
-    }
-
-    // Validate that the name is in SCREAMING_SNAKE_CASE format.
-    if !is_screaming_snake_case(name) {
-        return Err(RefactoringError::Analysis(format!(
-            "Constant name '{}' must be in SCREAMING_SNAKE_CASE format. Valid examples: TAX_RATE, MAX_VALUE, API_KEY, DB_TIMEOUT_MS. Requirements: only uppercase letters (A-Z), digits (0-9), and underscores; must contain at least one uppercase letter; cannot start or end with underscore.",
-            name
-        )));
-    }
-
-    let mut edits = Vec::new();
-
-    // Get indentation for class-level constant
+    // C# needs type inference and indentation
+    let csharp_type = infer_csharp_type(&analysis.literal_value);
     let indent = get_indentation(source, analysis.insertion_point.start_line as usize);
     let const_indent = format!("{}    ", indent); // Add one level of indentation
 
-    // Generate the constant declaration (C# style: private const)
-    let declaration = format!("{}private const int {} = {};\n", const_indent, name, analysis.literal_value);
-    edits.push(TextEdit {
-        file_path: None,
-        edit_type: EditType::Insert,
-        location: analysis.insertion_point.into(),
-        original_text: String::new(),
-        new_text: declaration,
-        priority: 100,
-        description: format!(
-            "Extract '{}' into constant '{}'",
-            analysis.literal_value, name
-        ),
-    });
-
-    // Replace all occurrences of the literal with the constant name
-    for (idx, occurrence_range) in analysis.occurrence_ranges.iter().enumerate() {
-        let priority = 90_u32.saturating_sub(idx as u32);
-        edits.push(TextEdit {
-            file_path: None,
-            edit_type: EditType::Replace,
-            location: (*occurrence_range).into(),
-            original_text: analysis.literal_value.clone(),
-            new_text: name.to_string(),
-            priority,
-            description: format!(
-                "Replace occurrence {} of literal with constant '{}'",
-                idx + 1,
-                name
-            ),
-        });
-    }
-
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits,
-        dependency_updates: Vec::new(),
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify C# syntax is valid after constant extraction".to_string(),
-            parameters: Default::default(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_constant".to_string(),
-            intent_arguments: serde_json::json!({
-                "literal": analysis.literal_value,
-                "constantName": name,
-                "occurrences": analysis.occurrence_ranges.len(),
-            }),
-            created_at: chrono::Utc::now(),
-            complexity: (analysis.occurrence_ranges.len().min(10)) as u8,
-            impact_areas: vec!["constant_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    ExtractConstantEditPlanBuilder::new(analysis, name.to_string(), file_path.to_string())
+        .with_declaration_format(|name, value| {
+            format!("{}private const {} {} = {};\n", const_indent, csharp_type, name, value)
+        })
+        .map_err(|e| RefactoringError::Analysis(e))
 }
 
 /// Finds a C# literal at a given position in a line of code.

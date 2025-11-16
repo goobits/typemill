@@ -15,12 +15,12 @@ use async_trait::async_trait;
 use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
-use mill_lang_common::is_screaming_snake_case;
 use mill_lang_common::is_valid_code_literal_location;
 use mill_lang_common::refactoring::CodeRange as CommonCodeRange;
 use mill_lang_common::refactoring::find_literal_occurrences;
+use mill_lang_common::ExtractConstantEditPlanBuilder;
 #[cfg(test)]
-use mill_lang_common::is_escaped;
+use mill_lang_common::{is_escaped, is_screaming_snake_case};
 use mill_plugin_api::{PluginApiError, PluginResult, RefactoringProvider};
 use std::collections::HashMap;
 use tree_sitter::{Node, Parser, Point};
@@ -399,16 +399,6 @@ fn plan_extract_constant_impl(
     name: &str,
     file_path: &str,
 ) -> Result<EditPlan, String> {
-    // Validate constant name is SCREAMING_SNAKE_CASE
-    if !is_screaming_snake_case(name) {
-        return Err(format!(
-            "Constant name '{}' must be in SCREAMING_SNAKE_CASE format. Valid examples: TAX_RATE, MAX_VALUE, API_KEY. \
-            Requirements: only uppercase letters (A-Z), digits (0-9), and underscores; must contain at least one uppercase letter; \
-            cannot start or end with underscore.",
-            name
-        ));
-    }
-
     let mut parser = Parser::new();
     parser
         .set_language(&get_cpp_language())
@@ -449,66 +439,22 @@ fn plan_extract_constant_impl(
     // Find the best insertion point (top of file or after includes)
     let insertion_point = find_constant_insertion_point(root, source);
 
-    let mut edits = Vec::new();
+    // Build analysis result for the builder
+    let analysis = mill_lang_common::ExtractConstantAnalysis {
+        literal_value,
+        occurrence_ranges,
+        is_valid_literal: true,
+        blocking_reasons: vec![],
+        insertion_point,
+    };
 
     // Determine the type for the constant declaration
-    let const_type = infer_cpp_constant_type(&literal_value);
+    let const_type = infer_cpp_constant_type(&analysis.literal_value);
 
-    // Create the constant declaration
-    let declaration = format!("constexpr {} {} = {};\n", const_type, name, literal_value);
-    edits.push(TextEdit {
-        file_path: None,
-        edit_type: EditType::Insert,
-        location: insertion_point.into(),
-        original_text: String::new(),
-        new_text: declaration,
-        priority: 100,
-        description: format!(
-            "Extract '{}' into constant '{}'",
-            literal_value, name
-        ),
-    });
-
-    // Replace all occurrences with the constant name
-    for (idx, occurrence_range) in occurrence_ranges.iter().enumerate() {
-        let priority = 90_u32.saturating_sub(idx as u32);
-        edits.push(TextEdit {
-            file_path: None,
-            edit_type: EditType::Replace,
-            location: (*occurrence_range).into(),
-            original_text: literal_value.clone(),
-            new_text: name.to_string(),
-            priority,
-            description: format!(
-                "Replace occurrence {} of literal with constant '{}'",
-                idx + 1,
-                name
-            ),
-        });
-    }
-
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits,
-        dependency_updates: vec![],
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify syntax after constant extraction".to_string(),
-            parameters: HashMap::new(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_constant".to_string(),
-            intent_arguments: serde_json::json!({
-                "literal": literal_value,
-                "constantName": name,
-                "occurrences": occurrence_ranges.len(),
-            }),
-            created_at: chrono::Utc::now(),
-            complexity: (occurrence_ranges.len().min(10)) as u8,
-            impact_areas: vec!["constant_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    ExtractConstantEditPlanBuilder::new(analysis, name.to_string(), file_path.to_string())
+        .with_declaration_format(|name, value| {
+            format!("constexpr {} {} = {};\n", const_type, name, value)
+        })
 }
 
 // Helper functions

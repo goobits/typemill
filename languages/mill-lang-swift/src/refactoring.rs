@@ -3,7 +3,8 @@ use mill_foundation::protocol::{
     EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
 use mill_lang_common::{
-    find_literal_occurrences, is_escaped, is_screaming_snake_case, is_valid_code_literal_location,
+    find_literal_occurrences, is_escaped, is_valid_code_literal_location,
+    ExtractConstantEditPlanBuilder,
 };
 use mill_plugin_api::{PluginApiError, PluginResult};
 use regex::Regex;
@@ -292,14 +293,6 @@ pub fn plan_extract_constant(
     name: &str,
     file_path: &str,
 ) -> PluginResult<EditPlan> {
-    // Validate constant name follows SCREAMING_SNAKE_CASE
-    if !is_screaming_snake_case(name) {
-        return Err(PluginApiError::invalid_input(format!(
-            "Constant name '{}' must be in SCREAMING_SNAKE_CASE format. Valid examples: TAX_RATE, MAX_VALUE, API_KEY. Requirements: only uppercase letters (A-Z), digits (0-9), and underscores; must contain at least one uppercase letter; cannot start or end with underscore.",
-            name
-        )));
-    }
-
     let lines: Vec<&str> = source.lines().collect();
 
     // Get the line at cursor position
@@ -325,70 +318,20 @@ pub fn plan_extract_constant(
         ));
     }
 
-    let mut edits = Vec::new();
+    // Build analysis result for the builder
+    let analysis = mill_lang_common::ExtractConstantAnalysis {
+        literal_value,
+        occurrence_ranges,
+        is_valid_literal: true,
+        blocking_reasons: vec![],
+        insertion_point: mill_lang_common::CodeRange::new(0, 0, 0, 0),
+    };
 
-    // Generate the constant declaration at the top of the file
-    let declaration = format!("let {} = {}\n", name, literal_value);
-    edits.push(TextEdit {
-        file_path: Some(file_path.to_string()),
-        edit_type: EditType::Insert,
-        location: mill_foundation::protocol::EditLocation {
-            start_line: 0,
-            start_column: 0,
-            end_line: 0,
-            end_column: 0,
-        },
-        original_text: String::new(),
-        new_text: declaration,
-        priority: 100,
-        description: format!("Extract '{}' into constant '{}'", literal_value, name),
-    });
-
-    // Replace all occurrences of the literal with the constant name
-    for (idx, range) in occurrence_ranges.iter().enumerate() {
-        let priority = 90_u32.saturating_sub(idx as u32);
-        edits.push(TextEdit {
-            file_path: Some(file_path.to_string()),
-            edit_type: EditType::Replace,
-            location: mill_foundation::protocol::EditLocation {
-                start_line: range.start_line,
-                start_column: range.start_col,
-                end_line: range.end_line,
-                end_column: range.end_col,
-            },
-            original_text: literal_value.clone(),
-            new_text: name.to_string(),
-            priority,
-            description: format!(
-                "Replace occurrence {} of literal with constant '{}'",
-                idx + 1,
-                name
-            ),
-        });
-    }
-
-    Ok(EditPlan {
-        source_file: file_path.to_string(),
-        edits,
-        dependency_updates: vec![],
-        validations: vec![ValidationRule {
-            rule_type: ValidationType::SyntaxCheck,
-            description: "Verify syntax is valid after constant extraction".to_string(),
-            parameters: Default::default(),
-        }],
-        metadata: EditPlanMetadata {
-            intent_name: "extract_constant".to_string(),
-            intent_arguments: serde_json::json!({
-                "literal": literal_value,
-                "constantName": name,
-                "occurrences": occurrence_ranges.len(),
-            }),
-            created_at: chrono::Utc::now(),
-            complexity: (occurrence_ranges.len().min(10)) as u8,
-            impact_areas: vec!["constant_extraction".to_string()],
-            consolidation: None,
-        },
-    })
+    ExtractConstantEditPlanBuilder::new(analysis, name.to_string(), file_path.to_string())
+        .with_declaration_format(|name, value| {
+            format!("let {} = {}\n", name, value)
+        })
+        .map_err(|e| PluginApiError::invalid_input(e))
 }
 
 /// Finds a Swift literal at a given position in a line of code.
