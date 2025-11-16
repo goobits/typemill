@@ -20,6 +20,7 @@ use mill_plugin_api::PluginResult;
 use mill_foundation::protocol::{
     EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit, ValidationRule, ValidationType,
 };
+use mill_lang_common::is_screaming_snake_case;
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -512,29 +513,6 @@ pub fn plan_extract_constant(
     })
 }
 
-/// Check if a name follows SCREAMING_SNAKE_CASE convention
-fn is_screaming_snake_case(name: &str) -> bool {
-    if name.is_empty() {
-        return false;
-    }
-
-    // Must not start or end with underscore
-    if name.starts_with('_') || name.ends_with('_') {
-        return false;
-    }
-
-    // Check each character
-    for ch in name.chars() {
-        match ch {
-            'A'..='Z' | '0'..='9' | '_' => continue,
-            _ => return false,
-        }
-    }
-
-    // Must have at least one uppercase letter
-    name.chars().any(|c| c.is_ascii_uppercase())
-}
-
 /// Finds a numeric literal at a cursor position in C code.
 ///
 /// This function identifies numeric literals by checking the cursor position.
@@ -552,22 +530,20 @@ fn find_c_numeric_literal_at_position(line_text: &str, col: usize) -> Option<(St
         return None;
     }
 
-    // Find the start of the number (handle negative sign and hex/octal prefixes)
+    let chars: Vec<char> = line_text.chars().collect();
+    if col >= chars.len() {
+        return None;
+    }
+
+    // Check if we're potentially in a hex literal
     let mut start = col;
 
-    // Scan backwards to find the start
+    // Scan backwards to find the start of the number
     while start > 0 {
-        let ch = line_text.chars().nth(start - 1)?;
-        if ch.is_ascii_digit() || ch == '.' || ch == 'x' || ch == 'X' {
+        let ch = chars[start - 1];
+        if ch.is_ascii_hexdigit() || ch == 'x' || ch == 'X' || ch == '.' || ch == 'e' || ch == 'E' {
             start -= 1;
         } else if ch == '-' || ch == '0' {
-            // Could be negative sign or hex/octal prefix
-            if start > 1 {
-                let prev_ch = line_text.chars().nth(start - 2)?;
-                if prev_ch.is_alphanumeric() {
-                    break;
-                }
-            }
             start -= 1;
             break;
         } else {
@@ -575,35 +551,69 @@ fn find_c_numeric_literal_at_position(line_text: &str, col: usize) -> Option<(St
         }
     }
 
-    // Find the end of the number by scanning right from start
-    let mut end = start;
-    let chars: Vec<char> = line_text.chars().collect();
+    // Check if this is a hex literal starting at 'start'
+    if start + 1 < chars.len() && chars[start] == '0' && (chars[start + 1] == 'x' || chars[start + 1] == 'X') {
+        // This is a hex literal
+        let mut end = start + 2;
+        while end < chars.len() && chars[end].is_ascii_hexdigit() {
+            end += 1;
+        }
 
-    // Check for hex prefix
-    let is_hex = end + 1 < chars.len()
-        && chars[end] == '0'
-        && (chars[end + 1] == 'x' || chars[end + 1] == 'X');
+        if end > start + 2 {
+            let text: String = chars[start..end].iter().collect();
+            return Some((
+                text,
+                CodeRange {
+                    start_line: 0,
+                    start_col: start as u32,
+                    end_line: 0,
+                    end_col: end as u32,
+                },
+            ));
+        }
+    }
+
+    // Not a hex literal, try decimal/octal/float
+    start = col;
+
+    // Scan backwards
+    while start > 0 {
+        let ch = chars[start - 1];
+        if ch.is_ascii_digit() || ch == '.' {
+            start -= 1;
+        } else if ch == '-' {
+            start -= 1;
+            break;
+        } else {
+            break;
+        }
+    }
+
+    // Scan forwards
+    let mut end = start;
+    let has_leading_minus = end < chars.len() && chars[end] == '-';
+    if has_leading_minus {
+        end += 1;
+    }
 
     while end < chars.len() {
         let ch = chars[end];
-        if ch.is_ascii_digit() || ch == '.' || ch == 'e' || ch == 'E' || ch == '-' || ch == '+' {
+        if ch.is_ascii_digit() || ch == '.' || ch == 'e' || ch == 'E' {
             end += 1;
-        } else if is_hex && ch.is_ascii_hexdigit() {
-            end += 1;
-        } else if is_hex && end < start + 2 && (ch == 'x' || ch == 'X') {
+        } else if (ch == '-' || ch == '+') && end > 0 && (chars[end - 1] == 'e' || chars[end - 1] == 'E') {
             end += 1;
         } else {
             break;
         }
     }
 
-    if start < end && end <= line_text.len() {
-        let text = &line_text[start..end];
+    if start < end && end <= chars.len() {
+        let text: String = chars[start..end].iter().collect();
 
         // Validate: must be a valid number
-        if is_valid_c_number(text) {
+        if is_valid_c_number(&text) {
             return Some((
-                text.to_string(),
+                text,
                 CodeRange {
                     start_line: 0,
                     start_col: start as u32,
@@ -676,6 +686,29 @@ fn find_c_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRang
     occurrences
 }
 
+/// Check if a character at the given position is escaped
+fn is_escaped(s: &str, pos: usize) -> bool {
+    if pos == 0 {
+        return false;
+    }
+
+    // Count consecutive backslashes before this position
+    let mut backslash_count = 0;
+    let mut check_pos = pos;
+
+    while check_pos > 0 {
+        check_pos -= 1;
+        if s.chars().nth(check_pos) == Some('\\') {
+            backslash_count += 1;
+        } else {
+            break;
+        }
+    }
+
+    // Odd number of backslashes means the character is escaped
+    backslash_count % 2 == 1
+}
+
 /// Validates whether a position in source code is a valid location for a literal.
 ///
 /// A position is considered valid if it's not inside a string literal or comment.
@@ -688,9 +721,14 @@ fn find_c_literal_occurrences(source: &str, literal_value: &str) -> Vec<CodeRang
 /// # Returns
 /// `true` if the position is a valid literal location, `false` otherwise.
 fn is_valid_c_literal_location(line: &str, pos: usize, _len: usize) -> bool {
-    // Count quotes before position to determine if we're inside a string literal
+    // Count non-escaped quotes before position to determine if we're inside a string literal
     let before = &line[..pos];
-    let double_quotes = before.matches('"').count();
+    let mut double_quotes = 0;
+    for (i, ch) in before.char_indices() {
+        if ch == '"' && !is_escaped(before, i) {
+            double_quotes += 1;
+        }
+    }
 
     // If odd number of quotes appear before the position, we're inside a string literal
     if double_quotes % 2 == 1 {
@@ -704,16 +742,17 @@ fn is_valid_c_literal_location(line: &str, pos: usize, _len: usize) -> bool {
         }
     }
 
-    // Check for C style comment start (/* - basic check)
-    if let Some(comment_start) = line.find("/*") {
-        if pos > comment_start {
-            // Check if there's a closing */ before our position
-            if let Some(comment_end) = line.find("*/") {
-                if pos < comment_end {
+    // Check for C style block comment (/* ... */)
+    if let Some(block_start) = line.find("/*") {
+        if pos > block_start {
+            // Check if we're before the closing */
+            if let Some(block_end) = line[block_start..].find("*/") {
+                let actual_block_end = block_start + block_end + 2; // +2 for */
+                if pos < actual_block_end {
                     return false;
                 }
             } else {
-                // Comment starts but doesn't end on this line
+                // Block comment opened but not closed on this line - assume we're in it
                 return false;
             }
         }
@@ -868,5 +907,213 @@ int main() {
         // Verify metadata
         assert_eq!(plan.metadata.intent_name, "extract_constant");
         assert_eq!(plan.metadata.complexity, 2);
+    }
+
+    // ========== New Edge Case Tests ==========
+
+    #[test]
+    fn test_is_escaped() {
+        assert!(!is_escaped("hello", 0));
+        assert!(!is_escaped("hello", 2));
+        assert!(is_escaped(r#"\"hello"#, 1)); // \" - quote is escaped
+        assert!(is_escaped(r#"\\"#, 1)); // \\ - second backslash IS escaped by the first
+        assert!(!is_escaped(r#"\\\"#, 2)); // \\\ - third backslash is NOT escaped (two backslashes before it)
+        assert!(is_escaped(r#"\\\\"#, 3)); // \\\\ - fourth backslash IS escaped by the third
+    }
+
+    #[test]
+    fn test_is_valid_c_literal_location_escaped_quotes() {
+        let line = r#"char* msg = "He said \"hello\""; int x = 42;"#;
+        // Position inside the string should be invalid
+        assert!(
+            !is_valid_c_literal_location(line, 20, 1),
+            "Should detect position inside string with escaped quotes"
+        );
+        // Position after the string should be valid (on the '4' in 42)
+        // The actual line length is 44 (0-indexed: 0-43), so position 41 is on '4'
+        assert!(
+            is_valid_c_literal_location(line, 41, 2),
+            "Should allow position after string with escaped quotes"
+        );
+    }
+
+    #[test]
+    fn test_is_valid_c_literal_location_block_comment() {
+        let line = "int x = /* 42 */ 100;";
+        // Position 11 is inside the block comment (on the '4')
+        assert!(
+            !is_valid_c_literal_location(line, 11, 2),
+            "Should detect position inside block comment"
+        );
+        // Position 17 is after the block comment (on the '1')
+        assert!(
+            is_valid_c_literal_location(line, 17, 3),
+            "Should allow position after block comment"
+        );
+    }
+
+    #[test]
+    fn test_plan_extract_constant_hex_literal() {
+        let source = r#"#include <stdio.h>
+
+int main() {
+    int color = 0xFF00AA;
+    int mask = 0xFF00AA;
+    return 0;
+}
+"#;
+        // Column 16 is inside the hex literal 0xFF00AA
+        let result = plan_extract_constant(source, 3, 16, "COLOR_PINK", "test.c");
+        assert!(
+            result.is_ok(),
+            "Should extract hex literal: {:?}",
+            result.err()
+        );
+
+        let plan = result.unwrap();
+        // Should have 1 insert + 2 replacements
+        assert_eq!(plan.edits.len(), 3);
+
+        let declaration_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Insert).unwrap();
+        assert!(declaration_edit.new_text.contains("#define COLOR_PINK 0xFF00AA"));
+    }
+
+    #[test]
+    fn test_plan_extract_constant_octal_literal() {
+        let source = r#"#include <stdio.h>
+
+int main() {
+    int perms = 0755;
+    int mode = 0755;
+    return 0;
+}
+"#;
+        // Column 16 is inside the octal literal 0755
+        let result = plan_extract_constant(source, 3, 16, "DEFAULT_PERMS", "test.c");
+        assert!(
+            result.is_ok(),
+            "Should extract octal literal: {:?}",
+            result.err()
+        );
+
+        let plan = result.unwrap();
+        assert_eq!(plan.edits.len(), 3); // 1 insert + 2 replacements
+
+        let declaration_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Insert).unwrap();
+        assert!(declaration_edit.new_text.contains("#define DEFAULT_PERMS 0755"));
+    }
+
+    #[test]
+    fn test_plan_extract_constant_negative_number() {
+        let source = r#"#include <stdio.h>
+
+int main() {
+    int temp = -273;
+    int zero = -273;
+    return 0;
+}
+"#;
+        // Column 15 is inside the negative number -273
+        let result = plan_extract_constant(source, 3, 15, "ABSOLUTE_ZERO", "test.c");
+        assert!(
+            result.is_ok(),
+            "Should extract negative literal: {:?}",
+            result.err()
+        );
+
+        let plan = result.unwrap();
+        assert_eq!(plan.edits.len(), 3);
+
+        let declaration_edit = plan.edits.iter().find(|e| e.edit_type == EditType::Insert).unwrap();
+        assert!(declaration_edit.new_text.contains("#define ABSOLUTE_ZERO -273"));
+    }
+
+    #[test]
+    fn test_find_c_literal_occurrences_skip_string_content() {
+        let source = r#"char* msg = "The answer is 42";
+int x = 42;
+int y = 42;"#;
+        let occurrences = find_c_literal_occurrences(source, "42");
+
+        // Should find only 2 occurrences (not the one inside the string)
+        assert_eq!(occurrences.len(), 2, "Should skip literal inside string");
+        assert_eq!(occurrences[0].start_line, 1);
+        assert_eq!(occurrences[1].start_line, 2);
+    }
+
+    #[test]
+    fn test_find_c_literal_occurrences_skip_comment() {
+        let source = r#"// The magic number is 42
+int x = 42;
+int y = 42; // another 42 here"#;
+        let occurrences = find_c_literal_occurrences(source, "42");
+
+        // Should find only 2 occurrences (not the ones in comments)
+        assert_eq!(occurrences.len(), 2, "Should skip literals in comments");
+        assert_eq!(occurrences[0].start_line, 1);
+        assert_eq!(occurrences[1].start_line, 2);
+    }
+
+    #[test]
+    fn test_find_c_literal_occurrences_skip_block_comment() {
+        let source = r#"/* Magic number: 42 */
+int x = /* not 42 */ 42;
+int y = 42;"#;
+        let occurrences = find_c_literal_occurrences(source, "42");
+
+        // Should find only 2 occurrences (not the ones in block comments)
+        assert_eq!(occurrences.len(), 2, "Should skip literals in block comments");
+        assert_eq!(occurrences[0].start_line, 1);
+        assert_eq!(occurrences[1].start_line, 2);
+    }
+
+    #[test]
+    fn test_find_c_numeric_literal_at_position_hex() {
+        let line = "int color = 0xFF00AA;";
+        // Position 15 is inside the hex literal
+        let result = find_c_numeric_literal_at_position(line, 15);
+        assert!(result.is_some(), "Should find hex literal");
+        let (literal, range) = result.unwrap();
+        assert_eq!(literal, "0xFF00AA");
+        assert_eq!(range.start_col, 12);
+        assert_eq!(range.end_col, 20);
+    }
+
+    #[test]
+    fn test_find_c_numeric_literal_at_position_negative() {
+        let line = "int temp = -273;";
+        // Position 12 is inside the negative number
+        let result = find_c_numeric_literal_at_position(line, 12);
+        assert!(result.is_some(), "Should find negative number");
+        let (literal, _range) = result.unwrap();
+        assert_eq!(literal, "-273");
+    }
+
+    #[test]
+    fn test_is_valid_c_number_hex() {
+        assert!(is_valid_c_number("0xFF"));
+        assert!(is_valid_c_number("0x1234ABCD"));
+        assert!(is_valid_c_number("0xdeadbeef"));
+        assert!(!is_valid_c_number("0x")); // Invalid: no digits after 0x
+        assert!(!is_valid_c_number("0xGHIJ")); // Invalid: not hex digits
+    }
+
+    #[test]
+    fn test_is_valid_c_number_octal() {
+        assert!(is_valid_c_number("0755"));
+        assert!(is_valid_c_number("0644"));
+        assert!(is_valid_c_number("01234567"));
+        assert!(!is_valid_c_number("0899")); // Invalid: 8 and 9 are not octal
+    }
+
+    #[test]
+    fn test_is_valid_c_number_decimal_and_float() {
+        assert!(is_valid_c_number("42"));
+        assert!(is_valid_c_number("-273"));
+        assert!(is_valid_c_number("3.14"));
+        assert!(is_valid_c_number("-2.5"));
+        assert!(is_valid_c_number("1e-5"));
+        assert!(!is_valid_c_number("not_a_number"));
+        assert!(!is_valid_c_number(""));
     }
 }
