@@ -21,13 +21,11 @@ pub async fn create_initialized_dispatcher_with_workspace(
     let config =
         mill_config::config::AppConfig::load().map_err(|e| std::io::Error::other(e.to_string()))?;
 
-    // Build plugin registry from the plugin bundle
+    // Build plugin registry using mill-services
+    // We now pass the plugin instances to the service layer for registration
     let plugins = mill_plugin_bundle::all_plugins();
-    let mut plugin_registry = PluginDiscovery::new();
-    for plugin in plugins {
-        plugin_registry.register(plugin);
-    }
-    let plugin_registry = Arc::new(plugin_registry);
+    // Use mill_server re-export to access services since mill-services is not a direct dep of apps/mill
+    let plugin_registry = mill_server::services::registry_builder::build_language_plugin_registry(plugins);
 
     // Create dispatcher using shared library function (reduces duplication)
     let dispatcher = mill_server::create_dispatcher_with_workspace(

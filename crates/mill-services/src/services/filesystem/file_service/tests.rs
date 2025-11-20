@@ -79,7 +79,8 @@ mod tests {
         let lock_manager = Arc::new(LockManager::new());
         let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
         let config = mill_config::config::AppConfig::default();
-        let plugin_registry = crate::services::build_language_plugin_registry();
+        let plugins = mill_plugin_bundle::all_plugins();
+        let plugin_registry = crate::services::build_language_plugin_registry(plugins);
         let service = FileService::new(
             temp_dir.path(),
             ast_cache,
@@ -536,7 +537,7 @@ mod workspace_tests {
         let lock_manager = Arc::new(LockManager::new());
         let operation_queue = Arc::new(OperationQueue::new(lock_manager.clone()));
         let config = mill_config::config::AppConfig::default();
-        let plugin_registry = crate::services::build_language_plugin_registry();
+        let plugin_registry = crate::services::build_language_plugin_registry(vec![]);
         let service = FileService::new(
             temp_dir.path(),
             ast_cache,

@@ -133,7 +133,9 @@ export { main, oldName };
 /// Create application state for testing with the given project root
 async fn create_test_app_state(project_root: PathBuf) -> Arc<AppState> {
     let ast_cache = Arc::new(AstCache::new());
-    let plugin_registry = mill_server::services::registry_builder::build_language_plugin_registry();
+    // Integration test for TS, we need the TS plugin
+    let plugins = mill_plugin_bundle::all_plugins();
+    let plugin_registry = mill_server::services::registry_builder::build_language_plugin_registry(plugins);
     let ast_service: Arc<dyn AstService> = Arc::new(DefaultAstService::new(
         ast_cache.clone(),
         plugin_registry.clone(),

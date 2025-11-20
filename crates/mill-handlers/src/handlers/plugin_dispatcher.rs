@@ -699,7 +699,7 @@ pub async fn create_test_dispatcher() -> PluginDispatcher {
 
     // Build plugin registry for tests
     let plugin_registry =
-        mill_services::services::registry_builder::build_language_plugin_registry();
+        mill_services::services::registry_builder::build_language_plugin_registry(vec![]);
 
     let services = mill_services::services::app_state_factory::create_services_bundle(
         &project_root,
@@ -738,7 +738,7 @@ mod tests {
 
         // Build plugin registry for tests
         let plugin_registry =
-            mill_services::services::registry_builder::build_language_plugin_registry();
+            mill_services::services::registry_builder::build_language_plugin_registry(vec![]);
         let language_plugins = crate::LanguagePluginRegistry::from_registry(plugin_registry);
         let ast_cache = Arc::new(mill_ast::AstCache::new());
         let ast_service = Arc::new(mill_services::services::DefaultAstService::new(

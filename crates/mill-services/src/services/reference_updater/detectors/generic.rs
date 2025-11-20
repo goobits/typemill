@@ -73,6 +73,10 @@ pub(crate) fn find_generic_affected_files(
             if let Some(ext) = file.extension().and_then(|e| e.to_str()) {
                 for plugin in plugins {
                     if plugin.handles_extension(ext) {
+                        // Debug log for test investigation
+                        #[cfg(test)]
+                        println!("DEBUG: Checking plugin {} for file {}", plugin.metadata().name, file.display());
+
                         // Try rewriting to see if this file would be affected
                         // Pass rename_info so plugins receive scope flags (update_exact_matches, etc.)
                         let rewrite_result = plugin.rewrite_file_references(
@@ -84,7 +88,15 @@ pub(crate) fn find_generic_affected_files(
                             rename_info,
                         );
 
+                        #[cfg(test)]
+                        if rewrite_result.is_none() {
+                             println!("DEBUG: rewrite_file_references returned None for {}", file.display());
+                        }
+
                         if let Some((updated_content, change_count)) = rewrite_result {
+                            #[cfg(test)]
+                            println!("DEBUG: rewrite_file_references returned change_count={} for {}", change_count, file.display());
+
                             if change_count > 0 && updated_content != content {
                                 tracing::info!(
                                     file = %file.display(),
@@ -277,7 +289,16 @@ export function main() {
         let project_files = vec![root.join("src/utils.ts"), root.join("src/main.ts")];
 
         // Get plugins from registry
-        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry();
+        let bundle_plugins = mill_plugin_bundle::all_plugins();
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry(bundle_plugins);
+        let bundle_plugins = mill_plugin_bundle::all_plugins();
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry(bundle_plugins);
+        let bundle_plugins = mill_plugin_bundle::all_plugins();
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry(bundle_plugins);
+        let bundle_plugins = mill_plugin_bundle::all_plugins();
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry(bundle_plugins);
+        let bundle_plugins = mill_plugin_bundle::all_plugins();
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry(bundle_plugins);
         let plugins = plugin_registry.all();
 
         // Test generic detector
@@ -321,7 +342,7 @@ export function main() {
         let project_files = vec![root.join("src/old_file.rs"), root.join("config.yml")];
 
         // Get plugins from registry
-        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry();
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry(vec![]);
         let plugins = plugin_registry.all();
 
         let affected =
@@ -362,7 +383,7 @@ export function main() {
         let project_files = vec![root.join("scripts/old_build.sh"), root.join("config.toml")];
 
         // Get plugins from registry
-        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry();
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry(vec![]);
         let plugins = plugin_registry.all();
 
         let affected =
@@ -397,9 +418,10 @@ export function main() {
         let new_path = root.join("docs/tutorial.md");
         let project_files = vec![root.join("docs/guide.md"), root.join("README.md")];
 
-        // Create Markdown plugin
+        // Create Markdown plugin using the bundle
         // Get plugins from registry
-        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry();
+        let bundle_plugins = mill_plugin_bundle::all_plugins();
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry(bundle_plugins);
         let plugins = plugin_registry.all();
 
         let affected =
@@ -448,7 +470,7 @@ export function main() {
         let project_files = vec![root.join("src/old_config.rs"), root.join("src/main.rs")];
 
         // Get plugins from registry
-        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry();
+        let plugin_registry = crate::services::registry_builder::build_language_plugin_registry(vec![]);
         let plugins = plugin_registry.all();
 
         let affected =

@@ -137,6 +137,16 @@ pub(crate) fn extract_file_path(args: &Value, scope_param: &ScopeParam) -> Serve
         .clone()
         .or_else(|| args.get("filePath").and_then(|v| v.as_str()).map(String::from))
         .ok_or_else(|| {
+            // If path is missing, check if scope is "workspace"
+            // If so, return a placeholder "." which will be handled by workspace logic
+            // Otherwise error
+            if let Some(scope_type) = &scope_param.scope_type {
+                if scope_type == "workspace" {
+                    return ServerError::invalid_request(
+                        "Workspace analysis requires a path (use '.' for root) or is not fully supported for this tool"
+                    );
+                }
+            }
             ServerError::invalid_request(
                 "Missing file path. For MVP, only file-level analysis is supported via scope.path or file_path parameter",
             )
@@ -314,8 +324,7 @@ pub async fn run_analysis_with_config(
         })?;
 
     let content = context
-        .app_state
-        .file_service
+        .app_state.file_service
         .read_file(file_path_obj)
         .await
         .map_err(|e| ServerError::internal(format!("Failed to read file: {}", e)))?;

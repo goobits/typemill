@@ -92,8 +92,8 @@ pub async fn bootstrap(options: ServerOptions) -> ServerResult<ServerHandle> {
 
     // Use injected plugin registry or build one
     let plugin_registry = options.plugin_registry.unwrap_or_else(|| {
-        tracing::debug!("No plugin registry injected, building default registry");
-        mill_services::services::registry_builder::build_language_plugin_registry()
+        tracing::debug!("No plugin registry injected, building default registry (empty)");
+        mill_services::services::registry_builder::build_language_plugin_registry(vec![])
     });
 
     let services = create_services_bundle(

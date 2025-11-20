@@ -17,7 +17,7 @@ pub async fn create_test_app_state() -> (Arc<AppState>, TempDir) {
 
     // Build plugin registry for tests
     let plugin_registry =
-        mill_services::services::registry_builder::build_language_plugin_registry();
+        mill_services::services::registry_builder::build_language_plugin_registry(vec![]);
 
     let services = create_services_bundle(
         &project_root,

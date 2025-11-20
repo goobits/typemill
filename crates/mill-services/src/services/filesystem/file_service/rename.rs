@@ -90,135 +90,143 @@ impl FileService {
         let new_abs = self.to_absolute_path_checked(new_path)?;
 
         if dry_run {
-            // Preview mode - just return what would happen
-            if !old_abs.exists() {
-                return Err(ServerError::not_found(format!(
-                    "Source file does not exist: {:?}",
-                    old_abs
-                )));
-            }
+            return self.preview_rename_file(&old_abs, &new_abs, scan_scope).await;
+        }
 
-            // Allow case-only renames on case-insensitive filesystems
-            // Only error if new path exists AND points to a different file
-            if new_abs.exists() && !self.is_same_file(&old_abs, &new_abs).await? {
-                return Err(ServerError::invalid_request(format!(
-                    "Resource already exists: Destination file already exists: {:?}",
-                    new_abs
-                )));
-            }
+        self.execute_rename_file(&old_abs, &new_abs, scan_scope).await
+    }
 
-            // Use MoveService for planning (includes all import update logic)
-            let edit_plan = self
-                .move_service()
-                .plan_file_move(&old_abs, &new_abs, scan_scope)
-                .await?;
+    async fn preview_rename_file(
+        &self,
+        old_abs: &Path,
+        new_abs: &Path,
+        scan_scope: Option<mill_plugin_api::ScanScope>,
+    ) -> ServerResult<DryRunnable<Value>> {
+        // Preview mode - just return what would happen
+        if !old_abs.exists() {
+            return Err(ServerError::not_found(format!(
+                "Source file does not exist: {:?}",
+                old_abs
+            )));
+        }
 
-            Ok(DryRunnable::new(
-                true,
-                json!({
-                    "operation": "move_file",
-                    "old_path": old_abs.to_string_lossy(),
-                    "new_path": new_abs.to_string_lossy(),
-                    "import_updates": {
-                        "edits_planned": edit_plan.edits.len(),
-                        "files_to_modify": edit_plan.edits.iter()
-                            .filter_map(|e| e.file_path.as_ref())
-                            .collect::<std::collections::HashSet<_>>()
-                            .len(),
-                    },
-                }),
-            ))
-        } else {
-            // Execution mode - perform rename and update imports
-            if !old_abs.exists() {
-                return Err(ServerError::not_found(format!(
-                    "Source file does not exist: {:?}",
-                    old_abs
-                )));
-            }
+        // Allow case-only renames on case-insensitive filesystems
+        // Only error if new path exists AND points to a different file
+        if new_abs.exists() && !self.is_same_file(old_abs, new_abs).await? {
+            return Err(ServerError::invalid_request(format!(
+                "Resource already exists: Destination file already exists: {:?}",
+                new_abs
+            )));
+        }
 
-            // Allow case-only renames on case-insensitive filesystems
-            // Only error if new path exists AND points to a different file
-            if new_abs.exists() && !self.is_same_file(&old_abs, &new_abs).await? {
-                return Err(ServerError::invalid_request(format!(
-                    "Resource already exists: Destination file already exists: {:?}",
-                    new_abs
-                )));
-            }
+        // Use MoveService for planning (includes all import update logic)
+        let edit_plan = self
+            .move_service()
+            .plan_file_move(old_abs, new_abs, scan_scope)
+            .await?;
 
-            // IMPORTANT: Find affected files BEFORE renaming!
-            // The old file must still exist on disk for the import resolver to work correctly.
-            info!("Finding affected files before rename");
-            let mut edit_plan = self
-                .move_service()
-                .plan_file_move(&old_abs, &new_abs, scan_scope)
-                .await
-                .map_err(|e| {
-                    warn!(error = %e, "Failed to find affected files");
-                    ServerError::internal(format!("Failed to find affected files: {}", e))
-                })?;
+        Ok(DryRunnable::new(
+            true,
+            json!({
+                "operation": "move_file",
+                "old_path": old_abs.to_string_lossy(),
+                "new_path": new_abs.to_string_lossy(),
+                "import_updates": {
+                    "edits_planned": edit_plan.edits.len(),
+                    "files_to_modify": edit_plan.edits.iter()
+                        .filter_map(|e| e.file_path.as_ref())
+                        .collect::<std::collections::HashSet<_>>()
+                        .len(),
+                },
+            }),
+        ))
+    }
 
-            info!(
-                edits_count = edit_plan.edits.len(),
-                "Found affected files, now performing rename"
-            );
+    async fn execute_rename_file(
+        &self,
+        old_abs: &Path,
+        new_abs: &Path,
+        scan_scope: Option<mill_plugin_api::ScanScope>,
+    ) -> ServerResult<DryRunnable<Value>> {
+        // Execution mode - perform rename and update imports
+        if !old_abs.exists() {
+            return Err(ServerError::not_found(format!(
+                "Source file does not exist: {:?}",
+                old_abs
+            )));
+        }
 
-            // Now perform the actual rename
-            self.perform_rename(&old_abs, &new_abs).await?;
+        // Allow case-only renames on case-insensitive filesystems
+        // Only error if new path exists AND points to a different file
+        if new_abs.exists() && !self.is_same_file(old_abs, new_abs).await? {
+            return Err(ServerError::invalid_request(format!(
+                "Resource already exists: Destination file already exists: {:?}",
+                new_abs
+            )));
+        }
 
-            info!("File renamed successfully");
-
-            // Update the source_file in the edit plan to the new path
-            // since the file has been renamed
-            if edit_plan.source_file == old_abs.to_string_lossy() {
-                edit_plan.source_file = new_abs.to_string_lossy().to_string();
-            }
-
-            debug!(
-                edits_count = edit_plan.edits.len(),
-                dependency_updates_count = edit_plan.dependency_updates.len(),
-                source_file = %edit_plan.source_file,
-                "EditPlan before applying"
-            );
-
-            // Log dependency updates for debugging
-            for (i, dep_update) in edit_plan.dependency_updates.iter().enumerate() {
-                debug!(
-                    index = i,
-                    target_file = %dep_update.target_file,
-                    update_type = ?dep_update.update_type,
-                    "Dependency update"
-                );
-            }
-
-            // Apply the edit plan to update imports
-            let edit_result = self.apply_edit_plan(&edit_plan).await.map_err(|e| {
-                warn!(error = %e, "Failed to apply import update edits");
-                ServerError::internal(format!("Failed to apply import updates: {}", e))
+        // IMPORTANT: Find affected files BEFORE renaming!
+        // The old file must still exist on disk for the import resolver to work correctly.
+        info!("Finding affected files before rename");
+        let mut edit_plan = self
+            .move_service()
+            .plan_file_move(old_abs, new_abs, scan_scope)
+            .await
+            .map_err(|e| {
+                warn!(error = %e, "Failed to find affected files");
+                ServerError::internal(format!("Failed to find affected files: {}", e))
             })?;
 
-            info!(
-                edits_applied = edit_plan.edits.len(),
-                files_modified = edit_result.modified_files.len(),
-                success = edit_result.success,
-                "Successfully updated imports via EditPlan"
-            );
+        info!(
+            edits_count = edit_plan.edits.len(),
+            "Found affected files, now performing rename"
+        );
 
-            Ok(DryRunnable::new(
-                false,
-                json!({
-                    "operation": "move_file",
-                    "old_path": old_abs.to_string_lossy(),
-                    "new_path": new_abs.to_string_lossy(),
-                    "success": true,
-                    "import_updates": {
-                        "edits_applied": edit_plan.edits.len(),
-                        "files_modified": edit_result.modified_files,
-                        "success": edit_result.success,
-                    },
-                }),
-            ))
+        // Now perform the actual rename
+        self.perform_rename(old_abs, new_abs).await?;
+
+        info!("File renamed successfully");
+
+        // Update the source_file in the edit plan to the new path
+        // since the file has been renamed
+        if edit_plan.source_file == old_abs.to_string_lossy() {
+            edit_plan.source_file = new_abs.to_string_lossy().to_string();
         }
+
+        debug!(
+            edits_count = edit_plan.edits.len(),
+            dependency_updates_count = edit_plan.dependency_updates.len(),
+            source_file = %edit_plan.source_file,
+            "EditPlan before applying"
+        );
+
+        // Apply the edit plan to update imports
+        let edit_result = self.apply_edit_plan(&edit_plan).await.map_err(|e| {
+            warn!(error = %e, "Failed to apply import update edits");
+            ServerError::internal(format!("Failed to apply import updates: {}", e))
+        })?;
+
+        info!(
+            edits_applied = edit_plan.edits.len(),
+            files_modified = edit_result.modified_files.len(),
+            success = edit_result.success,
+            "Successfully updated imports via EditPlan"
+        );
+
+        Ok(DryRunnable::new(
+            false,
+            json!({
+                "operation": "move_file",
+                "old_path": old_abs.to_string_lossy(),
+                "new_path": new_abs.to_string_lossy(),
+                "success": true,
+                "import_updates": {
+                    "edits_applied": edit_plan.edits.len(),
+                    "files_modified": edit_result.modified_files,
+                    "success": edit_result.success,
+                },
+            }),
+        ))
     }
 
     /// Rename a directory and update all imports pointing to files within it
@@ -239,198 +247,227 @@ impl FileService {
         let new_abs_dir = self.to_absolute_path_checked(new_dir_path)?;
 
         if dry_run {
-            // Preview mode - just return what would happen
-            if !old_abs_dir.exists() {
-                return Err(ServerError::not_found(format!(
-                    "Source directory does not exist: {:?}",
-                    old_abs_dir
-                )));
-            }
-
-            if new_abs_dir.exists() {
-                return Err(ServerError::invalid_request(format!(
-                    "Resource already exists: Destination directory already exists: {:?}",
-                    new_abs_dir
-                )));
-            }
-
-            let mut files_to_move = Vec::new();
-            let walker = ignore::WalkBuilder::new(&old_abs_dir).hidden(false).build();
-            for entry in walker.flatten() {
-                if entry.path().is_file() {
-                    files_to_move.push(entry.path().to_path_buf());
-                }
-            }
-
-            let is_cargo_pkg = old_abs_dir.join("Cargo.toml").exists();
-
-            // Build response with optional details
-            let mut response = json!({
-                "operation": "move_directory",
-                "old_path": old_abs_dir.to_string_lossy(),
-                "new_path": new_abs_dir.to_string_lossy(),
-                "files_to_move": files_to_move.len(),
-                "is_cargo_package": is_cargo_pkg,
-            });
-
-            // Include detailed file list if requested
-            if details {
-                response["files"] = json!(files_to_move
-                    .iter()
-                    .map(|p| p
-                        .strip_prefix(&old_abs_dir)
-                        .unwrap_or(p)
-                        .to_string_lossy()
-                        .to_string())
-                    .collect::<Vec<_>>());
-            }
-
-            Ok(DryRunnable::new(true, response))
-        } else {
-            // Execution mode - perform directory rename and update imports
-            if !old_abs_dir.exists() {
-                return Err(ServerError::not_found(format!(
-                    "Source directory does not exist: {:?}",
-                    old_abs_dir
-                )));
-            }
-
-            if new_abs_dir.exists() {
-                return Err(ServerError::invalid_request(format!(
-                    "Resource already exists: Destination directory already exists: {:?}",
-                    new_abs_dir
-                )));
-            }
-
-            let mut files_to_move = Vec::new();
-            let walker = ignore::WalkBuilder::new(&old_abs_dir).hidden(false).build();
-            for entry in walker.flatten() {
-                if entry.path().is_file() {
-                    files_to_move.push(entry.path().to_path_buf());
-                }
-            }
-
-            let is_cargo_pkg = old_abs_dir.join("Cargo.toml").exists();
-
-            // IMPORTANT: Find affected files BEFORE renaming the directory!
-            // The old directory must still exist on disk for the import resolver to work correctly.
-            let mut total_edits_applied = 0;
-            let mut total_files_updated = std::collections::HashSet::new();
-            let mut all_errors = Vec::new();
-
-            info!("Planning directory move and import updates");
-
-            // CRITICAL: Plan FIRST before making any filesystem changes
-            // Use MoveService for planning - it handles all Cargo package logic internally
-            let edit_plan = self
-                .move_service()
-                .plan_directory_move(&old_abs_dir, &new_abs_dir, scan_scope)
-                .await?; // Fail fast if planning fails
-
-            info!(
-                edits_planned = edit_plan.edits.len(),
-                "Plan generated successfully, now performing directory rename"
-            );
-
-            // Now perform the actual directory rename
-            // Only execute if planning succeeded
-            self.perform_rename(&old_abs_dir, &new_abs_dir).await?;
-            info!("Directory renamed successfully");
-
-            // Apply the edit plan to update imports
-            match self.apply_edit_plan(&edit_plan).await {
-                Ok(result) => {
-                    total_edits_applied += edit_plan.edits.len();
-                    let files_modified_count = result.modified_files.len();
-                    for file in result.modified_files {
-                        total_files_updated.insert(file);
-                    }
-                    if let Some(errors) = result.errors {
-                        all_errors.extend(errors);
-                    }
-                    info!(
-                        edits_applied = edit_plan.edits.len(),
-                        files_modified = files_modified_count,
-                        "Successfully updated imports for directory rename"
-                    );
-                }
-                Err(e) => {
-                    let error_msg =
-                        format!("Failed to apply import edits for directory rename: {}", e);
-                    warn!(error = %e, "Import update failed for directory");
-                    all_errors.push(error_msg);
-                }
-            }
-
-            // NOTE: Cargo manifest updates (workspace members, package name, dependent crates)
-            // are now handled automatically by MoveService within the EditPlan.
-            // The edits are included in edit_plan.edits and have already been applied above.
-
-            let doc_updates = self
-                .update_documentation_references(&old_abs_dir, &new_abs_dir, false)
-                .await
-                .ok();
-
-            info!(
-                files_moved = files_to_move.len(),
-                edits_applied = total_edits_applied,
-                files_updated = total_files_updated.len(),
-                "Directory rename complete"
-            );
-
-            // Run post-operation validation if configured
-            let validation_result = self.run_validation().await;
-
-            // Extract manifest file updates from the edit plan
-            // (MoveService includes Cargo.toml edits in the EditPlan for Cargo packages)
-            let manifest_updates = if is_cargo_pkg {
-                // Count Cargo.toml files that were updated (from the applied edits)
-                let manifest_files: std::collections::HashSet<_> = total_files_updated
-                    .iter()
-                    .filter(|f| f.ends_with("Cargo.toml"))
-                    .cloned()
-                    .collect();
-
-                if !manifest_files.is_empty() {
-                    let mut sorted_manifests: Vec<_> = manifest_files.into_iter().collect();
-                    sorted_manifests.sort();
-                    Some(json!({
-                        "files_updated": sorted_manifests.len(),
-                        "updated_files": sorted_manifests,
-                        "note": "Manifest updates handled by MoveService"
-                    }))
-                } else {
-                    Some(json!({
-                        "files_updated": 0,
-                        "note": "No manifest updates required"
-                    }))
-                }
-            } else {
-                None
-            };
-
-            let mut result = json!({
-                "operation": "move_directory",
-                "old_path": old_abs_dir.to_string_lossy(),
-                "new_path": new_abs_dir.to_string_lossy(),
-                "files_moved": files_to_move.len(),
-                "import_updates": {
-                    "files_updated": total_files_updated.len(),
-                    "edits_applied": total_edits_applied,
-                    "errors": all_errors,
-                },
-                "documentation_updates": doc_updates,
-                "manifest_updates": manifest_updates,
-                "success": all_errors.is_empty(),
-            });
-
-            // Add validation results if available
-            if let Some(validation) = validation_result {
-                result["validation"] = validation;
-            }
-
-            Ok(DryRunnable::new(false, result))
+            return self.preview_rename_directory(&old_abs_dir, &new_abs_dir, details).await;
         }
+
+        self.execute_rename_directory(&old_abs_dir, &new_abs_dir, scan_scope).await
+    }
+
+    async fn preview_rename_directory(
+        &self,
+        old_abs_dir: &Path,
+        new_abs_dir: &Path,
+        details: bool,
+    ) -> ServerResult<DryRunnable<Value>> {
+        // Preview mode - just return what would happen
+        if !old_abs_dir.exists() {
+            return Err(ServerError::not_found(format!(
+                "Source directory does not exist: {:?}",
+                old_abs_dir
+            )));
+        }
+
+        if new_abs_dir.exists() {
+            return Err(ServerError::invalid_request(format!(
+                "Resource already exists: Destination directory already exists: {:?}",
+                new_abs_dir
+            )));
+        }
+
+        let files_to_move = self.collect_files_in_dir(old_abs_dir);
+        let is_cargo_pkg = old_abs_dir.join("Cargo.toml").exists();
+
+        // Build response with optional details
+        let mut response = json!({
+            "operation": "move_directory",
+            "old_path": old_abs_dir.to_string_lossy(),
+            "new_path": new_abs_dir.to_string_lossy(),
+            "files_to_move": files_to_move.len(),
+            "is_cargo_package": is_cargo_pkg,
+        });
+
+        // Include detailed file list if requested
+        if details {
+            response["files"] = json!(files_to_move
+                .iter()
+                .map(|p| p
+                    .strip_prefix(old_abs_dir)
+                    .unwrap_or(p)
+                    .to_string_lossy()
+                    .to_string())
+                .collect::<Vec<_>>());
+        }
+
+        Ok(DryRunnable::new(true, response))
+    }
+
+    async fn execute_rename_directory(
+        &self,
+        old_abs_dir: &Path,
+        new_abs_dir: &Path,
+        scan_scope: Option<mill_plugin_api::ScanScope>,
+    ) -> ServerResult<DryRunnable<Value>> {
+        // Execution mode - perform directory rename and update imports
+        if !old_abs_dir.exists() {
+            return Err(ServerError::not_found(format!(
+                "Source directory does not exist: {:?}",
+                old_abs_dir
+            )));
+        }
+
+        if new_abs_dir.exists() {
+            return Err(ServerError::invalid_request(format!(
+                "Resource already exists: Destination directory already exists: {:?}",
+                new_abs_dir
+            )));
+        }
+
+        let files_to_move = self.collect_files_in_dir(old_abs_dir);
+        let is_cargo_pkg = old_abs_dir.join("Cargo.toml").exists();
+
+        // IMPORTANT: Find affected files BEFORE renaming the directory!
+        // The old directory must still exist on disk for the import resolver to work correctly.
+        let mut total_edits_applied = 0;
+        let mut total_files_updated = std::collections::HashSet::new();
+        let mut all_errors = Vec::new();
+
+        info!("Planning directory move and import updates");
+
+        // CRITICAL: Plan FIRST before making any filesystem changes
+        // Use MoveService for planning - it handles all Cargo package logic internally
+        let edit_plan = self
+            .move_service()
+            .plan_directory_move(old_abs_dir, new_abs_dir, scan_scope)
+            .await?; // Fail fast if planning fails
+
+        info!(
+            edits_planned = edit_plan.edits.len(),
+            "Plan generated successfully, now performing directory rename"
+        );
+
+        // Now perform the actual directory rename
+        // Only execute if planning succeeded
+        self.perform_rename(old_abs_dir, new_abs_dir).await?;
+        info!("Directory renamed successfully");
+
+        // Apply the edit plan to update imports
+        match self.apply_edit_plan(&edit_plan).await {
+            Ok(result) => {
+                total_edits_applied += edit_plan.edits.len();
+                let files_modified_count = result.modified_files.len();
+                for file in result.modified_files {
+                    total_files_updated.insert(file);
+                }
+                if let Some(errors) = result.errors {
+                    all_errors.extend(errors);
+                }
+                info!(
+                    edits_applied = edit_plan.edits.len(),
+                    files_modified = files_modified_count,
+                    "Successfully updated imports for directory rename"
+                );
+            }
+            Err(e) => {
+                warn!(error = %e, "Import update failed for directory rename, attempting rollback");
+                // ROLLBACK: Attempt to move directory back to original location
+                if let Err(rollback_err) = self.perform_rename(new_abs_dir, old_abs_dir).await {
+                    let error_msg = format!(
+                        "CRITICAL: Failed to apply import edits AND failed to rollback directory rename. Manual intervention required. Import Error: {}. Rollback Error: {}",
+                        e, rollback_err
+                    );
+                    all_errors.push(error_msg);
+                    // Return immediately with error as we are in a bad state
+                    return Err(ServerError::internal(format!(
+                        "Directory rename failed and rollback failed. System is in inconsistent state: {}",
+                        e
+                    )));
+                } else {
+                    info!("Successfully rolled back directory rename");
+                    return Err(ServerError::internal(format!(
+                        "Failed to apply import updates, directory rename rolled back: {}",
+                        e
+                    )));
+                }
+            }
+        }
+
+        // NOTE: Cargo manifest updates (workspace members, package name, dependent crates)
+        // are now handled automatically by MoveService within the EditPlan.
+        // The edits are included in edit_plan.edits and have already been applied above.
+
+        let doc_updates = self
+            .update_documentation_references(old_abs_dir, new_abs_dir, false)
+            .await
+            .ok();
+
+        info!(
+            files_moved = files_to_move.len(),
+            edits_applied = total_edits_applied,
+            files_updated = total_files_updated.len(),
+            "Directory rename complete"
+        );
+
+        // Run post-operation validation if configured
+        let validation_result = self.run_validation().await;
+
+        // Extract manifest file updates from the edit plan
+        let manifest_updates = if is_cargo_pkg {
+            let manifest_files: std::collections::HashSet<_> = total_files_updated
+                .iter()
+                .filter(|f| f.ends_with("Cargo.toml"))
+                .cloned()
+                .collect();
+
+            if !manifest_files.is_empty() {
+                let mut sorted_manifests: Vec<_> = manifest_files.into_iter().collect();
+                sorted_manifests.sort();
+                Some(json!({
+                    "files_updated": sorted_manifests.len(),
+                    "updated_files": sorted_manifests,
+                    "note": "Manifest updates handled by MoveService"
+                }))
+            } else {
+                Some(json!({
+                    "files_updated": 0,
+                    "note": "No manifest updates required"
+                }))
+            }
+        } else {
+            None
+        };
+
+        let mut result = json!({
+            "operation": "move_directory",
+            "old_path": old_abs_dir.to_string_lossy(),
+            "new_path": new_abs_dir.to_string_lossy(),
+            "files_moved": files_to_move.len(),
+            "import_updates": {
+                "files_updated": total_files_updated.len(),
+                "edits_applied": total_edits_applied,
+                "errors": all_errors,
+            },
+            "documentation_updates": doc_updates,
+            "manifest_updates": manifest_updates,
+            "success": all_errors.is_empty(),
+        });
+
+        // Add validation results if available
+        if let Some(validation) = validation_result {
+            result["validation"] = validation;
+        }
+
+        Ok(DryRunnable::new(false, result))
+    }
+
+    fn collect_files_in_dir(&self, dir: &Path) -> Vec<std::path::PathBuf> {
+        let mut files = Vec::new();
+        let walker = ignore::WalkBuilder::new(dir).hidden(false).build();
+        for entry in walker.flatten() {
+            if entry.path().is_file() {
+                files.push(entry.path().to_path_buf());
+            }
+        }
+        files
     }
 
     /// Perform the actual file rename operation

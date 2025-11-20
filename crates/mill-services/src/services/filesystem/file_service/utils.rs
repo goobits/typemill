@@ -23,6 +23,34 @@ impl FileService {
             "Running post-operation validation"
         );
 
+        // SECURITY: Validate the command before execution
+        // For now, we implement a simple allowlist of safe prefixes/commands
+        // This prevents completely arbitrary code execution from a malicious config
+        // TODO: Move this policy to a robust configuration file or security policy
+        let safe_prefixes = [
+            "cargo check", "cargo test", "cargo build", "cargo clippy", "cargo fmt",
+            "npm test", "npm run build", "npm run lint",
+            "yarn test", "yarn build", "yarn lint",
+            "pnpm test", "pnpm build", "pnpm lint",
+            "pytest", "python -m pytest", "black", "ruff", "mypy",
+            "go test", "go vet", "go fmt",
+            "dotnet test", "dotnet build",
+            "make test", "make check"
+        ];
+
+        let is_safe = safe_prefixes.iter().any(|prefix| self.validation_config.command.trim().starts_with(prefix));
+
+        if !is_safe {
+            error!(
+                command = %self.validation_config.command,
+                "Validation command blocked by security policy. Command must start with a known safe prefix (e.g., 'cargo', 'npm', 'go', 'make')."
+            );
+            return Some(json!({
+                "validation_status": "error",
+                "validation_error": format!("Security Error: Command '{}' is not in the allowed list.", self.validation_config.command)
+            }));
+        }
+
         // Run validation command in the project root
         // Use platform-specific shell (sh on Unix, cmd.exe on Windows)
         #[cfg(unix)]

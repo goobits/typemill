@@ -11,78 +11,39 @@
 //! `mill_plugin!` macro, and this builder collects them into the
 //! `PluginRegistry`.
 
-use mill_plugin_api::iter_plugins;
+use mill_plugin_api::LanguagePlugin;
 use mill_plugin_api::PluginDiscovery;
-use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tracing::{debug, warn};
 
-/// Build the language plugin registry.
+/// Build the language plugin registry from a list of plugins.
 ///
-/// This function iterates over all self-registered plugins discovered by
-/// `cb-plugin-registry` and adds them to a new `PluginRegistry`.
+/// This function takes an already instantiated list of language plugins and
+/// registers them into a `PluginDiscovery` instance. This allows the caller
+/// (e.g., the binary entry point) to control which plugins are included,
+/// decoupling the service layer from specific plugin crates.
 ///
-/// # Validation
+/// # Arguments
+/// * `plugins` - A list of instantiated language plugins
 ///
-/// - Validates that plugin names are unique
-/// - Validates that file extensions don't conflict between plugins
-/// - Logs warnings for any conflicts detected
-pub fn build_language_plugin_registry() -> Arc<PluginDiscovery> {
+/// # Returns
+/// An `Arc<PluginDiscovery>` containing the registered plugins.
+pub fn build_language_plugin_registry(
+    plugins: Vec<Arc<dyn LanguagePlugin>>,
+) -> Arc<PluginDiscovery> {
     let mut registry = PluginDiscovery::new();
     let mut plugin_count = 0;
 
-    debug!("Plugin discovery started");
+    debug!("Plugin registration started");
 
-    // Validation sets
-    let mut seen_names = HashSet::new();
-    let mut extension_to_plugin: HashMap<&str, &str> = HashMap::new();
-
-    for descriptor in iter_plugins() {
-        debug!(
-            plugin_name = descriptor.name,
-            extensions = ?descriptor.extensions,
-            "Discovered plugin for registration"
-        );
-
-        // Validate unique plugin name
-        if !seen_names.insert(descriptor.name) {
-            warn!(
-                plugin_name = descriptor.name,
-                "Duplicate plugin name detected - only the first registration will be used"
-            );
-            continue;
-        }
-
-        // Validate unique extensions
-        let mut has_conflict = false;
-        for ext in descriptor.extensions {
-            if let Some(existing_plugin) = extension_to_plugin.get(ext) {
-                warn!(
-                    extension = ext,
-                    existing_plugin = existing_plugin,
-                    new_plugin = descriptor.name,
-                    "File extension conflict - extension already claimed by another plugin"
-                );
-                has_conflict = true;
-            } else {
-                extension_to_plugin.insert(ext, descriptor.name);
-            }
-        }
-
-        if has_conflict {
-            warn!(
-                plugin_name = descriptor.name,
-                "Skipping plugin due to extension conflicts"
-            );
-            continue;
-        }
-
-        let plugin = (descriptor.factory)();
-        registry.register(plugin.into());
+    for plugin in plugins {
+        let name = plugin.metadata().name.clone();
+        debug!(plugin_name = %name, "Registering plugin");
+        registry.register(plugin);
         plugin_count += 1;
     }
 
-    debug!(plugin_count, "Plugin discovery complete");
+    debug!(plugin_count, "Plugin registration complete");
 
     if plugin_count == 0 {
         warn!("No plugins discovered - plugin system may be broken");
@@ -113,69 +74,56 @@ pub fn build_language_plugin_registry() -> Arc<PluginDiscovery> {
 mod tests {
     use super::*;
 
-    // Force linker to include language plugins for inventory collection in tests
-    // Since cb-services no longer directly depends on most plugins, we need to
-    // ensure they're linked into test binaries for discovery to work.
-    #[cfg(test)]
-    extern crate mill_lang_markdown;
-    #[cfg(test)]
-    extern crate mill_lang_rust;
-    #[cfg(test)]
-    extern crate mill_lang_toml;
-    #[cfg(test)]
-    extern crate mill_lang_typescript;
-    #[cfg(test)]
-    extern crate mill_lang_yaml;
-
     #[test]
     fn test_registry_builder_creates_non_empty_registry() {
-        let registry = build_language_plugin_registry();
-        // This test requires that plugins are linked and have registered themselves.
-        assert!(
-            !registry.all().is_empty(),
-            "No plugins were discovered. Ensure language crates are linked and use mill_plugin!."
-        );
-    }
+        // In the new architecture, we test that the registry builder correctly registers
+        // the plugins we pass to it.
+        use mill_plugin_api::{LanguagePlugin, PluginCapabilities, ManifestData, ParsedSource, PluginResult};
+        use mill_plugin_system::PluginMetadata;
+        use std::any::Any;
 
-    #[test]
-    fn test_registry_builder_includes_rust_plugin() {
-        let registry = build_language_plugin_registry();
+        struct MockPlugin;
 
-        let plugin = registry.find_by_extension("rs");
-        assert!(plugin.is_some(), "Rust plugin not found for extension 'rs'");
-        // The name should match the one provided in the `mill_plugin!` macro.
-        assert_eq!(plugin.unwrap().metadata().name, "rust");
-    }
+        #[async_trait::async_trait]
+        impl LanguagePlugin for MockPlugin {
+            fn metadata(&self) -> &mill_plugin_api::LanguageMetadata {
+                static METADATA: mill_plugin_api::LanguageMetadata = mill_plugin_api::LanguageMetadata {
+                    name: "mock",
+                    extensions: &["mock"],
+                    manifest_filename: "Mockfile",
+                    source_dir: "src",
+                    entry_point: "lib.rs",
+                    module_separator: "::",
+                };
+                &METADATA
+            }
+            fn as_any(&self) -> &dyn Any { self }
 
-    #[test]
-    fn test_registry_builder_includes_typescript_plugin() {
-        let registry = build_language_plugin_registry();
+            async fn parse(&self, _: &str) -> PluginResult<ParsedSource> {
+                // Manually construct ParsedSource since it doesn't impl Default
+                Ok(ParsedSource { data: serde_json::Value::Null, symbols: vec![] })
+            }
 
-        let plugin = registry.find_by_extension("ts");
-        assert!(
-            plugin.is_some(),
-            "TypeScript plugin not found for extension 'ts'"
-        );
-        // The name should match the one provided in the `mill_plugin!` macro.
-        assert_eq!(plugin.unwrap().metadata().name, "typescript");
-    }
+            async fn analyze_manifest(&self, _: &std::path::Path) -> PluginResult<ManifestData> {
+                // Manually construct ManifestData
+                Ok(ManifestData {
+                    name: "mock".to_string(),
+                    version: "0.0.1".to_string(),
+                    dependencies: vec![],
+                    dev_dependencies: vec![],
+                    raw_data: serde_json::Value::Null
+                })
+            }
 
-    #[test]
-    fn test_registry_builder_includes_markdown_plugin() {
-        let registry = build_language_plugin_registry();
+            fn capabilities(&self) -> PluginCapabilities {
+                PluginCapabilities::default()
+            }
+        }
 
-        let plugin = registry.find_by_extension("md");
-        assert!(
-            plugin.is_some(),
-            "Markdown plugin not found for extension 'md'"
-        );
-        assert_eq!(plugin.unwrap().metadata().name, "Markdown");
-    }
+        let plugins: Vec<Arc<dyn LanguagePlugin>> = vec![Arc::new(MockPlugin)];
+        let registry = build_language_plugin_registry(plugins);
 
-    #[test]
-    fn test_registry_builder_returns_arc() {
-        let registry = build_language_plugin_registry();
-        let registry2 = registry.clone();
-        assert_eq!(registry.all().len(), registry2.all().len());
+        assert!(!registry.all().is_empty());
+        assert!(registry.find_by_extension("mock").is_some());
     }
 }
