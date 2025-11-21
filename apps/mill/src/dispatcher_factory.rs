@@ -2,7 +2,6 @@
 //!
 //! Eliminates duplication across CLI, stdio, WebSocket entry points
 
-use mill_plugin_api::PluginDiscovery;
 use mill_server::handlers::plugin_dispatcher::PluginDispatcher;
 use mill_server::workspaces::WorkspaceManager;
 use std::sync::Arc;

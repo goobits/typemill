@@ -37,7 +37,7 @@ pub fn build_language_plugin_registry(
     debug!("Plugin registration started");
 
     for plugin in plugins {
-        let name = plugin.metadata().name.clone();
+        let name = plugin.metadata().name;
         debug!(plugin_name = %name, "Registering plugin");
         registry.register(plugin);
         plugin_count += 1;
