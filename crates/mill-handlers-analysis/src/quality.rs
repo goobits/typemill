@@ -301,6 +301,298 @@ impl QualityHandler {
         Ok(value)
     }
 
+    /// Analyze complexity across entire workspace
+    /// Returns individual findings for complex functions (not aggregates)
+    async fn analyze_workspace_complexity(
+        &self,
+        context: &ToolHandlerContext,
+        args: &Value,
+        scope_param: &super::engine::ScopeParam,
+    ) -> ServerResult<Value> {
+        use super::helpers::filter_analyzable_files;
+
+        let start_time = Instant::now();
+
+        // Extract directory path from scope.path or default to current dir
+        let directory_path = scope_param.path.as_ref().ok_or_else(|| {
+            ServerError::invalid_request(
+                "Missing path for workspace scope. Specify scope.path with directory",
+            )
+        })?;
+
+        let dir_path = std::path::Path::new(directory_path);
+
+        // Parse options
+        let options: QualityOptions = args
+            .get("options")
+            .map(|v| serde_json::from_value(v.clone()))
+            .transpose()
+            .map_err(|e| ServerError::invalid_request(format!("Invalid options: {}", e)))?
+            .unwrap_or_else(|| QualityOptions {
+                severity_filter: None,
+                limit: default_limit(),
+                offset: 0,
+                format: default_format(),
+                include_suggestions: default_include_suggestions(),
+                fix: vec![],
+                apply: false,
+                fix_options: HashMap::new(),
+            });
+
+        // Also check for top-level limit parameter (used by test)
+        let limit = args
+            .get("limit")
+            .and_then(|v| v.as_u64())
+            .map(|l| l as usize)
+            .unwrap_or(options.limit);
+
+        let include_suggestions = options.include_suggestions;
+
+        info!(
+            directory_path = %directory_path,
+            limit = limit,
+            "Starting workspace complexity analysis"
+        );
+
+        // List all files in directory
+        let files = context
+            .app_state
+            .file_service
+            .list_files(dir_path, true)
+            .await?;
+
+        let supported_extensions: Vec<String> =
+            context.app_state.language_plugins.supported_extensions();
+
+        // Filter to analyzable files
+        let analyzable_files = filter_analyzable_files(&files, dir_path, &supported_extensions);
+
+        info!(
+            analyzable_count = analyzable_files.len(),
+            "Filtered to analyzable files"
+        );
+
+        // Get analysis config for thresholds
+        let config = get_analysis_config(context)?;
+        let thresholds = &config.thresholds;
+
+        // Collect all complex functions across all files
+        let mut all_complex_functions = Vec::new();
+        let mut files_analyzed = 0;
+        let mut all_errors = Vec::new();
+
+        for file_path in &analyzable_files {
+            let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+            let plugin = match context.app_state.language_plugins.get_plugin(extension) {
+                Some(p) => p,
+                None => continue,
+            };
+
+            let content = match context.app_state.file_service.read_file(file_path).await {
+                Ok(c) => c,
+                Err(e) => {
+                    all_errors.push(json!({
+                        "file": file_path.display().to_string(),
+                        "error": format!("Read error: {}", e)
+                    }));
+                    continue;
+                }
+            };
+
+            let parsed = match plugin.parse(&content).await {
+                Ok(p) => p,
+                Err(e) => {
+                    all_errors.push(json!({
+                        "file": file_path.display().to_string(),
+                        "error": format!("Parse error: {}", e)
+                    }));
+                    continue;
+                }
+            };
+
+            files_analyzed += 1;
+
+            let language = plugin.metadata().name;
+            let report = mill_ast::complexity::analyze_file_complexity(
+                &file_path.to_string_lossy(),
+                &content,
+                &parsed.symbols,
+                language,
+            );
+
+            // Collect functions that exceed thresholds
+            for func in report.functions {
+                if func.complexity.cognitive >= thresholds.max_complexity
+                    || func.complexity.cyclomatic >= thresholds.max_complexity
+                {
+                    all_complex_functions.push((func, report.file_path.clone(), language));
+                }
+            }
+        }
+
+        // Sort by complexity (highest first) - use cognitive complexity as primary sort key
+        all_complex_functions.sort_by(|a, b| {
+            b.0.complexity
+                .cognitive
+                .cmp(&a.0.complexity.cognitive)
+                .then_with(|| b.0.complexity.cyclomatic.cmp(&a.0.complexity.cyclomatic))
+        });
+
+        info!(
+            total_complex_functions = all_complex_functions.len(),
+            files_analyzed = files_analyzed,
+            "Found complex functions across workspace"
+        );
+
+        // Build result
+        let scope = AnalysisScope {
+            scope_type: "workspace".to_string(),
+            path: directory_path.clone(),
+            include: scope_param.include.clone(),
+            exclude: scope_param.exclude.clone(),
+        };
+
+        let mut result = AnalysisResult::new("quality", "complexity", scope);
+
+        // Add thresholds to metadata
+        let mut threshold_map = HashMap::new();
+        threshold_map.insert(
+            "cyclomatic_complexity".to_string(),
+            json!(thresholds.max_complexity),
+        );
+        threshold_map.insert(
+            "cognitive_complexity".to_string(),
+            json!(thresholds.max_complexity),
+        );
+        threshold_map.insert(
+            "nesting_depth".to_string(),
+            json!(thresholds.max_nesting_depth),
+        );
+        threshold_map.insert(
+            "parameter_count".to_string(),
+            json!(thresholds.max_parameters),
+        );
+        threshold_map.insert(
+            "function_length".to_string(),
+            json!(thresholds.max_function_lines),
+        );
+        result.metadata.thresholds = Some(threshold_map);
+
+        // Apply limit to create findings
+        let functions_to_report = all_complex_functions.iter().take(limit);
+
+        for (func, file_path, _language) in functions_to_report {
+            // Determine severity based on rating
+            let severity = match func.rating {
+                mill_ast::complexity::ComplexityRating::VeryComplex => Severity::High,
+                mill_ast::complexity::ComplexityRating::Complex => Severity::Medium,
+                _ => Severity::Low,
+            };
+
+            // Build metrics
+            let mut metrics = HashMap::new();
+            metrics.insert(
+                "cyclomatic_complexity".to_string(),
+                json!(func.complexity.cyclomatic),
+            );
+            metrics.insert(
+                "cognitive_complexity".to_string(),
+                json!(func.complexity.cognitive),
+            );
+            metrics.insert(
+                "nesting_depth".to_string(),
+                json!(func.complexity.max_nesting_depth),
+            );
+            metrics.insert(
+                "parameter_count".to_string(),
+                json!(func.metrics.parameters),
+            );
+            metrics.insert("line_count".to_string(), json!(func.metrics.sloc));
+
+            // Build message
+            let message = format!(
+                "Function '{}' has high complexity (cyclomatic: {}, cognitive: {}, rating: {})",
+                func.name,
+                func.complexity.cyclomatic,
+                func.complexity.cognitive,
+                func.rating.description()
+            );
+
+            // Build location
+            let location = FindingLocation {
+                file_path: file_path.clone(),
+                range: Some(Range {
+                    start: Position {
+                        line: func.line as u32,
+                        character: 0,
+                    },
+                    end: Position {
+                        line: (func.line + func.metrics.sloc as usize) as u32,
+                        character: 0,
+                    },
+                }),
+                symbol: Some(func.name.clone()),
+                symbol_kind: Some("function".to_string()),
+            };
+
+            // Create finding
+            let mut finding = Finding {
+                id: format!("complexity-{}-{}", file_path, func.line),
+                kind: "complexity_hotspot".to_string(),
+                severity,
+                location,
+                metrics: Some(metrics),
+                message,
+                suggestions: vec![],
+            };
+
+            if include_suggestions {
+                let suggestion_generator = SuggestionGenerator::new();
+                let context_for_suggestions = AnalysisContext {
+                    file_path: file_path.clone(),
+                    has_full_type_info: false,
+                    has_partial_type_info: false,
+                    ast_parse_errors: 0,
+                };
+
+                if let Ok(candidates) = generate_quality_refactoring_candidates(&finding, file_path)
+                {
+                    let suggestions =
+                        suggestion_generator.generate_multiple(candidates, &context_for_suggestions);
+                    finding.suggestions = suggestions
+                        .into_iter()
+                        .map(|s| s.into())
+                        .collect::<Vec<Suggestion>>();
+                }
+            }
+
+            result.add_finding(finding);
+        }
+
+        // Update summary
+        result.summary.files_analyzed = files_analyzed;
+        result.summary.symbols_analyzed = Some(all_complex_functions.len());
+        result.finalize(start_time.elapsed().as_millis() as u64);
+
+        info!(
+            directory_path = %directory_path,
+            files_analyzed = files_analyzed,
+            complex_functions = all_complex_functions.len(),
+            findings_returned = result.summary.total_findings,
+            analysis_time_ms = result.summary.analysis_time_ms,
+            "Workspace complexity analysis complete"
+        );
+
+        let mut value = serde_json::to_value(result)
+            .map_err(|e| ServerError::internal(format!("Failed to serialize result: {}", e)))?;
+
+        if !all_errors.is_empty() {
+            value["errors"] = json!(all_errors);
+        }
+
+        Ok(value)
+    }
+
     /// Analyze markdown across entire workspace
     async fn analyze_workspace_markdown(
         &self,
@@ -2282,6 +2574,15 @@ impl ToolHandler for QualityHandler {
 
                 // Parse scope
                 let scope_param = super::engine::parse_scope_param(&args)?;
+                let scope_type = scope_param.scope_type.as_deref().unwrap_or("file");
+
+                // Handle workspace scope
+                if scope_type == "workspace" {
+                    return self
+                        .analyze_workspace_complexity(context, &args, &scope_param)
+                        .await;
+                }
+
                 let file_path = super::engine::extract_file_path(&args, &scope_param)?;
                 let scope_type = scope_param.scope_type.unwrap_or_else(|| "file".to_string());
 

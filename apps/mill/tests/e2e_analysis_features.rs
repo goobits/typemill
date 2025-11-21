@@ -90,12 +90,12 @@ export function main() {
 
             let summary = &result["summary"];
             assert!(
-                summary.get("files_analyzed").is_some(),
-                "Summary should have files_analyzed"
+                summary.get("filesAnalyzed").is_some(),
+                "Summary should have filesAnalyzed"
             );
             assert!(
-                summary.get("analysis_time_ms").is_some(),
-                "Summary should have analysis_time_ms"
+                summary.get("analysisTimeMs").is_some(),
+                "Summary should have analysisTimeMs"
             );
         }
     }
@@ -205,16 +205,16 @@ mod tests {
 
             let summary = &result["summary"];
             assert!(
-                summary.get("files_analyzed").is_some(),
-                "Summary should have files_analyzed"
+                summary.get("filesAnalyzed").is_some(),
+                "Summary should have filesAnalyzed"
             );
             assert!(
-                summary.get("analysis_time_ms").is_some(),
-                "Summary should have analysis_time_ms"
+                summary.get("analysisTimeMs").is_some(),
+                "Summary should have analysisTimeMs"
             );
 
-            // Verify we got some analysis done (files_analyzed > 0 means fallback worked)
-            let files_analyzed = summary["files_analyzed"].as_u64().unwrap_or(0);
+            // Verify we got some analysis done (filesAnalyzed > 0 means fallback worked)
+            let files_analyzed = summary["filesAnalyzed"].as_u64().unwrap_or(0);
             // Successfully used fallback path if we analyzed any files
             // This confirms the documentSymbol fallback is working
             let _ = files_analyzed; // May be 0 if LSP not available
@@ -543,14 +543,14 @@ async fn test_analyze_project_complexity_cross_language() {
             // Validate summary structure
             let summary = &result["summary"];
             assert!(
-                summary.get("files_analyzed").is_some(),
-                "[{}] {} - Summary should have files_analyzed",
+                summary.get("filesAnalyzed").is_some(),
+                "[{}] {} - Summary should have filesAnalyzed",
                 lang_name,
                 scenario.scenario_name
             );
             assert!(
-                summary.get("analysis_time_ms").is_some(),
-                "[{}] {} - Summary should have analysis_time_ms",
+                summary.get("analysisTimeMs").is_some(),
+                "[{}] {} - Summary should have analysisTimeMs",
                 lang_name,
                 scenario.scenario_name
             );
