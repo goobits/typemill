@@ -35,9 +35,9 @@ async fn test_mcp_protocol_layer() {
     let workspace = TestWorkspace::new();
     let mut client = TestClient::new(workspace.path());
 
-    // Create a test file for operations
-    let test_file = workspace.path().join("test.txt");
-    tokio::fs::write(&test_file, "Hello, MCP!")
+    // Create a test file for operations (use .rs extension for plugin support)
+    let test_file = workspace.path().join("test.rs");
+    tokio::fs::write(&test_file, "fn main() { println!(\"Hello, MCP!\"); }")
         .await
         .expect("Should create test file");
 
@@ -60,22 +60,22 @@ async fn test_mcp_protocol_layer() {
     println!("   ✓ JSON-RPC request/response cycle complete");
     println!();
 
-    println!("🔧 Test 3: Parameter Serialization (read_file)");
+    println!("🔧 Test 3: Parameter Serialization (get_diagnostics)");
     let response = client
         .call_tool(
-            "read_file",
+            "get_diagnostics",
             json!({
                 "filePath": test_file.to_str().unwrap()
             }),
         )
         .await
-        .expect("read_file should succeed via MCP");
+        .expect("get_diagnostics should succeed via MCP");
 
     let result = response
         .get("result")
         .expect("Response should have result field");
     assert!(
-        result.is_object() || result.is_string(),
+        result.is_object() || result.is_array(),
         "Result should be properly formatted"
     );
     println!("   ✓ Parameters serialized correctly (JSON → Rust)");
@@ -123,7 +123,7 @@ async fn test_mcp_protocol_layer() {
     println!("❌ Test 6: Error Handling (invalid parameters)");
     let error_response = client
         .call_tool(
-            "read_file",
+            "get_diagnostics",
             json!({
                 "invalid_param": "value"
             }),
