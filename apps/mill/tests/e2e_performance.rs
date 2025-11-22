@@ -64,8 +64,11 @@ async fn test_large_file_performance() {
     assert!(result.get("content").is_some());
     println!("Large file reading took: {:?}", read_duration);
 
-    // Time LSP operations on large file
-    tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
+    // Wait for LSP to index the large file (polling is faster and more reliable than fixed sleep)
+    client
+        .wait_for_lsp_ready(&large_file, 30000)
+        .await
+        .expect("LSP should index large file within 30s");
 
     let start = Instant::now();
     let response = client
@@ -181,8 +184,14 @@ export function process{}(data: Data{}): string {{
         creation_duration / file_count as u32
     );
 
-    // Give LSP time to process all files
-    tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
+    // Wait for LSP to index files (polling is faster and more reliable than fixed sleep)
+    // Use last created file as indicator that LSP has processed the batch
+    if let Some(last_file) = file_paths.last() {
+        client
+            .wait_for_lsp_ready(last_file, 30000)
+            .await
+            .expect("LSP should index files within 30s");
+    }
 
     // Test workspace symbol search performance
     let start = Instant::now();
@@ -808,8 +817,12 @@ export class UserService{} {{
     )
     .unwrap();
 
-    // Give LSP time to process the complex project and index with tsconfig
-    tokio::time::sleep(tokio::time::Duration::from_millis(8000)).await;
+    // Wait for LSP to index the complex project (polling is faster and more reliable)
+    let service_file = services_dir.join("service0.ts");
+    client
+        .wait_for_lsp_ready(&service_file, 60000)
+        .await
+        .expect("LSP should index complex project within 60s");
 
     // Test find definition performance across the project
     let start = Instant::now();

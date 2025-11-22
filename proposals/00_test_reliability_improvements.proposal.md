@@ -30,9 +30,9 @@ Use table-driven tests instead of duplicate test functions.
 ## Checklists
 
 ### Performance Test Sleep Replacement
-- [ ] `e2e_performance.rs:68` - Replace 2000ms with `wait_for_lsp_ready`
-- [ ] `e2e_performance.rs:185` - Replace 5000ms with `wait_for_lsp_ready`
-- [ ] `e2e_performance.rs:812` - Replace 8000ms with `wait_for_lsp_ready`
+- [x] `e2e_performance.rs:68` - Replace 2000ms with `wait_for_lsp_ready`
+- [x] `e2e_performance.rs:185` - Replace 5000ms with `wait_for_lsp_ready`
+- [x] `e2e_performance.rs:812` - Replace 8000ms with `wait_for_lsp_ready`
 
 ### Test Helper Error Handling
 - [ ] Audit `mill-test-support/src/harness/test_helpers.rs` for unwrap calls
@@ -47,7 +47,7 @@ Use table-driven tests instead of duplicate test functions.
 - [ ] Keep only CI-useful output (test summaries, failure info)
 
 ### Magic Number Documentation
-- [ ] Extract LSP timeout values to constants in `client.rs`
+- [x] Extract LSP timeout values to constants in `client.rs`
 - [ ] Document port numbers in config tests
 - [ ] Add comments explaining timing thresholds
 
@@ -57,10 +57,10 @@ Use table-driven tests instead of duplicate test functions.
 
 ## Success Criteria
 
-- [ ] All performance tests use polling instead of fixed sleeps
+- [x] All performance tests use polling instead of fixed sleeps
 - [ ] Test failures produce actionable error messages (not just "unwrap failed")
 - [ ] `cargo test 2>&1 | grep -c println` returns < 10 (minimal debug noise)
-- [ ] All timing constants have associated documentation
+- [x] All timing constants have associated documentation
 - [ ] No test functions with near-identical assertion patterns
 
 ## Benefits

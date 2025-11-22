@@ -7,6 +7,30 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
+// ============================================================================
+// Test Client Timeout Constants
+// ============================================================================
+// These values are tuned for test reliability across different systems.
+// Increase if tests are flaky on slow CI systems.
+
+/// Time to wait for server to become ready after spawn (health check passes)
+const SERVER_READY_TIMEOUT_SECS: u64 = 5;
+
+/// Default timeout for tool call requests (most operations)
+const DEFAULT_TOOL_CALL_TIMEOUT_SECS: u64 = 15;
+
+/// Timeout for graceful shutdown before force kill
+const SHUTDOWN_TIMEOUT_SECS: u64 = 2;
+
+/// Poll interval when waiting for async operations
+const POLL_INTERVAL_MS: u64 = 100;
+
+/// Short poll interval for shutdown loop
+const SHUTDOWN_POLL_INTERVAL_MS: u64 = 50;
+
+/// Delay before checking stderr after startup
+const STARTUP_STDERR_DELAY_MS: u64 = 500;
+
 /// Test client for interacting with the mill server binary.
 /// Manages process lifecycle and JSON-RPC communication.
 pub struct TestClient {
@@ -172,7 +196,7 @@ impl TestClient {
         // This is much faster than fixed 5s sleep - typically ready in 200-500ms
         let start = Instant::now();
         client
-            .wait_for_ready(Duration::from_secs(5))
+            .wait_for_ready(Duration::from_secs(SERVER_READY_TIMEOUT_SECS))
             .unwrap_or_else(|e| panic!("Server failed to start: {}", e));
         eprintln!("✓ Server ready in {}ms", start.elapsed().as_millis());
 
@@ -181,7 +205,7 @@ impl TestClient {
 
     /// Send a JSON-RPC request and wait for response.
     pub fn send_request(&mut self, request: Value) -> Result<Value, Box<dyn std::error::Error>> {
-        self.send_request_with_timeout(request, Duration::from_secs(15))
+        self.send_request_with_timeout(request, Duration::from_secs(DEFAULT_TOOL_CALL_TIMEOUT_SECS))
     }
 
     /// Send a JSON-RPC request with a custom timeout.
@@ -287,7 +311,7 @@ impl TestClient {
         // Attempt graceful shutdown
         if self.send_request(shutdown_request).is_ok() {
             // Give the server time to shut down gracefully
-            thread::sleep(Duration::from_millis(500));
+            thread::sleep(Duration::from_millis(STARTUP_STDERR_DELAY_MS));
         }
 
         // Kill the process if it's still alive
@@ -531,7 +555,7 @@ impl TestClient {
         use std::time::Instant;
 
         let start = Instant::now();
-        let poll_interval = Duration::from_millis(100);
+        let poll_interval = Duration::from_millis(POLL_INTERVAL_MS);
         let max_duration = Duration::from_millis(max_wait_ms);
 
         loop {
@@ -620,9 +644,9 @@ impl Drop for TestClient {
             libc::kill(self.process.id() as i32, libc::SIGTERM);
         }
 
-        // Wait up to 2 seconds for graceful shutdown
+        // Wait for graceful shutdown
         let start = Instant::now();
-        while start.elapsed() < Duration::from_secs(2) {
+        while start.elapsed() < Duration::from_secs(SHUTDOWN_TIMEOUT_SECS) {
             match self.process.try_wait() {
                 Ok(Some(_)) => {
                     // Process exited gracefully
@@ -630,13 +654,13 @@ impl Drop for TestClient {
                 }
                 Ok(None) => {
                     // Still running, wait a bit
-                    thread::sleep(Duration::from_millis(50));
+                    thread::sleep(Duration::from_millis(SHUTDOWN_POLL_INTERVAL_MS));
                 }
                 Err(_) => break,
             }
         }
 
-        // If still running after 2s, force kill
+        // If still running after timeout, force kill
         let _ = self.process.kill();
         let _ = self.process.wait();
     }
