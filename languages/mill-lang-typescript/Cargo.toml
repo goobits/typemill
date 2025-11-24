@@ -37,7 +37,7 @@ tracing = { workspace = true }
 swc_common = "16"
 swc_ecma_parser = "26"
 swc_ecma_ast = "17"
-swc_ecma_visit = "17"
+swc_ecma_visit = "18"
 swc_ecma_codegen = "19"
 
 [dev-dependencies]
