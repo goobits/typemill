@@ -40,7 +40,7 @@ tree-sitter-c-sharp = { git = "https://github.com/tree-sitter/tree-sitter-c-shar
 chrono = { version = "0.4", features = ["serde"] }
 once_cell = { workspace = true }
 regex = "1.10"
-quick-xml = { version = "0.31", features = ["serialize"] }
+quick-xml = { version = "0.38", features = ["serialize"] }
 uuid = { workspace = true }
 which = { workspace = true }
 lazy_static = "1.5.0"
