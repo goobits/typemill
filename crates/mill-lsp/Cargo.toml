@@ -19,3 +19,4 @@ mill-config = { path = "../mill-config" }
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.29", features = ["process"] }
+libc = "0.2"

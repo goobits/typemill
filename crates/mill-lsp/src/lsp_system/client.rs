@@ -13,6 +13,9 @@ use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio::time::{timeout, Duration};
 use tracing::{debug, info, warn};
 
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
+
 /// Timeout for LSP requests
 const LSP_REQUEST_TIMEOUT: Duration = Duration::from_secs(60); // Increased for slow language servers
 /// Timeout for LSP initialization
@@ -229,14 +232,26 @@ impl LspClient {
             "Using augmented PATH for LSP server"
         );
 
-        let mut child = Command::new(command)
-            .args(args)
+        let mut cmd = Command::new(command);
+        cmd.args(args)
             .env("PATH", augmented_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .current_dir(root_dir)
-            .spawn()
+            .current_dir(root_dir);
+
+        // On Unix, create a new process group so we can kill all descendants
+        #[cfg(unix)]
+        unsafe {
+            cmd.pre_exec(|| {
+                // Create a new process group with the child as the leader
+                // This allows us to kill all descendants with kill(-pgid, signal)
+                libc::setpgid(0, 0);
+                Ok(())
+            });
+        }
+
+        let mut child = cmd.spawn()
             .map_err(|e| {
                 tracing::error!(
                     command = %command,
@@ -951,8 +966,21 @@ impl LspClient {
             "Force shutdown initiated (kill + wait without ownership)"
         );
 
-        // Step 1: Kill the process
+        // Step 1: Kill the process group (on Unix) or just the process (on other platforms)
+        // This ensures all child processes (like typingsInstaller.js) are also killed
+        #[cfg(unix)]
+        if let Some(pid_val) = pid {
+            // Kill the entire process group using negative PID
+            // The process was spawned with setpgid(0, 0) so it's the group leader
+            unsafe {
+                libc::kill(-(pid_val as i32), libc::SIGKILL);
+            }
+            tracing::debug!(pid = pid_val, "Sent SIGKILL to process group");
+        }
+
+        // Also call the normal kill for non-Unix or as a fallback
         let mut process = self.process.lock().await;
+        #[cfg(not(unix))]
         if let Err(e) = process.kill().await {
             tracing::warn!(
                 pid = pid,
@@ -962,15 +990,14 @@ impl LspClient {
             // Continue to wait anyway
         }
 
-        // Step 2: Wait for the process to exit (prevents zombies)
+        // Step 2: Wait for the direct child process to exit
         match timeout(Duration::from_secs(5), process.wait()).await {
             Ok(Ok(status)) => {
                 tracing::debug!(
                     pid = pid,
                     exit_status = ?status,
-                    "LSP server process force shutdown completed"
+                    "LSP server direct child reaped"
                 );
-                Ok(())
             }
             Ok(Err(e)) => {
                 tracing::warn!(
@@ -978,21 +1005,56 @@ impl LspClient {
                     error = %e,
                     "Failed to wait for LSP server process during force shutdown"
                 );
-                Err(ServerError::runtime(format!(
-                    "Failed to wait for LSP server process: {}",
-                    e
-                )))
             }
             Err(_) => {
                 tracing::warn!(
                     pid = pid,
                     "Timeout waiting for LSP server process to exit during force shutdown"
                 );
-                Err(ServerError::runtime(
-                    "Timeout waiting for LSP server process to exit",
-                ))
             }
         }
+
+        // Step 3: Reap all remaining children in the process group (grandchildren)
+        // This prevents zombies from processes like typingsInstaller.js
+        #[cfg(unix)]
+        if let Some(pid_val) = pid {
+            use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
+            use nix::unistd::Pid;
+
+            let pgid = Pid::from_raw(-(pid_val as i32));
+            let mut reaped_count = 0;
+
+            // Loop to reap all children in the process group
+            loop {
+                match waitpid(pgid, Some(WaitPidFlag::WNOHANG)) {
+                    Ok(WaitStatus::Exited(child_pid, _)) |
+                    Ok(WaitStatus::Signaled(child_pid, _, _)) => {
+                        reaped_count += 1;
+                        tracing::debug!(
+                            child_pid = child_pid.as_raw(),
+                            "Reaped process group child"
+                        );
+                    }
+                    Ok(WaitStatus::StillAlive) | Err(_) => {
+                        // No more children to reap
+                        break;
+                    }
+                    _ => {
+                        // Other status (stopped, continued) - continue loop
+                    }
+                }
+            }
+
+            if reaped_count > 0 {
+                tracing::debug!(
+                    reaped_count = reaped_count,
+                    pgid = pid_val,
+                    "Reaped process group children"
+                );
+            }
+        }
+
+        Ok(())
     }
 
     /// Gracefully shutdown the LSP server process.

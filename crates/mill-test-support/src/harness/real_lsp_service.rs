@@ -354,12 +354,34 @@ impl Drop for RealLspService {
                     "Failed to kill RealLspService process (PID {:?}): {}",
                     pid, e
                 );
+                return;
             }
 
-            // Note: We can't spawn an async task here because std::sync::Mutex is not Send
-            // across await points. The zombie reaper will clean up this process.
+            // Reap the process synchronously using try_wait() to avoid zombies.
+            // try_wait() is non-blocking and synchronous (unlike wait() which is async).
+            // After SIGKILL, the process should exit very quickly.
+            for _ in 0..50 {
+                match child.try_wait() {
+                    Ok(Some(_status)) => {
+                        // Process has exited and been reaped successfully
+                        return;
+                    }
+                    Ok(None) => {
+                        // Process still running, wait a bit and retry
+                        std::thread::sleep(std::time::Duration::from_millis(10));
+                    }
+                    Err(e) => {
+                        eprintln!(
+                            "Failed to wait for RealLspService process (PID {:?}): {}",
+                            pid, e
+                        );
+                        return;
+                    }
+                }
+            }
+            // If we get here after 500ms, the process is stuck - zombie reaper will handle it
             eprintln!(
-                "RealLspService process killed (PID {:?}) - zombie reaper will clean up",
+                "RealLspService process (PID {:?}) did not exit after kill - zombie reaper will clean up",
                 pid
             );
         }

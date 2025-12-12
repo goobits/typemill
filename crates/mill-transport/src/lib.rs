@@ -11,11 +11,17 @@ use mill_foundation::errors::MillResult;
 pub mod admin;
 pub mod session;
 pub mod stdio;
+#[cfg(unix)]
+pub mod unix_socket;
 pub mod ws;
 
 pub use admin::start_admin_server;
 pub use session::SessionInfo;
 pub use stdio::start_stdio_server;
+#[cfg(unix)]
+pub use unix_socket::{
+    default_socket_path, is_daemon_running, UnixSocketClient, UnixSocketServer,
+};
 pub use ws::{start_ws_server, Session};
 
 /// MCP message dispatcher trait for transport layer

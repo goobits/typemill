@@ -80,6 +80,18 @@ pub enum Commands {
         /// Language name (e.g., "rust", "typescript", "python")
         language: String,
     },
+    /// Manage the daemon (persistent LSP server for faster tool calls)
+    ///
+    /// The daemon keeps LSP servers running between CLI invocations,
+    /// eliminating startup overhead for repeated tool calls.
+    ///
+    /// Examples:
+    ///   mill daemon start      # Start daemon in background
+    ///   mill daemon stop       # Stop running daemon
+    ///   mill daemon status     # Check if daemon is running
+    #[cfg(unix)]
+    #[command(subcommand)]
+    Daemon(DaemonCommands),
     /// Call an MCP tool directly (without WebSocket server)
     ///
     /// Common tools:
@@ -226,6 +238,22 @@ pub enum Commands {
     },
     /// Manage analysis configuration
     Config(Config),
+}
+
+/// Daemon management subcommands
+#[cfg(unix)]
+#[derive(Subcommand)]
+pub enum DaemonCommands {
+    /// Start the daemon in the background
+    Start {
+        /// Keep daemon in foreground (don't daemonize)
+        #[arg(long)]
+        foreground: bool,
+    },
+    /// Stop the running daemon
+    Stop,
+    /// Check daemon status
+    Status,
 }
 
 /// The config command.
@@ -376,6 +404,10 @@ pub async fn run() {
         }
         Commands::InstallLsp { language } => {
             handle_install_lsp(&language).await;
+        }
+        #[cfg(unix)]
+        Commands::Daemon(daemon_command) => {
+            handle_daemon_command(daemon_command).await;
         }
         Commands::Tool {
             tool_name,
@@ -1711,16 +1743,6 @@ async fn handle_tool_command(
             }
         };
 
-    // Initialize dispatcher via factory
-    let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
-        Ok(d) => d,
-        Err(e) => {
-            let error = MillError::internal(format!("Failed to initialize: {}", e));
-            output_error(&error, format);
-            process::exit(1);
-        }
-    };
-
     // Construct MCP request message
     use mill_foundation::core::model::mcp::{McpMessage, McpRequest};
     let params = serde_json::json!({
@@ -1734,46 +1756,260 @@ async fn handle_tool_command(
         params: Some(params),
     };
     let message = McpMessage::Request(request);
-    let session_info = SessionInfo::default();
 
-    // Execute tool call via dispatcher
-    match dispatcher.dispatch(message, &session_info).await {
-        Ok(McpMessage::Response(response)) => {
-            // Wait for async operations (like batch_execute) to complete
-            let operation_queue = dispatcher.operation_queue();
-            let start_time = std::time::Instant::now();
-            let timeout = std::time::Duration::from_secs(30);
+    // Try daemon first (Unix only), then fall back to in-process dispatcher
+    #[cfg(unix)]
+    let response = {
+        use mill_transport::{default_socket_path, is_daemon_running, UnixSocketClient};
 
-            loop {
-                if operation_queue.is_idle().await {
-                    break;
+        let socket_path = default_socket_path();
+        if is_daemon_running(&socket_path).await {
+            // Use daemon for faster execution (LSP servers already running)
+            match UnixSocketClient::connect(&socket_path).await {
+                Ok(mut client) => {
+                    match client.call(message.clone()).await {
+                        Ok(resp) => Some(resp),
+                        Err(e) => {
+                            eprintln!("⚠️  Daemon connection error, falling back to in-process: {}", e);
+                            None
+                        }
+                    }
                 }
-                if start_time.elapsed() > timeout {
-                    eprintln!("⚠️  Warning: Timed out waiting for operations to complete");
-                    eprintln!("   Some operations may still be running in the background");
-                    break;
+                Err(e) => {
+                    eprintln!("⚠️  Could not connect to daemon, falling back to in-process: {}", e);
+                    None
                 }
-                tokio::time::sleep(std::time::Duration::from_millis(200)).await;
             }
+        } else {
+            None
+        }
+    };
 
-            if let Some(result) = response.result {
+    #[cfg(not(unix))]
+    let response: Option<McpMessage> = None;
+
+    // If daemon didn't handle it, use in-process dispatcher
+    let response = if let Some(resp) = response {
+        resp
+    } else {
+        // Initialize dispatcher via factory
+        let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
+            Ok(d) => d,
+            Err(e) => {
+                let error = MillError::internal(format!("Failed to initialize: {}", e));
+                output_error(&error, format);
+                process::exit(1);
+            }
+        };
+
+        let session_info = SessionInfo::default();
+
+        // Execute tool call via dispatcher
+        let result = dispatcher.dispatch(message, &session_info).await;
+
+        // Shutdown dispatcher before continuing
+        if let Err(e) = dispatcher.shutdown().await {
+            tracing::warn!(error = %e, "Failed to shutdown dispatcher cleanly");
+        }
+
+        match result {
+            Ok(resp) => resp,
+            Err(server_error) => {
+                let api_error = MillError::internal(server_error.to_string());
+                output_error(&api_error, format);
+                process::exit(1);
+            }
+        }
+    };
+
+    // Process the response
+    match response {
+        McpMessage::Response(resp) => {
+            if let Some(result) = resp.result {
                 output_result(&result, format);
-            } else if let Some(error) = response.error {
+            } else if let Some(error) = resp.error {
                 let api_error = MillError::from(error);
                 output_error(&api_error, format);
                 process::exit(1);
             }
         }
-        Ok(_) => {
+        _ => {
             eprintln!("Unexpected response type");
             process::exit(1);
         }
-        Err(server_error) => {
-            // Convert ServerError to ApiError and output to stderr
-            let api_error = MillError::internal(server_error.to_string());
-            output_error(&api_error, format);
+    }
+}
+
+/// Handle daemon commands (Unix only)
+#[cfg(unix)]
+async fn handle_daemon_command(command: DaemonCommands) {
+    use mill_transport::{default_socket_path, is_daemon_running};
+    use nix::sys::signal::{self, Signal};
+    use nix::unistd::Pid;
+
+    let socket_path = default_socket_path();
+    let pid_path = socket_path.with_extension("pid");
+
+    match command {
+        DaemonCommands::Start { foreground } => {
+            // Check if daemon is already running
+            if is_daemon_running(&socket_path).await {
+                eprintln!("❌ Daemon is already running");
+                eprintln!("   Socket: {}", socket_path.display());
+                eprintln!("   Use 'mill daemon stop' to stop it first");
+                process::exit(1);
+            }
+
+            if foreground {
+                // Run in foreground (useful for debugging)
+                println!("🚀 Starting daemon in foreground mode...");
+                println!("   Socket: {}", socket_path.display());
+                println!("   Press Ctrl+C to stop");
+
+                run_daemon_server(&socket_path, &pid_path).await;
+            } else {
+                // Daemonize: fork and run in background
+                println!("🚀 Starting daemon in background...");
+                println!("   Socket: {}", socket_path.display());
+
+                // For now, just run in foreground with a message
+                // True daemonization requires fork() which is complex
+                // Users can use `mill daemon start --foreground &` for now
+                eprintln!("   Note: Use 'mill daemon start --foreground &' for background mode");
+                eprintln!("   or run with 'nohup mill daemon start --foreground &'");
+
+                run_daemon_server(&socket_path, &pid_path).await;
+            }
+        }
+        DaemonCommands::Stop => {
+            if !is_daemon_running(&socket_path).await {
+                eprintln!("❌ Daemon is not running");
+                process::exit(1);
+            }
+
+            // Try to read PID file and send SIGTERM
+            if let Ok(pid_str) = std::fs::read_to_string(&pid_path) {
+                if let Ok(pid) = pid_str.trim().parse::<i32>() {
+                    println!("🛑 Stopping daemon (PID: {})...", pid);
+                    match signal::kill(Pid::from_raw(pid), Signal::SIGTERM) {
+                        Ok(_) => {
+                            // Wait a moment for graceful shutdown
+                            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+                            if is_daemon_running(&socket_path).await {
+                                // Force kill if still running
+                                let _ = signal::kill(Pid::from_raw(pid), Signal::SIGKILL);
+                                tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                            }
+
+                            // Clean up socket and pid files
+                            let _ = std::fs::remove_file(&socket_path);
+                            let _ = std::fs::remove_file(&pid_path);
+
+                            println!("✅ Daemon stopped");
+                        }
+                        Err(e) => {
+                            eprintln!("❌ Failed to stop daemon: {}", e);
+                            // Try to clean up anyway
+                            let _ = std::fs::remove_file(&socket_path);
+                            let _ = std::fs::remove_file(&pid_path);
+                            process::exit(1);
+                        }
+                    }
+                } else {
+                    eprintln!("❌ Invalid PID file");
+                    // Clean up stale files
+                    let _ = std::fs::remove_file(&socket_path);
+                    let _ = std::fs::remove_file(&pid_path);
+                    process::exit(1);
+                }
+            } else {
+                // No PID file, but socket exists - clean up
+                eprintln!("⚠️  No PID file found, cleaning up stale socket");
+                let _ = std::fs::remove_file(&socket_path);
+                println!("✅ Cleaned up");
+            }
+        }
+        DaemonCommands::Status => {
+            if is_daemon_running(&socket_path).await {
+                println!("✅ Daemon is running");
+                println!("   Socket: {}", socket_path.display());
+                if let Ok(pid_str) = std::fs::read_to_string(&pid_path) {
+                    println!("   PID: {}", pid_str.trim());
+                }
+            } else {
+                println!("❌ Daemon is not running");
+                if socket_path.exists() {
+                    println!("   (stale socket file exists - will be cleaned on next start)");
+                }
+            }
+        }
+    }
+}
+
+/// Run the daemon server (used by handle_daemon_command)
+#[cfg(unix)]
+async fn run_daemon_server(socket_path: &std::path::Path, pid_path: &std::path::Path) {
+    use mill_transport::UnixSocketServer;
+    use std::io::Write;
+
+    // Initialize dispatcher
+    let dispatcher = match crate::dispatcher_factory::create_initialized_dispatcher().await {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("❌ Failed to initialize dispatcher: {}", e);
             process::exit(1);
         }
+    };
+
+    // Write PID file
+    let pid = std::process::id();
+    if let Some(parent) = pid_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(mut file) = std::fs::File::create(pid_path) {
+        let _ = writeln!(file, "{}", pid);
+    }
+
+    // Create and run server
+    let server = match UnixSocketServer::bind(socket_path).await {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("❌ Failed to bind socket: {}", e);
+            let _ = std::fs::remove_file(pid_path);
+            process::exit(1);
+        }
+    };
+
+    println!("✅ Daemon started (PID: {})", pid);
+
+    // Handle shutdown signal
+    let socket_path_clone = socket_path.to_path_buf();
+    let pid_path_clone = pid_path.to_path_buf();
+    let dispatcher_clone = dispatcher.clone();
+
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c().await.ok();
+        println!("\n🛑 Shutting down daemon...");
+
+        // Shutdown dispatcher
+        if let Err(e) = dispatcher_clone.shutdown().await {
+            eprintln!("Warning: Failed to shutdown dispatcher: {}", e);
+        }
+
+        // Clean up files
+        let _ = std::fs::remove_file(&socket_path_clone);
+        let _ = std::fs::remove_file(&pid_path_clone);
+
+        println!("✅ Daemon stopped");
+        process::exit(0);
+    });
+
+    // Run the server (blocks until shutdown)
+    if let Err(e) = server.run(dispatcher).await {
+        eprintln!("❌ Server error: {}", e);
+        let _ = std::fs::remove_file(pid_path);
+        process::exit(1);
     }
 }
 

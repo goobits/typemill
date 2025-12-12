@@ -125,7 +125,49 @@ impl ExternalMcpClient {
 
 impl Drop for ExternalMcpClient {
     fn drop(&mut self) {
-        // Attempt to kill the child process when dropped
-        let _ = self.process.start_kill();
+        // Kill the child process and reap it to avoid zombies
+        let pid = self.process.id();
+
+        if let Err(e) = self.process.start_kill() {
+            error!(
+                mcp_server = %self.name,
+                pid = ?pid,
+                error = %e,
+                "Failed to kill MCP process"
+            );
+            return;
+        }
+
+        // Reap the process synchronously using try_wait() to avoid zombies.
+        // try_wait() is non-blocking and synchronous (unlike wait() which is async).
+        // After SIGKILL, the process should exit very quickly.
+        for _ in 0..50 {
+            match self.process.try_wait() {
+                Ok(Some(_status)) => {
+                    // Process has exited and been reaped successfully
+                    debug!(mcp_server = %self.name, pid = ?pid, "MCP process reaped");
+                    return;
+                }
+                Ok(None) => {
+                    // Process still running, wait a bit and retry
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+                Err(e) => {
+                    error!(
+                        mcp_server = %self.name,
+                        pid = ?pid,
+                        error = %e,
+                        "Failed to wait for MCP process"
+                    );
+                    return;
+                }
+            }
+        }
+        // If we get here after 500ms, the process is stuck
+        error!(
+            mcp_server = %self.name,
+            pid = ?pid,
+            "MCP process did not exit after kill"
+        );
     }
 }
