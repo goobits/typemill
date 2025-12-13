@@ -683,8 +683,69 @@ impl RenameHandler {
             // Merge file checksums
             all_file_checksums.extend(plan.file_checksums);
 
-            // Track affected files (for summary)
-            total_affected_files.insert(std::path::PathBuf::from(&target.path));
+            // Track affected files from the actual edits (not just target path)
+            // This ensures cross-file symbol renames count all affected files
+            if let Some(ref changes) = plan.edits.changes {
+                for uri in changes.keys() {
+                    if let Some(path) = url::Url::parse(uri.as_str())
+                        .ok()
+                        .and_then(|u| u.to_file_path().ok())
+                    {
+                        total_affected_files.insert(path);
+                    }
+                }
+            }
+            if let Some(ref doc_changes) = plan.edits.document_changes {
+                // Helper to convert lsp_types::Uri to file path
+                let uri_to_path = |uri: &lsp_types::Uri| -> Option<std::path::PathBuf> {
+                    url::Url::parse(uri.as_str())
+                        .ok()
+                        .and_then(|u| u.to_file_path().ok())
+                };
+
+                match doc_changes {
+                    lsp_types::DocumentChanges::Operations(ops) => {
+                        for op in ops {
+                            match op {
+                                lsp_types::DocumentChangeOperation::Edit(edit) => {
+                                    if let Some(path) = uri_to_path(&edit.text_document.uri) {
+                                        total_affected_files.insert(path);
+                                    }
+                                }
+                                lsp_types::DocumentChangeOperation::Op(resource_op) => {
+                                    match resource_op {
+                                        lsp_types::ResourceOp::Create(c) => {
+                                            if let Some(path) = uri_to_path(&c.uri) {
+                                                total_affected_files.insert(path);
+                                            }
+                                        }
+                                        lsp_types::ResourceOp::Rename(r) => {
+                                            if let Some(path) = uri_to_path(&r.old_uri) {
+                                                total_affected_files.insert(path);
+                                            }
+                                            if let Some(path) = uri_to_path(&r.new_uri) {
+                                                total_affected_files.insert(path);
+                                            }
+                                        }
+                                        lsp_types::ResourceOp::Delete(d) => {
+                                            if let Some(path) = uri_to_path(&d.uri) {
+                                                total_affected_files.insert(path);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    lsp_types::DocumentChanges::Edits(edits) => {
+                        for edit in edits {
+                            if let Some(path) = uri_to_path(&edit.text_document.uri) {
+                                total_affected_files.insert(path);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // Filter duplicate full-file edits (keep first=batch version)
