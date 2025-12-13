@@ -17,6 +17,7 @@ pub mod advanced;
 // Analysis handlers moved to mill-handlers-analysis crate
 pub use mill_handlers_analysis as analysis;
 // pub mod editing;  // TODO: Create editing module
+pub mod cross_file_references;
 pub mod file_ops;
 pub mod internal_editing;
 pub mod internal_intelligence;

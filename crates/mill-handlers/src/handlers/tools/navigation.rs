@@ -245,12 +245,43 @@ impl ToolHandler for NavigationHandler {
         let plugin_request = self.convert_tool_call_to_plugin_request(&call)?;
 
         match context.plugin_manager.handle_request(plugin_request).await {
-            Ok(response) => Ok(json!({
-                "content": response.data.unwrap_or(json!(null)),
-                "plugin": response.metadata.plugin_name,
-                "processing_time_ms": response.metadata.processing_time_ms,
-                "cached": response.metadata.cached
-            })),
+            Ok(response) => {
+                let result = json!({
+                    "content": response.data.unwrap_or(json!(null)),
+                    "plugin": response.metadata.plugin_name,
+                    "processing_time_ms": response.metadata.processing_time_ms,
+                    "cached": response.metadata.cached
+                });
+
+                // Enhance find_references with cross-file discovery
+                if call.name == "find_references" {
+                    let args = call.arguments.clone().unwrap_or(json!({}));
+                    if let (Some(file_path), Some(line), Some(character)) = (
+                        args.get("filePath").and_then(|v| v.as_str()),
+                        args.get("line").and_then(|v| v.as_u64()),
+                        args.get("character").and_then(|v| v.as_u64()),
+                    ) {
+                        let path = PathBuf::from(file_path);
+                        match super::cross_file_references::enhance_find_references(
+                            result.clone(),
+                            &path,
+                            line as u32,
+                            character as u32,
+                            context,
+                        )
+                        .await
+                        {
+                            Ok(enhanced) => return Ok(enhanced),
+                            Err(e) => {
+                                debug!(error = %e, "Cross-file enhancement failed, returning original");
+                                // Fall through to return original result
+                            }
+                        }
+                    }
+                }
+
+                Ok(result)
+            }
             Err(err) => Err(ServerError::internal(format!(
                 "Plugin request failed: {}",
                 err
