@@ -182,8 +182,9 @@ pub async fn discover_importing_files(
         // Read file and check for imports
         // Use std::fs directly to avoid project-root security restrictions
         if let Ok(content) = std::fs::read_to_string(path) {
-            // Check various import patterns
-            let has_import = content.contains(source_name)
+            // Check various import patterns - use word boundaries to avoid false positives
+            // e.g., "is" shouldn't match inside "promise"
+            let has_import = contains_word(&content, source_name)
                 && (
                     // ES6 import
                     content.contains("import ")
@@ -213,11 +214,13 @@ pub async fn discover_importing_files(
                     String::new()
                 };
 
+                // Path-based checks can use contains() since paths are specific
+                // Word boundary check for source_name to avoid false positives
                 let matches = content.contains(&*source_path_str)  // Full relative path from workspace
                     || content.contains(&source_without_ext)        // Without extension
                     || content.contains(source_filename)            // Just filename with ext
                     || (!parent_filename.is_empty() && content.contains(&parent_filename))  // parent/file pattern
-                    || content.contains(source_name);               // Just file stem
+                    || contains_word(&content, source_name);        // Just file stem (with word boundary)
 
                 if matches {
                     debug!(
@@ -407,6 +410,38 @@ fn extract_symbol_at_position(content: &str, line: u32, character: u32) -> Optio
     }
 
     Some(symbol)
+}
+
+/// Check if content contains a word with proper word boundaries
+/// This prevents "is" from matching inside "promise"
+fn contains_word(content: &str, word: &str) -> bool {
+    let mut search_start = 0;
+    while let Some(pos) = content[search_start..].find(word) {
+        let absolute_pos = search_start + pos;
+
+        // Check word boundaries
+        let before_ok = absolute_pos == 0
+            || !content
+                .chars()
+                .nth(absolute_pos - 1)
+                .map(|c| c.is_alphanumeric() || c == '_')
+                .unwrap_or(false);
+
+        let after_pos = absolute_pos + word.len();
+        let after_ok = after_pos >= content.len()
+            || !content
+                .chars()
+                .nth(after_pos)
+                .map(|c| c.is_alphanumeric() || c == '_')
+                .unwrap_or(false);
+
+        if before_ok && after_ok {
+            return true;
+        }
+
+        search_start = absolute_pos + 1;
+    }
+    false
 }
 
 /// Find all occurrences of a symbol in content
