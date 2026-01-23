@@ -1,7 +1,15 @@
 use mill_plugin_api::{ManifestData, PluginResult};
+use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fs;
 use std::path::Path;
+
+static TARGET_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"TARGET\s*=\s*(.*)"#).unwrap());
+static SRCS_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"SRCS\s*=\s*(.*)"#).unwrap());
+static CFLAGS_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"CFLAGS\s*=\s*(.*)"#).unwrap());
 
 /// Analyzes a Makefile and extracts project metadata.
 ///
@@ -32,7 +40,12 @@ pub(crate) fn analyze_makefile_manifest(path: &Path) -> PluginResult<ManifestDat
 }
 
 fn extract_var(content: &str, var_name: &str) -> Option<String> {
-    let re = Regex::new(&format!(r#"{}\s*=\s*(.*)"#, var_name)).unwrap();
+    let re = match var_name {
+        "TARGET" => &TARGET_RE,
+        "SRCS" => &SRCS_RE,
+        "CFLAGS" => &CFLAGS_RE,
+        _ => return None,
+    };
     re.captures(content)
         .and_then(|caps| caps.get(1))
         .map(|m| m.as_str().trim().to_string())
