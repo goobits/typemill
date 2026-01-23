@@ -1,7 +1,15 @@
 use mill_plugin_api::{ManifestData, PluginResult};
+use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fs;
 use std::path::Path;
+
+static PROJECT_NAME_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"project\(([^)]+)\)"#).unwrap());
+static ADD_EXECUTABLE_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"add_executable\(([^ ]+)"#).unwrap());
+static ADD_LIBRARY_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"add_library\(([^ ]+)"#).unwrap());
 
 /// Analyzes a CMakeLists.txt file and extracts project metadata.
 ///
@@ -33,14 +41,18 @@ pub(crate) fn analyze_cmake_manifest(path: &Path) -> PluginResult<ManifestData> 
 }
 
 fn extract_project_name(content: &str) -> Option<String> {
-    let re = Regex::new(r#"project\(([^)]+)\)"#).unwrap();
-    re.captures(content)
+    PROJECT_NAME_RE
+        .captures(content)
         .and_then(|caps| caps.get(1))
         .map(|m| m.as_str().trim().to_string())
 }
 
 fn extract_targets(content: &str, command: &str) -> Vec<String> {
-    let re = Regex::new(&format!(r#"{}\(([^ ]+)"#, command)).unwrap();
+    let re = match command {
+        "add_executable" => &ADD_EXECUTABLE_RE,
+        "add_library" => &ADD_LIBRARY_RE,
+        _ => return vec![],
+    };
     re.captures_iter(content)
         .map(|cap| cap[1].to_string())
         .collect()
