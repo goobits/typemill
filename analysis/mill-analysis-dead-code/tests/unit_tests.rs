@@ -1,11 +1,10 @@
 //! Unit tests for the dead code analysis crate.
 
 use async_trait::async_trait;
-use mill_analysis_common::{AnalysisEngine, AnalysisError, LspProvider};
-use mill_analysis_dead_code::{config::DeadCodeConfig, DeadCodeAnalyzer};
+use mill_analysis_common::{AnalysisError, LspProvider};
+use mill_analysis_dead_code::{Config, DeadCodeAnalyzer};
 use serde_json::Value;
 use std::path::Path;
-use std::sync::Arc;
 
 /// A mock LSP provider for testing purposes.
 struct MockLspProvider;
@@ -32,17 +31,16 @@ impl LspProvider for MockLspProvider {
 
 #[tokio::test]
 async fn test_analyzer_runs_without_error() {
-    let mock_lsp = Arc::new(MockLspProvider);
-    let analyzer = DeadCodeAnalyzer;
-    let config = DeadCodeConfig::default();
+    let mock_lsp = MockLspProvider;
+    let config = Config::default();
     let workspace_path = Path::new(".");
 
-    let result = analyzer.analyze(mock_lsp, workspace_path, config).await;
+    let result = DeadCodeAnalyzer::analyze(&mock_lsp, workspace_path, config).await;
 
     assert!(result.is_ok(), "Analysis should not fail");
     let report = result.unwrap();
     assert_eq!(
-        report.dead_symbols.len(),
+        report.dead_code.len(),
         0,
         "Should find no dead symbols in an empty workspace"
     );

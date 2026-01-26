@@ -1,0 +1,228 @@
+//! Symbol collection via LSP.
+
+use crate::error::Error;
+use crate::types::{Kind, Symbol};
+use mill_analysis_common::LspProvider;
+use serde_json::Value;
+use std::collections::HashSet;
+use std::path::Path;
+use std::time::Duration;
+use tokio::time::timeout;
+use tracing::{debug, warn};
+use walkdir::WalkDir;
+
+/// Default file extensions to analyze.
+const DEFAULT_EXTENSIONS: &[&str] = &["rs", "ts", "tsx", "js", "jsx", "py", "go"];
+
+/// Collect all symbols from the given path via LSP.
+pub(crate) async fn symbols(lsp: &dyn LspProvider, path: &Path) -> Result<Vec<Symbol>, Error> {
+    if !path.exists() {
+        return Err(Error::PathNotFound(path.display().to_string()));
+    }
+
+    // Try workspace symbols first (more efficient)
+    let workspace_symbols = collect_workspace_symbols(lsp).await?;
+
+    if !workspace_symbols.is_empty() {
+        debug!(
+            count = workspace_symbols.len(),
+            "Got symbols from workspace/symbol"
+        );
+
+        // Filter to only symbols in our target path
+        let path_str = path.to_string_lossy();
+        let filtered: Vec<Symbol> = workspace_symbols
+            .into_iter()
+            .filter(|s| s.file_path.starts_with(path_str.as_ref()))
+            .collect();
+
+        return Ok(filtered);
+    }
+
+    // Fallback: collect per-document
+    warn!("workspace/symbol returned empty, falling back to per-document collection");
+    collect_document_symbols(lsp, path).await
+}
+
+/// Try to collect symbols via workspace/symbol LSP request.
+async fn collect_workspace_symbols(lsp: &dyn LspProvider) -> Result<Vec<Symbol>, Error> {
+    // Try different queries - some LSPs want "*", some want ""
+    for query in ["*", ""] {
+        match timeout(Duration::from_secs(30), lsp.workspace_symbols(query)).await {
+            Ok(Ok(values)) if !values.is_empty() => {
+                return Ok(parse_symbols(values));
+            }
+            Ok(Ok(_)) => continue, // Empty, try next query
+            Ok(Err(e)) => {
+                debug!(error = %e, query, "workspace/symbol failed");
+            }
+            Err(_) => {
+                warn!(query, "workspace/symbol timed out");
+            }
+        }
+    }
+
+    Ok(vec![])
+}
+
+/// Collect symbols by walking files and querying documentSymbol for each.
+async fn collect_document_symbols(lsp: &dyn LspProvider, path: &Path) -> Result<Vec<Symbol>, Error> {
+    let files = discover_files(path)?;
+    debug!(count = files.len(), "Discovered source files");
+
+    let mut all_symbols = Vec::new();
+
+    for file_path in files {
+        let uri = format!("file://{}", file_path.display());
+
+        match timeout(Duration::from_secs(5), lsp.document_symbols(&uri)).await {
+            Ok(Ok(values)) => {
+                let symbols = parse_document_symbols(values, &uri);
+                all_symbols.extend(symbols);
+            }
+            Ok(Err(e)) => {
+                debug!(error = %e, file = %file_path.display(), "documentSymbol failed");
+            }
+            Err(_) => {
+                warn!(file = %file_path.display(), "documentSymbol timed out");
+            }
+        }
+    }
+
+    Ok(all_symbols)
+}
+
+/// Discover source files in the given path.
+fn discover_files(path: &Path) -> Result<Vec<std::path::PathBuf>, Error> {
+    let extensions: HashSet<&str> = DEFAULT_EXTENSIONS.iter().copied().collect();
+
+    if path.is_file() {
+        return Ok(vec![path.to_path_buf()]);
+    }
+
+    let files: Vec<_> = WalkDir::new(path)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .filter(|e| {
+            e.path()
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| extensions.contains(ext))
+        })
+        .map(|e| e.path().to_path_buf())
+        .collect();
+
+    Ok(files)
+}
+
+/// Parse workspace symbols from LSP response.
+fn parse_symbols(values: Vec<Value>) -> Vec<Symbol> {
+    values.into_iter().filter_map(parse_symbol).collect()
+}
+
+/// Parse a single symbol from LSP JSON.
+fn parse_symbol(value: Value) -> Option<Symbol> {
+    let name = value.get("name")?.as_str()?.to_string();
+    let kind_num = value.get("kind")?.as_u64()?;
+    let kind = Kind::from_lsp(kind_num);
+
+    let location = value.get("location")?;
+    let uri = location.get("uri")?.as_str()?;
+    let range = location.get("range")?;
+    let start = range.get("start")?;
+    let line = start.get("line")?.as_u64()? as u32;
+    let column = start.get("character")?.as_u64()? as u32;
+
+    let file_path = uri.strip_prefix("file://").unwrap_or(uri).to_string();
+
+    // Generate unique ID
+    let id = format!("{}::{}:{}", file_path, line, name);
+
+    // Heuristic: check if symbol might be public
+    // This is imperfect but LSP doesn't give us visibility directly
+    let is_public = is_likely_public(&name, &file_path);
+
+    Some(Symbol {
+        id,
+        name,
+        kind,
+        file_path,
+        uri: uri.to_string(),
+        line,
+        column,
+        is_public,
+    })
+}
+
+/// Parse document symbols (which may be nested) from LSP response.
+fn parse_document_symbols(values: Vec<Value>, uri: &str) -> Vec<Symbol> {
+    let mut symbols = Vec::new();
+    for value in values {
+        flatten_document_symbol(&value, uri, &mut symbols);
+    }
+    symbols
+}
+
+/// Flatten potentially nested document symbols.
+fn flatten_document_symbol(value: &Value, uri: &str, output: &mut Vec<Symbol>) {
+    // DocumentSymbol format (nested)
+    if let (Some(name), Some(kind_num), Some(range)) = (
+        value.get("name").and_then(|v| v.as_str()),
+        value.get("kind").and_then(|v| v.as_u64()),
+        value.get("range"),
+    ) {
+        let start = range.get("start");
+        if let Some(start) = start {
+            let line = start.get("line").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+            let column = start
+                .get("character")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0) as u32;
+
+            let file_path = uri.strip_prefix("file://").unwrap_or(uri).to_string();
+            let id = format!("{}::{}:{}", file_path, line, name);
+            let is_public = is_likely_public(name, &file_path);
+
+            output.push(Symbol {
+                id,
+                name: name.to_string(),
+                kind: Kind::from_lsp(kind_num),
+                file_path,
+                uri: uri.to_string(),
+                line,
+                column,
+                is_public,
+            });
+        }
+
+        // Recurse into children
+        if let Some(children) = value.get("children").and_then(|c| c.as_array()) {
+            for child in children {
+                flatten_document_symbol(child, uri, output);
+            }
+        }
+    }
+    // SymbolInformation format (flat, has location)
+    else if value.get("location").is_some() {
+        if let Some(symbol) = parse_symbol(value.clone()) {
+            output.push(symbol);
+        }
+    }
+}
+
+/// Heuristic to check if a symbol is likely public.
+fn is_likely_public(name: &str, file_path: &str) -> bool {
+    // In Rust, symbols in lib.rs or main.rs at top level are often public
+    // This is a rough heuristic since LSP doesn't tell us visibility
+    let is_lib_or_main = file_path.ends_with("lib.rs") || file_path.ends_with("main.rs");
+
+    // Convention: SCREAMING_CASE is usually public constants
+    let is_screaming_case = name.chars().all(|c| c.is_uppercase() || c == '_');
+
+    // Starts with uppercase usually means public type
+    let starts_upper = name.chars().next().is_some_and(|c| c.is_uppercase());
+
+    is_lib_or_main || is_screaming_case || starts_upper
+}
