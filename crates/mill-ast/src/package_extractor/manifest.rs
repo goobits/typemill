@@ -24,7 +24,7 @@ pub(crate) async fn extract_dependencies(
         );
 
         // Read file and parse imports using ImportParser capability
-        match std::fs::read_to_string(file_path) {
+        match tokio::fs::read_to_string(file_path).await {
             Ok(content) => {
                 let deps = import_parser.parse_imports(&content);
                 for dep in deps {
