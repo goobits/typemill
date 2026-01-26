@@ -34,7 +34,7 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 
 # SWC for AST-based parsing (moved from cb-ast)
-swc_common = "16"
+swc_common = "18"
 swc_ecma_parser = "26"
 swc_ecma_ast = "17"
 swc_ecma_visit = "17"
