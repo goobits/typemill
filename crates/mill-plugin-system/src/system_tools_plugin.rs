@@ -331,53 +331,11 @@ impl SystemToolsPlugin {
     /// Handle extract_module_to_package tool
     #[allow(unused_variables)] // params only used with lang-rust feature
     async fn handle_extract_module_to_package(&self, params: Value) -> PluginResult<Value> {
-        // Check if Rust plugin is available at runtime
-        let has_rust = self
-            .plugin_registry
-            .all()
-            .iter()
-            .any(|p| p.metadata().name == "rust");
-
-        if !has_rust {
-            return Err(PluginSystemError::MethodNotSupported {
-                method: "extract_module_to_package".to_string(),
-                plugin: "system-tools (requires Rust plugin)".to_string(),
-            });
-        }
-
-        // Deserialize parameters - no cfg guard needed, we check capabilities at runtime
-        let parsed: mill_ast::package_extractor::ExtractModuleToPackageParams =
-            serde_json::from_value(params.clone()).map_err(|e| {
-                PluginSystemError::SerializationError {
-                    message: format!("Invalid extract_module_to_package args: {}", e),
-                }
-            })?;
-
-        debug!(
-            source_package = %parsed.source_package,
-            module_path = %parsed.module_path,
-            target_package_path = %parsed.target_package_path,
-            target_package_name = %parsed.target_package_name,
-            "Extracting module to package"
-        );
-
-        // Call the planning function from mill-ast with injected registry
-        // mill-ast is now language-agnostic and uses capability-based dispatch
-        let edit_plan = mill_ast::package_extractor::plan_extract_module_to_package_with_registry(
-            parsed,
-            &self.plugin_registry,
-        )
-        .await
-        .map_err(|e| PluginSystemError::PluginRequestFailed {
-            plugin: "system-tools".to_string(),
-            message: format!("Failed to plan extract_module_to_package: {}", e),
-        })?;
-
-        // Return the edit plan
-        Ok(json!({
-            "edit_plan": edit_plan,
-            "status": "success"
-        }))
+        // FIXME: Disabled due to Send/Sync issues with async_trait
+        Err(PluginSystemError::MethodNotSupported {
+            method: "extract_module_to_package".to_string(),
+            plugin: "system-tools (temporarily disabled)".to_string(),
+        })
     }
 }
 

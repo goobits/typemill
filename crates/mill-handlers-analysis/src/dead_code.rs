@@ -127,7 +127,7 @@ pub(crate) fn detect_unused_imports(
                         let module_path_str = module_path.as_str();
 
                         // Extract symbols from this import
-                        let symbols = extract_imported_symbols(content, module_path_str, language);
+                        let symbols = extract_imported_symbols(line, module_path_str, language);
 
                         if symbols.is_empty() {
                             // Side-effect import (no symbols) - check if module is used
@@ -858,9 +858,18 @@ pub(crate) fn detect_unused_types(
         })
         .collect();
 
+    // Get exported types once for the file to avoid repeated regex compilation
+    let exported_types = get_exported_types(content, language);
+
     for type_symbol in type_symbols {
         // Skip if exported (may be part of public API)
-        if is_type_exported(&type_symbol.name, language, content) {
+        let is_exported = if let Some(ref exports) = exported_types {
+            exports.contains(&type_symbol.name)
+        } else {
+            is_type_exported(&type_symbol.name, language, content)
+        };
+
+        if is_exported {
             continue;
         }
 
@@ -1252,6 +1261,42 @@ fn is_parameter_used_in_body(body: &str, param_name: &str) -> bool {
     false
 }
 
+/// Get all exported types in a file (for languages with explicit export markers)
+fn get_exported_types(
+    content: &str,
+    language: &str,
+) -> Option<std::collections::HashSet<String>> {
+    let mut exported = std::collections::HashSet::new();
+
+    match language.to_lowercase().as_str() {
+        "rust" => {
+            static RUST_PUB_TYPE: OnceLock<Regex> = OnceLock::new();
+            let pattern = RUST_PUB_TYPE.get_or_init(|| {
+                Regex::new(r"pub\s+(?:type|enum|struct|trait)\s+(\w+)").expect("Invalid regex")
+            });
+            for captures in pattern.captures_iter(content) {
+                if let Some(name) = captures.get(1) {
+                    exported.insert(name.as_str().to_string());
+                }
+            }
+            Some(exported)
+        }
+        "typescript" | "javascript" => {
+            static JS_EXPORT_TYPE: OnceLock<Regex> = OnceLock::new();
+            let pattern = JS_EXPORT_TYPE.get_or_init(|| {
+                Regex::new(r"export\s+(?:type|interface|enum|class)\s+(\w+)").expect("Invalid regex")
+            });
+            for captures in pattern.captures_iter(content) {
+                if let Some(name) = captures.get(1) {
+                    exported.insert(name.as_str().to_string());
+                }
+            }
+            Some(exported)
+        }
+        _ => None,
+    }
+}
+
 /// Check if a type is exported/public
 ///
 /// This heuristic checks for common export patterns in different languages
@@ -1314,80 +1359,95 @@ fn is_type_exported(type_name: &str, language: &str, content: &str) -> bool {
     false
 }
 
-/// Extract imported symbols from an import statement
+/// Extract imported symbols from an import statement line
 ///
-/// This function looks for the actual import statement in the source code
-/// and extracts the symbols being imported. It reuses logic from the
-/// unused_imports.rs handler.
+/// This function looks for the symbols being imported in the line.
 ///
 /// # Parameters
-/// - `content`: The file content to search
-/// - `module_path`: The module path to look for
+/// - `line`: The line containing the import
+/// - `module_path`: The module path to look for (to verify match)
 /// - `language`: The language name for pattern matching
 ///
 /// # Returns
 /// A vector of symbol names that are imported
-fn extract_imported_symbols(content: &str, module_path: &str, language: &str) -> Vec<String> {
+fn extract_imported_symbols(line: &str, module_path: &str, language: &str) -> Vec<String> {
     let mut symbols = Vec::new();
 
-    // Language-specific symbol extraction patterns
+    static RUST_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
+    static JS_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
+    static PYTHON_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
+    static EMPTY_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
+
+    // Patterns should capture: 1. module path, 2. symbol string
     let patterns = match language.to_lowercase().as_str() {
-        "rust" => vec![
-            // use std::collections::{HashMap, HashSet};
-            format!(r"use\s+{}::\{{([^}}]+)\}}", regex::escape(module_path)),
-            // use std::collections::HashMap;
-            format!(r"use\s+{}::(\w+)", regex::escape(module_path)),
-        ],
-        "typescript" | "javascript" => vec![
-            // import { foo, bar } from './module'
-            format!(
-                r#"import\s*\{{\s*([^}}]+)\s*\}}\s*from\s*['"]{}['"]"#,
-                regex::escape(module_path)
-            ),
-            // import foo from './module'
-            format!(
-                r#"import\s+(\w+)\s+from\s*['"]{}['"]"#,
-                regex::escape(module_path)
-            ),
-        ],
-        "python" => vec![
-            // from module import foo, bar
-            format!(
-                r"from\s+{}\s+import\s+([^;\n]+)",
-                regex::escape(module_path)
-            ),
-        ],
-        "go" => vec![
-            // In Go, imports are typically used via package name
-            // For now, we'll treat module imports as side-effects
-        ],
-        _ => vec![],
+        "rust" => RUST_PATTERNS.get_or_init(|| {
+            vec![
+                // use std::collections::{HashMap, HashSet};
+                Regex::new(r"use\s+([\w:]+)::\{([^}]+)\}").expect("Invalid regex"),
+                // use std::collections::HashMap;
+                Regex::new(r"use\s+([\w:]+)::(\w+)").expect("Invalid regex"),
+            ]
+        }),
+        "typescript" | "javascript" => JS_PATTERNS.get_or_init(|| {
+            vec![
+                // import { foo, bar } from './module'
+                Regex::new(r#"import\s*\{\s*([^}]+)\s*\}\s*from\s*['"]([^'"]+)['"]"#).expect("Invalid regex"),
+                // import foo from './module'
+                Regex::new(r#"import\s+(\w+)\s+from\s*['"]([^'"]+)['"]"#).expect("Invalid regex"),
+            ]
+        }),
+        "python" => PYTHON_PATTERNS.get_or_init(|| {
+            vec![
+                // from module import foo, bar
+                Regex::new(r"from\s+([\w.]+)\s+import\s+([^;\n]+)").expect("Invalid regex"),
+            ]
+        }),
+        _ => EMPTY_PATTERNS.get_or_init(Vec::new),
     };
 
     // Try each pattern
-    for pattern_str in &patterns {
-        if let Ok(pattern) = Regex::new(pattern_str) {
-            for captures in pattern.captures_iter(content) {
-                // Get the first non-empty capture group
-                for i in 1..captures.len() {
-                    if let Some(matched) = captures.get(i) {
-                        let matched_str = matched.as_str().trim();
-                        if !matched_str.is_empty() {
-                            // Split by commas and clean up
-                            for symbol in matched_str.split(',') {
-                                let clean_symbol = symbol
-                                    .split_whitespace()
-                                    .next()
-                                    .unwrap_or("")
-                                    .trim_matches(|c: char| !c.is_alphanumeric() && c != '_')
-                                    .to_string();
-                                if !clean_symbol.is_empty() {
-                                    symbols.push(clean_symbol);
-                                }
-                            }
-                            break;
-                        }
+    for pattern in patterns {
+        if let Some(captures) = pattern.captures(line) {
+            let (captured_path, symbols_str) = if language == "typescript" || language == "javascript" {
+                // JS patterns have symbols first, then path in some cases, or path then symbols?
+                // Pattern 1: import { ... } from 'path' -> 1=symbols, 2=path
+                // Pattern 2: import name from 'path' -> 1=name, 2=path
+                if let (Some(s), Some(p)) = (captures.get(1), captures.get(2)) {
+                    (p.as_str(), s.as_str())
+                } else {
+                    continue;
+                }
+            } else {
+                // Rust/Python: 1=path, 2=symbols
+                if let (Some(p), Some(s)) = (captures.get(1), captures.get(2)) {
+                    (p.as_str(), s.as_str())
+                } else {
+                    continue;
+                }
+            };
+
+            // Verify module path matches
+            if captured_path != module_path {
+                continue;
+            }
+
+            // Split by commas and clean up
+            let clean_symbols_str = symbols_str.trim();
+            if !clean_symbols_str.is_empty() {
+                for symbol in clean_symbols_str.split(',') {
+                    let clean_symbol = symbol
+                        .split_whitespace()
+                        .next()
+                        .unwrap_or("")
+                        .trim_matches(|c: char| !c.is_alphanumeric() && c != '_')
+                        .to_string();
+                    if !clean_symbol.is_empty() {
+                        symbols.push(clean_symbol);
                     }
+                }
+                // If we found symbols, we are done
+                if !symbols.is_empty() {
+                    return symbols;
                 }
             }
         }
