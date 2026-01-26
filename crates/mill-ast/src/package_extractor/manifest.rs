@@ -18,9 +18,8 @@ pub(crate) async fn extract_dependencies(
         }
     };
 
-    let results = futures::stream::iter(located_files)
+    let results = futures::stream::iter(located_files.iter().cloned())
         .map(|file_path| {
-            let file_path = file_path.clone();
             async move {
                 debug!(
                     file_path = %file_path.display(),
