@@ -33,7 +33,7 @@ mill-handlers = { path = "../mill-handlers", default-features = false, features 
 mill-plugin-bundle = { path = "../mill-plugin-bundle", features = ["lang-rust", "lang-typescript", "lang-python", "lang-java", "lang-go", "lang-swift", "lang-c", "lang-cpp"] }
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+criterion = { version = "0.8", features = ["html_reports", "async_tokio"] }
 
 # Individual language plugins as dev-dependencies for extern crate declarations
 # These must match the features enabled in mill-plugin-bundle above
