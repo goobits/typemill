@@ -328,7 +328,7 @@ pub fn module_function() {}
     let mut registry = mill_plugin_api::PluginDiscovery::new();
     registry.register(Arc::new(RustPlugin::default()));
 
-    let result = plan_extract_module_to_package(params, &registry).await;
+    let result = plan_extract_module_to_package(params, Arc::new(registry)).await;
     assert!(result.is_ok(), "Plan should succeed: {:?}", result.err());
 
     let edit_plan = result.unwrap();
@@ -389,7 +389,7 @@ version = "0.1.0"
     let mut registry = mill_plugin_api::PluginDiscovery::new();
     registry.register(Arc::new(RustPlugin::default()));
 
-    let result = plan_extract_module_to_package(params, &registry).await;
+    let result = plan_extract_module_to_package(params, Arc::new(registry)).await;
     assert!(result.is_ok(), "Plan should succeed: {:?}", result.err());
 
     let edit_plan = result.unwrap();

@@ -92,7 +92,7 @@ impl SystemToolsPlugin {
     }
 
     /// Handle list_files tool
-    async fn handle_list_files(&self, params: Value) -> PluginResult<Value> {
+    async fn handle_list_files(params: Value) -> PluginResult<Value> {
         #[derive(Debug, Deserialize)]
         #[serde(rename_all = "snake_case")]
         struct ListFilesArgs {
@@ -160,7 +160,7 @@ impl SystemToolsPlugin {
     }
 
     /// Handle bulk_update_dependencies tool
-    async fn handle_bulk_update_dependencies(&self, params: Value) -> PluginResult<Value> {
+    async fn handle_bulk_update_dependencies(params: Value) -> PluginResult<Value> {
         #[derive(Debug, Deserialize)]
         #[serde(rename_all = "snake_case")]
         struct UpdateDependenciesArgs {
@@ -289,7 +289,7 @@ impl SystemToolsPlugin {
     }
 
     /// Handle web_fetch tool
-    async fn handle_web_fetch(&self, params: Value) -> PluginResult<Value> {
+    async fn handle_web_fetch(params: Value) -> PluginResult<Value> {
         #[derive(Debug, Deserialize)]
         #[serde(rename_all = "snake_case")]
         struct WebFetchArgs {
@@ -330,54 +330,58 @@ impl SystemToolsPlugin {
 
     /// Handle extract_module_to_package tool
     #[allow(unused_variables)] // params only used with lang-rust feature
-    async fn handle_extract_module_to_package(&self, params: Value) -> PluginResult<Value> {
-        // Check if Rust plugin is available at runtime
-        let has_rust = self
-            .plugin_registry
-            .all()
-            .iter()
-            .any(|p| p.metadata().name == "rust");
+    fn handle_extract_module_to_package(
+        plugin_registry: Arc<mill_plugin_api::PluginDiscovery>,
+        params: Value,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = PluginResult<Value>> + Send>> {
+        Box::pin(async move {
+            // Check if Rust plugin is available at runtime
+            let has_rust = plugin_registry
+                .all()
+                .iter()
+                .any(|p| p.metadata().name == "rust");
 
-        if !has_rust {
-            return Err(PluginSystemError::MethodNotSupported {
-                method: "extract_module_to_package".to_string(),
-                plugin: "system-tools (requires Rust plugin)".to_string(),
-            });
-        }
+            if !has_rust {
+                return Err(PluginSystemError::MethodNotSupported {
+                    method: "extract_module_to_package".to_string(),
+                    plugin: "system-tools (requires Rust plugin)".to_string(),
+                });
+            }
 
-        // Deserialize parameters - no cfg guard needed, we check capabilities at runtime
-        let parsed: mill_ast::package_extractor::ExtractModuleToPackageParams =
-            serde_json::from_value(params.clone()).map_err(|e| {
-                PluginSystemError::SerializationError {
-                    message: format!("Invalid extract_module_to_package args: {}", e),
-                }
+            // Deserialize parameters - no cfg guard needed, we check capabilities at runtime
+            let parsed: mill_ast::package_extractor::ExtractModuleToPackageParams =
+                serde_json::from_value(params.clone()).map_err(|e| {
+                    PluginSystemError::SerializationError {
+                        message: format!("Invalid extract_module_to_package args: {}", e),
+                    }
+                })?;
+
+            debug!(
+                source_package = %parsed.source_package,
+                module_path = %parsed.module_path,
+                target_package_path = %parsed.target_package_path,
+                target_package_name = %parsed.target_package_name,
+                "Extracting module to package"
+            );
+
+            // Call the planning function from mill-ast with injected registry
+            // mill-ast is now language-agnostic and uses capability-based dispatch
+            let edit_plan = mill_ast::package_extractor::plan_extract_module_to_package_with_registry(
+                parsed,
+                plugin_registry,
+            )
+            .await
+            .map_err(|e| PluginSystemError::PluginRequestFailed {
+                plugin: "system-tools".to_string(),
+                message: format!("Failed to plan extract_module_to_package: {}", e),
             })?;
 
-        debug!(
-            source_package = %parsed.source_package,
-            module_path = %parsed.module_path,
-            target_package_path = %parsed.target_package_path,
-            target_package_name = %parsed.target_package_name,
-            "Extracting module to package"
-        );
-
-        // Call the planning function from mill-ast with injected registry
-        // mill-ast is now language-agnostic and uses capability-based dispatch
-        let edit_plan = mill_ast::package_extractor::plan_extract_module_to_package_with_registry(
-            parsed,
-            &self.plugin_registry,
-        )
-        .await
-        .map_err(|e| PluginSystemError::PluginRequestFailed {
-            plugin: "system-tools".to_string(),
-            message: format!("Failed to plan extract_module_to_package: {}", e),
-        })?;
-
-        // Return the edit plan
-        Ok(json!({
-            "edit_plan": edit_plan,
-            "status": "success"
-        }))
+            // Return the edit plan
+            Ok(json!({
+                "edit_plan": edit_plan,
+                "status": "success"
+            }))
+        })
     }
 }
 
@@ -847,32 +851,34 @@ impl LanguagePlugin for SystemToolsPlugin {
     async fn handle_request(&self, request: PluginRequest) -> PluginResult<PluginResponse> {
         debug!(method = %request.method, "System tools plugin handling request");
 
-        let result = match request.method.as_str() {
-            "list_files" => self.handle_list_files(request.params.clone()).await?,
-            "bulk_update_dependencies" => {
-                self.handle_bulk_update_dependencies(request.params.clone())
-                    .await?
-            }
-            "web_fetch" => self.handle_web_fetch(request.params.clone()).await?,
-            "extract_module_to_package" => {
-                self.handle_extract_module_to_package(request.params.clone())
-                    .await?
-            }
-            _ => {
-                return Err(PluginSystemError::MethodNotSupported {
-                    method: request.method.clone(),
-                    plugin: self.metadata.name.clone(),
-                });
-            }
+        let plugin_registry = self.plugin_registry.clone();
+        let plugin_name = self.metadata.name.clone();
+        let method = request.method.clone();
+        let params = request.params.clone();
+        let request_id = request.request_id.clone();
+
+        let result = if method == "list_files" {
+            Self::handle_list_files(params).await?
+        } else if method == "bulk_update_dependencies" {
+            Self::handle_bulk_update_dependencies(params).await?
+        } else if method == "web_fetch" {
+            Self::handle_web_fetch(params).await?
+        } else if method == "extract_module_to_package" {
+            Self::handle_extract_module_to_package(plugin_registry, params).await?
+        } else {
+            return Err(PluginSystemError::MethodNotSupported {
+                method,
+                plugin: plugin_name,
+            });
         };
 
         Ok(PluginResponse {
             success: true,
             data: Some(result),
             error: None,
-            request_id: request.request_id.clone(),
+            request_id,
             metadata: ResponseMetadata {
-                plugin_name: self.metadata.name.clone(),
+                plugin_name,
                 processing_time_ms: Some(0), // Would be calculated in real implementation
                 cached: false,
                 plugin_metadata: json!({}),

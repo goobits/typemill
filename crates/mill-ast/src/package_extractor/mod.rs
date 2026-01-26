@@ -42,7 +42,7 @@ pub struct ExtractModuleToPackageParams {
 /// * `plugin_registry` - Registry of language plugins
 pub async fn plan_extract_module_to_package_with_registry(
     params: ExtractModuleToPackageParams,
-    plugin_registry: &mill_plugin_api::PluginDiscovery,
+    plugin_registry: std::sync::Arc<mill_plugin_api::PluginDiscovery>,
 ) -> AstResult<EditPlan> {
     planner::plan_extract_module_to_package(params, plugin_registry).await
 }
