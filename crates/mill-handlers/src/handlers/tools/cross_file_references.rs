@@ -322,6 +322,7 @@ pub async fn enhance_find_references(
 
     // Find workspace root (walk up to find Cargo.toml, package.json, or .git)
     let workspace_root = find_workspace_root(source_file)
+        .await
         .unwrap_or_else(|| source_file.parent().unwrap_or(source_file).to_path_buf());
 
     // Discover importing files
@@ -419,7 +420,7 @@ pub async fn enhance_find_references(
 }
 
 /// Find workspace root by looking for marker files
-fn find_workspace_root(start: &Path) -> Option<PathBuf> {
+async fn find_workspace_root(start: &Path) -> Option<PathBuf> {
     let markers = [
         "Cargo.toml",
         "package.json",
@@ -431,7 +432,10 @@ fn find_workspace_root(start: &Path) -> Option<PathBuf> {
     let mut current = start.parent()?;
     while current.parent().is_some() {
         for marker in &markers {
-            if current.join(marker).exists() {
+            if tokio::fs::try_exists(current.join(marker))
+                .await
+                .unwrap_or(false)
+            {
                 return Some(current.to_path_buf());
             }
         }
@@ -620,6 +624,7 @@ pub async fn enhance_symbol_rename(
 
     // Find workspace root
     let workspace_root = find_workspace_root(source_file)
+        .await
         .unwrap_or_else(|| source_file.parent().unwrap_or(source_file).to_path_buf());
 
     // Discover importing files
