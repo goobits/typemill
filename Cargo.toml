@@ -75,7 +75,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 # Testing
-mockall = "0.13"
+mockall = "0.14"
 tempfile = "3.8"
 pretty_assertions = "1.4"
 
