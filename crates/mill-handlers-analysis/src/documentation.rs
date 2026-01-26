@@ -489,8 +489,6 @@ pub(crate) fn detect_style(
     // Check capitalization and punctuation consistency
     let mut capitalization_issues = 0;
     let mut punctuation_issues = 0;
-    let mut first_letter_uppercase = 0;
-    let mut ends_with_period = 0;
 
     for (_, comment) in &doc_comments {
         let trimmed = comment.trim();
@@ -500,20 +498,14 @@ pub(crate) fn detect_style(
 
         // Check first letter capitalization
         if let Some(first_char) = trimmed.chars().next() {
-            if first_char.is_alphabetic() {
-                if first_char.is_uppercase() {
-                    first_letter_uppercase += 1;
-                } else {
-                    capitalization_issues += 1;
-                }
+            if first_char.is_alphabetic() && first_char.is_lowercase() {
+                capitalization_issues += 1;
             }
         }
 
         // Check ending punctuation
         if let Some(last_char) = trimmed.chars().last() {
-            if last_char == '.' {
-                ends_with_period += 1;
-            } else if last_char.is_alphabetic() {
+            if last_char != '.' && last_char.is_alphabetic() {
                 punctuation_issues += 1;
             }
         }

@@ -13,7 +13,9 @@ use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio::time::{timeout, Duration};
 use tracing::{debug, info, warn};
 
+// CommandExt provides pre_exec() for Unix process group management
 #[cfg(unix)]
+#[allow(unused_imports)]
 use std::os::unix::process::CommandExt;
 
 /// Timeout for LSP requests
@@ -251,21 +253,20 @@ impl LspClient {
             });
         }
 
-        let mut child = cmd.spawn()
-            .map_err(|e| {
-                tracing::error!(
-                    command = %command,
-                    args = ?args,
-                    error = %e,
-                    path_env = %path_env,
-                    "Failed to spawn LSP server"
-                );
-                ServerError::runtime(format!(
-                    "Failed to start LSP server '{}': {}",
-                    config.command.join(" "),
-                    e
-                ))
-            })?;
+        let mut child = cmd.spawn().map_err(|e| {
+            tracing::error!(
+                command = %command,
+                args = ?args,
+                error = %e,
+                path_env = %path_env,
+                "Failed to spawn LSP server"
+            );
+            ServerError::runtime(format!(
+                "Failed to start LSP server '{}': {}",
+                config.command.join(" "),
+                e
+            ))
+        })?;
 
         eprintln!(
             "✅ LSP server process spawned: {} (PID: {:?})",
@@ -1027,8 +1028,8 @@ impl LspClient {
             // Loop to reap all children in the process group
             loop {
                 match waitpid(pgid, Some(WaitPidFlag::WNOHANG)) {
-                    Ok(WaitStatus::Exited(child_pid, _)) |
-                    Ok(WaitStatus::Signaled(child_pid, _, _)) => {
+                    Ok(WaitStatus::Exited(child_pid, _))
+                    | Ok(WaitStatus::Signaled(child_pid, _, _)) => {
                         reaped_count += 1;
                         tracing::debug!(
                             child_pid = child_pid.as_raw(),

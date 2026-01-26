@@ -10,12 +10,11 @@
 //! This follows the hybrid grep+LSP approach for reliable cross-file reference discovery.
 
 use ignore::WalkBuilder;
-use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
-use mill_plugin_system::PluginRequest;
+use mill_foundation::errors::MillResult as ServerResult;
 use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use tracing::{debug, warn};
+use tracing::debug;
 
 /// Default patterns to exclude from file discovery
 const DEFAULT_EXCLUDES: &[&str] = &[
@@ -30,7 +29,7 @@ const DEFAULT_EXCLUDES: &[&str] = &[
 
 /// File extensions to search for imports
 const SEARCHABLE_EXTENSIONS: &[&str] = &[
-    "js", "jsx", "ts", "tsx", "mjs", "mts", "cjs", "cts", // JavaScript/TypeScript
+    "js", "jsx", "ts", "tsx", "mjs", "mts", "cjs", "cts",   // JavaScript/TypeScript
     "rs",    // Rust
     "py",    // Python
     "go",    // Go
@@ -102,7 +101,7 @@ fn extract_locations(response: &Value) -> Vec<Location> {
 pub async fn discover_importing_files(
     workspace_root: &Path,
     source_file: &Path,
-    context: &mill_handler_api::ToolHandlerContext,
+    _context: &mill_handler_api::ToolHandlerContext,
 ) -> ServerResult<Vec<PathBuf>> {
     use globset::{Glob, GlobSetBuilder};
 
@@ -220,7 +219,7 @@ pub async fn discover_importing_files(
                     || content.contains(&source_without_ext)        // Without extension
                     || content.contains(source_filename)            // Just filename with ext
                     || (!parent_filename.is_empty() && content.contains(&parent_filename))  // parent/file pattern
-                    || contains_word(&content, source_name);        // Just file stem (with word boundary)
+                    || contains_word(&content, source_name); // Just file stem (with word boundary)
 
                 if matches {
                     debug!(
@@ -257,9 +256,8 @@ pub async fn enhance_find_references(
     context: &mill_handler_api::ToolHandlerContext,
 ) -> ServerResult<Value> {
     // Extract original locations
-    let mut locations: HashSet<Location> = extract_locations(&original_response)
-        .into_iter()
-        .collect();
+    let mut locations: HashSet<Location> =
+        extract_locations(&original_response).into_iter().collect();
 
     let source_uri = format!("file://{}", source_file.display());
 
@@ -278,12 +276,8 @@ pub async fn enhance_find_references(
     );
 
     // Find workspace root (walk up to find Cargo.toml, package.json, or .git)
-    let workspace_root = find_workspace_root(source_file).unwrap_or_else(|| {
-        source_file
-            .parent()
-            .unwrap_or(source_file)
-            .to_path_buf()
-    });
+    let workspace_root = find_workspace_root(source_file)
+        .unwrap_or_else(|| source_file.parent().unwrap_or(source_file).to_path_buf());
 
     // Discover importing files
     let importing_files = discover_importing_files(&workspace_root, source_file, context).await?;
@@ -301,7 +295,9 @@ pub async fn enhance_find_references(
         if let Ok(content) = std::fs::read_to_string(&importing_file) {
             // Get the symbol name at the original position
             if let Ok(source_content) = std::fs::read_to_string(source_file) {
-                if let Some(symbol_name) = extract_symbol_at_position(&source_content, line, character) {
+                if let Some(symbol_name) =
+                    extract_symbol_at_position(&source_content, line, character)
+                {
                     // Find occurrences of the symbol in the importing file
                     let file_uri = format!("file://{}", importing_file.display());
                     let matches = find_symbol_occurrences(&content, &symbol_name);
@@ -332,7 +328,10 @@ pub async fn enhance_find_references(
         .get("processing_time_ms")
         .cloned()
         .unwrap_or(json!(0));
-    let cached = original_response.get("cached").cloned().unwrap_or(json!(false));
+    let cached = original_response
+        .get("cached")
+        .cloned()
+        .unwrap_or(json!(false));
 
     debug!(
         original_count = extract_locations(&original_response).len(),
@@ -354,7 +353,13 @@ pub async fn enhance_find_references(
 
 /// Find workspace root by looking for marker files
 fn find_workspace_root(start: &Path) -> Option<PathBuf> {
-    let markers = ["Cargo.toml", "package.json", ".git", "go.mod", "pyproject.toml"];
+    let markers = [
+        "Cargo.toml",
+        "package.json",
+        ".git",
+        "go.mod",
+        "pyproject.toml",
+    ];
 
     let mut current = start.parent()?;
     while current.parent().is_some() {
@@ -369,7 +374,11 @@ fn find_workspace_root(start: &Path) -> Option<PathBuf> {
 }
 
 /// Extract the symbol name at a given position in source code (public wrapper)
-pub fn extract_symbol_at_position_public(content: &str, line: u32, character: u32) -> Option<String> {
+pub fn extract_symbol_at_position_public(
+    content: &str,
+    line: u32,
+    character: u32,
+) -> Option<String> {
     extract_symbol_at_position(content, line, character)
 }
 
@@ -471,11 +480,7 @@ fn find_symbol_occurrences(content: &str, symbol: &str) -> Vec<(u32, u32, u32)> 
                     .unwrap_or(false);
 
             if before_ok && after_ok {
-                occurrences.push((
-                    line_idx as u32,
-                    absolute_pos as u32,
-                    symbol.len() as u32,
-                ));
+                occurrences.push((line_idx as u32, absolute_pos as u32, symbol.len() as u32));
             }
 
             search_start = absolute_pos + 1;
@@ -490,11 +495,12 @@ fn find_symbol_occurrences(content: &str, symbol: &str) -> Vec<(u32, u32, u32)> 
 /// The LSP's textDocument/rename only returns edits for opened files.
 /// This function discovers additional files that use the symbol and adds
 /// edits for those files to the WorkspaceEdit.
+#[allow(clippy::mutable_key_type)] // lsp_types::Uri has interior mutability but is used as a key by the LSP spec
 pub async fn enhance_symbol_rename(
     mut workspace_edit: lsp_types::WorkspaceEdit,
     source_file: &Path,
-    line: u32,
-    character: u32,
+    _line: u32,
+    _character: u32,
     old_name: &str,
     new_name: &str,
     context: &mill_handler_api::ToolHandlerContext,
@@ -523,12 +529,8 @@ pub async fn enhance_symbol_rename(
     );
 
     // Find workspace root
-    let workspace_root = find_workspace_root(source_file).unwrap_or_else(|| {
-        source_file
-            .parent()
-            .unwrap_or(source_file)
-            .to_path_buf()
-    });
+    let workspace_root = find_workspace_root(source_file)
+        .unwrap_or_else(|| source_file.parent().unwrap_or(source_file).to_path_buf());
 
     // Discover importing files
     let importing_files = discover_importing_files(&workspace_root, source_file, context).await?;
