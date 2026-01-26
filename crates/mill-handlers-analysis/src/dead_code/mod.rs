@@ -13,6 +13,8 @@ pub(crate) mod imports;
 pub(crate) mod symbols;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod perf_benchmark;
 pub(crate) mod types;
 pub(crate) mod unreachable;
 pub(crate) mod utils;
