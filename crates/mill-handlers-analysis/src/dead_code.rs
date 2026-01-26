@@ -127,7 +127,7 @@ pub(crate) fn detect_unused_imports(
                         let module_path_str = module_path.as_str();
 
                         // Extract symbols from this import
-                        let symbols = extract_imported_symbols(content, module_path_str, language);
+                        let symbols = extract_imported_symbols(&lines, line_num, module_path_str, language);
 
                         if symbols.is_empty() {
                             // Side-effect import (no symbols) - check if module is used
@@ -1317,80 +1317,200 @@ fn is_type_exported(type_name: &str, language: &str, content: &str) -> bool {
 /// Extract imported symbols from an import statement
 ///
 /// This function looks for the actual import statement in the source code
-/// and extracts the symbols being imported. It reuses logic from the
-/// unused_imports.rs handler.
+/// and extracts the symbols being imported. It avoids using dynamic regexes
+/// for performance.
 ///
 /// # Parameters
-/// - `content`: The file content to search
+/// - `lines`: All lines in the file
+/// - `start_line`: The line number where the import was detected
 /// - `module_path`: The module path to look for
 /// - `language`: The language name for pattern matching
 ///
 /// # Returns
 /// A vector of symbol names that are imported
-fn extract_imported_symbols(content: &str, module_path: &str, language: &str) -> Vec<String> {
+fn extract_imported_symbols(
+    lines: &[&str],
+    start_line: usize,
+    module_path: &str,
+    language: &str,
+) -> Vec<String> {
     let mut symbols = Vec::new();
 
-    // Language-specific symbol extraction patterns
-    let patterns = match language.to_lowercase().as_str() {
-        "rust" => vec![
-            // use std::collections::{HashMap, HashSet};
-            format!(r"use\s+{}::\{{([^}}]+)\}}", regex::escape(module_path)),
-            // use std::collections::HashMap;
-            format!(r"use\s+{}::(\w+)", regex::escape(module_path)),
-        ],
-        "typescript" | "javascript" => vec![
-            // import { foo, bar } from './module'
-            format!(
-                r#"import\s*\{{\s*([^}}]+)\s*\}}\s*from\s*['"]{}['"]"#,
-                regex::escape(module_path)
-            ),
-            // import foo from './module'
-            format!(
-                r#"import\s+(\w+)\s+from\s*['"]{}['"]"#,
-                regex::escape(module_path)
-            ),
-        ],
-        "python" => vec![
-            // from module import foo, bar
-            format!(
-                r"from\s+{}\s+import\s+([^;\n]+)",
-                regex::escape(module_path)
-            ),
-        ],
-        "go" => vec![
-            // In Go, imports are typically used via package name
-            // For now, we'll treat module imports as side-effects
-        ],
-        _ => vec![],
-    };
+    // Collect the full import statement (handling multi-line)
+    let mut statement = String::new();
+    let mut i = start_line;
+    let mut statement_end = false;
 
-    // Try each pattern
-    for pattern_str in &patterns {
-        if let Ok(pattern) = Regex::new(pattern_str) {
-            for captures in pattern.captures_iter(content) {
-                // Get the first non-empty capture group
-                for i in 1..captures.len() {
-                    if let Some(matched) = captures.get(i) {
-                        let matched_str = matched.as_str().trim();
-                        if !matched_str.is_empty() {
-                            // Split by commas and clean up
-                            for symbol in matched_str.split(',') {
-                                let clean_symbol = symbol
-                                    .split_whitespace()
-                                    .next()
-                                    .unwrap_or("")
-                                    .trim_matches(|c: char| !c.is_alphanumeric() && c != '_')
-                                    .to_string();
-                                if !clean_symbol.is_empty() {
-                                    symbols.push(clean_symbol);
+    // Safety check
+    if i >= lines.len() {
+        return symbols;
+    }
+
+    // Heuristic for statement termination
+    // Rust/JS/TS: ends with ; (usually) or just check a reasonable number of lines
+    let max_lines = 20; // Don't scan too far
+    let mut lines_scanned = 0;
+
+    while i < lines.len() && lines_scanned < max_lines {
+        let line = lines[i].trim();
+        statement.push_str(line);
+        statement.push(' '); // Add space to avoid merging words
+
+        // Check for termination
+        match language.to_lowercase().as_str() {
+            "rust" => {
+                if line.ends_with(';') {
+                    statement_end = true;
+                }
+            }
+            "typescript" | "javascript" => {
+                if line.ends_with(';')
+                    || (line.contains("from") && (line.ends_with('\'') || line.ends_with('"')))
+                {
+                    // This is a rough heuristic, but should cover most cases
+                    statement_end = true;
+                }
+            }
+            _ => {}
+        }
+
+        if statement_end {
+            break;
+        }
+
+        // If we found the module path and braces are closed, we might be done
+        // (For languages without explicit terminators like Python)
+        if statement.contains(module_path) {
+            match language.to_lowercase().as_str() {
+                "python" => {
+                    // Python imports typically end at newline unless backslash used
+                    // But we are concatenating lines.
+                    // If the current line doesn't end with \, we assume end.
+                    if !line.ends_with('\\') {
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        i += 1;
+        lines_scanned += 1;
+    }
+
+    let statement = statement.trim();
+
+    match language.to_lowercase().as_str() {
+        "rust" => {
+            // use module::{a, b}; or use module::Item;
+            // Check if this statement actually matches the module path we are looking for
+            // (It should, because detect_unused_imports found it here)
+
+            if let Some(brace_start) = statement.find('{') {
+                if let Some(brace_end) = statement.rfind('}') {
+                    let inside = &statement[brace_start + 1..brace_end];
+                    for part in inside.split(',') {
+                        let part = part.trim();
+                        // Handle `use ... as ...`
+                        if let Some(alias_pos) = part.find(" as ") {
+                            let alias = part[alias_pos + 4..].trim();
+                            if !alias.is_empty() {
+                                symbols.push(alias.to_string());
+                            }
+                        } else if !part.is_empty() {
+                            symbols.push(part.to_string());
+                        }
+                    }
+                }
+            } else if !statement.contains('{') {
+                // Case 1: `use std::collections::HashMap;` -> module_path = `std::collections::HashMap`.
+                // Symbol is `HashMap`.
+                if let Some(last_colon) = module_path.rfind("::") {
+                    let symbol = &module_path[last_colon + 2..];
+                    symbols.push(symbol.to_string());
+                } else {
+                    // `use HashMap;` -> symbol is HashMap
+                    symbols.push(module_path.to_string());
+                }
+            }
+        }
+        "typescript" | "javascript" => {
+            // import { a, b } from 'module';
+            // import A from 'module';
+            // import * as A from 'module';
+
+            // Extract part before 'from'
+            if let Some(from_pos) = statement.find("from") {
+                let before_from = statement[..from_pos].trim();
+                let after_import = if let Some(import_pos) = before_from.find("import") {
+                    before_from[import_pos + 6..].trim()
+                } else {
+                    before_from // Should include import
+                };
+
+                // Handle braces
+                if let Some(brace_start) = after_import.find('{') {
+                    if let Some(brace_end) = after_import.rfind('}') {
+                        // Named imports
+                        let inside = &after_import[brace_start + 1..brace_end];
+                        for part in inside.split(',') {
+                            let part = part.trim();
+                            // Handle `as`
+                            if let Some(as_pos) = part.find(" as ") {
+                                let alias = part[as_pos + 4..].trim();
+                                symbols.push(alias.to_string());
+                            } else if !part.is_empty() {
+                                symbols.push(part.to_string());
+                            }
+                        }
+
+                        // There might be default import too: `import A, { B } from ...`
+                        if brace_start > 0 {
+                            let default_part = &after_import[..brace_start];
+                            if let Some(comma) = default_part.find(',') {
+                                let default = default_part[..comma].trim();
+                                if !default.is_empty() {
+                                    symbols.push(default.to_string());
                                 }
                             }
-                            break;
+                        }
+                    }
+                } else {
+                    // Default or namespace import
+                    // import A from ...
+                    // import * as A from ...
+                    if let Some(stripped) = after_import.strip_prefix("* as ") {
+                        let alias = stripped.trim();
+                        symbols.push(alias.to_string());
+                    } else {
+                        symbols.push(after_import.to_string());
+                    }
+                }
+            }
+        }
+        "python" => {
+            // from module import a, b
+            if statement.starts_with("from") {
+                if let Some(import_pos) = statement.find(" import ") {
+                    let after_import = &statement[import_pos + 8..];
+                    for part in after_import.split(',') {
+                        let part = part.trim();
+                        // Handle `as`? Python: `import a as b`
+                        if let Some(as_pos) = part.find(" as ") {
+                            let alias = part[as_pos + 4..].trim();
+                            symbols.push(alias.to_string());
+                        } else if !part.is_empty() {
+                            // Strip comments? #
+                            let clean_part = part.split('#').next().unwrap_or(part).trim();
+                            if !clean_part.is_empty() {
+                                symbols.push(clean_part.to_string());
+                            }
                         }
                     }
                 }
             }
         }
+        _ => {}
     }
 
     symbols
