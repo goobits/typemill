@@ -5,7 +5,8 @@ use mill_foundation::protocol::analysis_result::{
 };
 use regex::Regex;
 use serde_json::json;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::sync::OnceLock;
 
 /// Detect unused type definitions (interfaces, type aliases, enums, structs)
 ///
@@ -66,9 +67,18 @@ pub(crate) fn detect_unused_types(
         })
         .collect();
 
+    // Pre-calculate exported types from content for efficiency
+    let exported_types_from_content = get_exported_types(content, language);
+
     for type_symbol in type_symbols {
         // Skip if exported (may be part of public API)
-        if is_type_exported(&type_symbol.name, language, content) {
+        // Check convention first (fast, no content scan needed)
+        if is_type_public_by_convention(&type_symbol.name, language) {
+            continue;
+        }
+
+        // Check if detected as exported in content
+        if exported_types_from_content.contains(&type_symbol.name) {
             continue;
         }
 
@@ -133,64 +143,70 @@ pub(crate) fn detect_unused_types(
     findings
 }
 
-/// Check if a type is exported/public
+/// Get all exported types found in the content
 ///
-/// This heuristic checks for common export patterns in different languages
-/// to determine if a type is part of the public API.
-///
-/// # Parameters
-/// - `type_name`: The type name to check
-/// - `language`: The language name for pattern matching
-/// - `content`: The file content to search
-///
-/// # Returns
-/// `true` if the type appears to be exported/public
-fn is_type_exported(type_name: &str, language: &str, content: &str) -> bool {
+/// This uses static regexes to find all exported type definitions once,
+/// avoiding repeated compilation inside loops.
+fn get_exported_types(content: &str, language: &str) -> HashSet<String> {
+    let mut exported = HashSet::new();
+
     match language.to_lowercase().as_str() {
         "rust" => {
-            // Check for pub type/enum/struct
-            let patterns = vec![
-                format!(r"pub\s+type\s+{}\b", regex::escape(type_name)),
-                format!(r"pub\s+enum\s+{}\b", regex::escape(type_name)),
-                format!(r"pub\s+struct\s+{}\b", regex::escape(type_name)),
-                format!(r"pub\s+trait\s+{}\b", regex::escape(type_name)),
-            ];
-            for pattern_str in patterns {
-                if let Ok(pattern) = Regex::new(&pattern_str) {
-                    if pattern.is_match(content) {
-                        return true;
+            static RUST_EXPORT_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
+            let patterns = RUST_EXPORT_PATTERNS.get_or_init(|| {
+                vec![
+                    Regex::new(r"pub\s+type\s+(\w+)\b").expect("Invalid regex"),
+                    Regex::new(r"pub\s+enum\s+(\w+)\b").expect("Invalid regex"),
+                    Regex::new(r"pub\s+struct\s+(\w+)\b").expect("Invalid regex"),
+                    Regex::new(r"pub\s+trait\s+(\w+)\b").expect("Invalid regex"),
+                ]
+            });
+
+            for pattern in patterns {
+                for cap in pattern.captures_iter(content) {
+                    if let Some(m) = cap.get(1) {
+                        exported.insert(m.as_str().to_string());
                     }
                 }
             }
         }
         "typescript" | "javascript" => {
-            // Check for export keyword
-            let patterns = vec![
-                format!(r"export\s+type\s+{}\b", regex::escape(type_name)),
-                format!(r"export\s+interface\s+{}\b", regex::escape(type_name)),
-                format!(r"export\s+enum\s+{}\b", regex::escape(type_name)),
-                format!(r"export\s+class\s+{}\b", regex::escape(type_name)),
-            ];
-            for pattern_str in patterns {
-                if let Ok(pattern) = Regex::new(&pattern_str) {
-                    if pattern.is_match(content) {
-                        return true;
+            static JS_EXPORT_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
+            let patterns = JS_EXPORT_PATTERNS.get_or_init(|| {
+                vec![
+                    Regex::new(r"export\s+type\s+(\w+)\b").expect("Invalid regex"),
+                    Regex::new(r"export\s+interface\s+(\w+)\b").expect("Invalid regex"),
+                    Regex::new(r"export\s+enum\s+(\w+)\b").expect("Invalid regex"),
+                    Regex::new(r"export\s+class\s+(\w+)\b").expect("Invalid regex"),
+                ]
+            });
+
+            for pattern in patterns {
+                for cap in pattern.captures_iter(content) {
+                    if let Some(m) = cap.get(1) {
+                        exported.insert(m.as_str().to_string());
                     }
                 }
             }
         }
-        "python" => {
-            // In Python, all top-level definitions are potentially public
-            // We use _ prefix to indicate private
-            return !type_name.starts_with('_');
-        }
-        "go" => {
-            // In Go, types starting with uppercase are exported
-            return type_name.chars().next().is_some_and(|c| c.is_uppercase());
-        }
         _ => {}
     }
 
-    // Conservative default: assume it's exported
-    false
+    exported
+}
+
+/// Check if a type is exported/public by naming convention
+fn is_type_public_by_convention(type_name: &str, language: &str) -> bool {
+    match language.to_lowercase().as_str() {
+        "python" => {
+            // In Python, all top-level definitions are potentially public
+            // We use _ prefix to indicate private
+            !type_name.starts_with('_')
+        }
+        "go" => {
+            // In Go, types starting with uppercase are exported
+            type_name.chars().next().is_some_and(|c| c.is_uppercase())
+        }
+        _ => false // For other languages, rely on content scanning (default conservative behavior handled by caller if needed)
+    }
 }
