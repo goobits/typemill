@@ -62,11 +62,11 @@
 //! # Usage
 //!
 //! ```no_run
-//! use mill_handlers::handlers::tools::analysis::config::AnalysisConfig;
+//! use mill_handlers_analysis::AnalysisConfig;
 //! use std::path::Path;
 //!
 //! // Load from workspace, environment, and defaults
-//! let config = AnalysisConfig::load(Path::new("/workspace"));
+//! let config = AnalysisConfig::load(Path::new("/workspace")).unwrap();
 //!
 //! // Access a value
 //! println!("Max complexity: {}", config.thresholds.max_complexity);

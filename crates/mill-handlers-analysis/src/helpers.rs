@@ -41,7 +41,7 @@ pub(crate) fn filter_analyzable_files(
 ///
 /// # Example
 /// ```
-/// use mill_handlers::handlers::tools::analysis::helpers::weighted_average;
+/// use mill_handlers_analysis::helpers::weighted_average;
 ///
 /// // Average complexity weighted by function count
 /// let values = vec![(5.0, 10), (8.0, 5), (3.0, 15)];  // (complexity, function_count) pairs
@@ -49,7 +49,7 @@ pub(crate) fn filter_analyzable_files(
 /// assert!(avg > 0.0);
 /// ```
 #[allow(dead_code)]
-pub(crate) fn weighted_average<I>(values: I) -> f64
+pub fn weighted_average<I>(values: I) -> f64
 where
     I: Iterator<Item = (f64, usize)>,
 {
