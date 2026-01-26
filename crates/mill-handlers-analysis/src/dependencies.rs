@@ -27,6 +27,7 @@ use mill_foundation::protocol::SafetyLevel;
 use regex::Regex;
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::sync::OnceLock;
 use tracing::debug;
 
 #[cfg(feature = "analysis-circular-deps")]
@@ -890,31 +891,51 @@ fn generate_dependency_refactoring_candidates(
 ///
 /// Returns regex patterns for detecting imports/exports in different languages.
 /// Each pattern should have one capture group that captures the module path.
-fn get_import_patterns(language: &str) -> Vec<String> {
+fn get_import_patterns(language: &str) -> &'static [Regex] {
+    static RUST_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
+    static JS_TS_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
+    static PYTHON_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
+    static GO_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
+    static EMPTY_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
+
     match language.to_lowercase().as_str() {
-        "rust" => vec![
-            // use std::collections::HashMap;
-            // use crate::module::*;
-            r"use\s+([\w:]+)".to_string(),
-        ],
-        "typescript" | "javascript" => vec![
-            // import { foo } from './module'
-            // import * as foo from './module'
-            r#"import\s+(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s+from\s+['"]([^'"]+)['"]"#.to_string(),
-            // export { foo } from './module'
-            r#"export\s+(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s+from\s+['"]([^'"]+)['"]"#.to_string(),
-        ],
-        "python" => vec![
-            // from module import foo
-            r"from\s+([\w.]+)\s+import".to_string(),
-            // import module
-            r"import\s+([\w.]+)".to_string(),
-        ],
-        "go" => vec![
-            // import "package"
-            r#"import\s+"([^"]+)""#.to_string(),
-        ],
-        _ => vec![],
+        "rust" => RUST_PATTERNS.get_or_init(|| {
+            vec![
+                // use std::collections::HashMap;
+                // use crate::module::*;
+                Regex::new(r"use\s+([\w:]+)").expect("Invalid Rust regex"),
+            ]
+        }),
+        "typescript" | "javascript" => JS_TS_PATTERNS.get_or_init(|| {
+            vec![
+                // import { foo } from './module'
+                // import * as foo from './module'
+                Regex::new(
+                    r#"import\s+(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s+from\s+['"]([^'"]+)['"]"#,
+                )
+                .expect("Invalid JS/TS import regex"),
+                // export { foo } from './module'
+                Regex::new(
+                    r#"export\s+(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s+from\s+['"]([^'"]+)['"]"#,
+                )
+                .expect("Invalid JS/TS export regex"),
+            ]
+        }),
+        "python" => PYTHON_PATTERNS.get_or_init(|| {
+            vec![
+                // from module import foo
+                Regex::new(r"from\s+([\w.]+)\s+import").expect("Invalid Python from-import regex"),
+                // import module
+                Regex::new(r"import\s+([\w.]+)").expect("Invalid Python import regex"),
+            ]
+        }),
+        "go" => GO_PATTERNS.get_or_init(|| {
+            vec![
+                // import "package"
+                Regex::new(r#"import\s+"([^"]+)""#).expect("Invalid Go regex"),
+            ]
+        }),
+        _ => EMPTY_PATTERNS.get_or_init(Vec::new),
     }
 }
 
@@ -1064,12 +1085,10 @@ fn build_dependency_map(content: &str, language: &str) -> HashMap<String, usize>
 
     let mut line_num = 1;
     for line in content.lines() {
-        for pattern_str in &import_patterns {
-            if let Ok(pattern) = Regex::new(pattern_str) {
-                if let Some(captures) = pattern.captures(line) {
-                    if let Some(module_path) = captures.get(1) {
-                        map.insert(module_path.as_str().to_string(), line_num);
-                    }
+        for pattern in import_patterns {
+            if let Some(captures) = pattern.captures(line) {
+                if let Some(module_path) = captures.get(1) {
+                    map.insert(module_path.as_str().to_string(), line_num);
                 }
             }
         }
