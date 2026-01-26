@@ -51,7 +51,9 @@ impl RenameHandler {
         })?;
 
         // Convert path to absolute and create file URI
-        let abs_path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+        let abs_path = tokio::fs::canonicalize(path)
+            .await
+            .unwrap_or_else(|_| path.to_path_buf());
         let file_uri = url::Url::from_file_path(&abs_path)
             .map_err(|_| {
                 ServerError::internal(format!("Invalid file path: {}", abs_path.display()))
