@@ -437,7 +437,7 @@ impl RenameHandler {
 
         // Calculate checksums for all affected files
         for file_path in &affected_files {
-            if file_path.exists() {
+            if tokio::fs::try_exists(file_path).await.unwrap_or(false) {
                 if let Ok(content) = context.app_state.file_service.read_file(file_path).await {
                     file_checksums.insert(
                         file_path.to_string_lossy().to_string(),
