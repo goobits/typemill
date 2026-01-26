@@ -989,21 +989,6 @@ mod tests {
         let bundle_plugins = mill_plugin_bundle::all_plugins();
         let plugin_registry =
             crate::services::registry_builder::build_language_plugin_registry(bundle_plugins);
-        let bundle_plugins = mill_plugin_bundle::all_plugins();
-        let plugin_registry =
-            crate::services::registry_builder::build_language_plugin_registry(bundle_plugins);
-        let bundle_plugins = mill_plugin_bundle::all_plugins();
-        let plugin_registry =
-            crate::services::registry_builder::build_language_plugin_registry(bundle_plugins);
-        let bundle_plugins = mill_plugin_bundle::all_plugins();
-        let plugin_registry =
-            crate::services::registry_builder::build_language_plugin_registry(bundle_plugins);
-        let bundle_plugins = mill_plugin_bundle::all_plugins();
-        let plugin_registry =
-            crate::services::registry_builder::build_language_plugin_registry(bundle_plugins);
-        let bundle_plugins = mill_plugin_bundle::all_plugins();
-        let plugin_registry =
-            crate::services::registry_builder::build_language_plugin_registry(bundle_plugins);
         let plugins = plugin_registry.all();
 
         // Test: find_affected_files_for_rename should detect my_crate/src/main.rs

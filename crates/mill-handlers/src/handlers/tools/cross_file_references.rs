@@ -10,12 +10,11 @@
 //! This follows the hybrid grep+LSP approach for reliable cross-file reference discovery.
 
 use ignore::WalkBuilder;
-use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
-use mill_plugin_system::PluginRequest;
+use mill_foundation::errors::MillResult as ServerResult;
 use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use tracing::{debug, warn};
+use tracing::debug;
 
 /// Default patterns to exclude from file discovery
 const DEFAULT_EXCLUDES: &[&str] = &[
@@ -102,7 +101,7 @@ fn extract_locations(response: &Value) -> Vec<Location> {
 pub async fn discover_importing_files(
     workspace_root: &Path,
     source_file: &Path,
-    context: &mill_handler_api::ToolHandlerContext,
+    _context: &mill_handler_api::ToolHandlerContext,
 ) -> ServerResult<Vec<PathBuf>> {
     use globset::{Glob, GlobSetBuilder};
 
@@ -496,11 +495,12 @@ fn find_symbol_occurrences(content: &str, symbol: &str) -> Vec<(u32, u32, u32)> 
 /// The LSP's textDocument/rename only returns edits for opened files.
 /// This function discovers additional files that use the symbol and adds
 /// edits for those files to the WorkspaceEdit.
+#[allow(clippy::mutable_key_type)] // lsp_types::Uri has interior mutability but is used as a key by the LSP spec
 pub async fn enhance_symbol_rename(
     mut workspace_edit: lsp_types::WorkspaceEdit,
     source_file: &Path,
-    line: u32,
-    character: u32,
+    _line: u32,
+    _character: u32,
     old_name: &str,
     new_name: &str,
     context: &mill_handler_api::ToolHandlerContext,

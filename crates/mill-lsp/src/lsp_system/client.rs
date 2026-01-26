@@ -13,7 +13,9 @@ use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio::time::{timeout, Duration};
 use tracing::{debug, info, warn};
 
+// CommandExt provides pre_exec() for Unix process group management
 #[cfg(unix)]
+#[allow(unused_imports)]
 use std::os::unix::process::CommandExt;
 
 /// Timeout for LSP requests

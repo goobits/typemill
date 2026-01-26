@@ -81,7 +81,6 @@ mod tests {
         use mill_plugin_api::{
             LanguagePlugin, ManifestData, ParsedSource, PluginCapabilities, PluginResult,
         };
-        use mill_plugin_system::PluginMetadata;
         use std::any::Any;
 
         struct MockPlugin;
