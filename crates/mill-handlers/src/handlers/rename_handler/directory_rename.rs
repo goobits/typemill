@@ -193,16 +193,22 @@ impl RenameHandler {
 
         // For directory rename, we need to calculate checksums for all files being moved
         // Paths are already resolved against workspace root, so canonicalize directly
-        let abs_old = std::fs::canonicalize(&old_path).unwrap_or_else(|_| old_path.clone());
+        let abs_old = tokio::fs::canonicalize(&old_path)
+            .await
+            .unwrap_or_else(|_| old_path.clone());
 
         // Calculate abs_new early so we can use it for checksum fallback logic
         // new_path is already resolved against workspace root or is absolute
-        let abs_new = if new_path.exists() {
-            std::fs::canonicalize(&new_path).unwrap_or_else(|_| new_path.clone())
+        let abs_new = if tokio::fs::try_exists(&new_path).await.unwrap_or(false) {
+            tokio::fs::canonicalize(&new_path)
+                .await
+                .unwrap_or_else(|_| new_path.clone())
         } else {
             // For non-existent paths, canonicalize parent and join filename
             let parent = new_path.parent().unwrap_or(workspace_root);
-            let parent_abs = std::fs::canonicalize(parent).unwrap_or_else(|_| parent.to_path_buf());
+            let parent_abs = tokio::fs::canonicalize(parent)
+                .await
+                .unwrap_or_else(|_| parent.to_path_buf());
             parent_abs.join(new_path.file_name().unwrap_or(new_path.as_os_str()))
         };
 
