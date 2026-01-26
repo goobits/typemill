@@ -96,6 +96,10 @@ pub(crate) fn detect_imports(
         let import_regex = IMPORT_REGEX.get_or_init(|| Regex::new(r"use\s+.*;").unwrap());
 
         for (i, line) in content.lines().enumerate() {
+            // Optimization: Skip lines that clearly don't contain imports
+            if !line.contains("use") {
+                continue;
+            }
             if import_regex.is_match(line) {
                 findings.push(Finding {
                     id: format!("import-{}-{}", file_path, i),
@@ -1086,10 +1090,20 @@ fn build_dependency_map(content: &str, language: &str) -> HashMap<String, usize>
 
     let mut line_num = 1;
     for line in content.lines() {
-        for pattern in import_patterns {
-            if let Some(captures) = pattern.captures(line) {
-                if let Some(module_path) = captures.get(1) {
-                    map.insert(module_path.as_str().to_string(), line_num);
+        // Optimization: Quick keyword check to avoid regex overhead
+        let should_scan = match language {
+            "rust" => line.contains("use"),
+            "typescript" | "javascript" => line.contains("import") || line.contains("export"),
+            "python" | "go" => line.contains("import"),
+            _ => true,
+        };
+
+        if should_scan {
+            for pattern in import_patterns {
+                if let Some(captures) = pattern.captures(line) {
+                    if let Some(module_path) = captures.get(1) {
+                        map.insert(module_path.as_str().to_string(), line_num);
+                    }
                 }
             }
         }
