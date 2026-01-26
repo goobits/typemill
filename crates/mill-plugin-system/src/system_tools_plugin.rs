@@ -92,7 +92,7 @@ impl SystemToolsPlugin {
     }
 
     /// Handle list_files tool
-    async fn handle_list_files(&self, params: Value) -> PluginResult<Value> {
+    async fn handle_list_files(params: Value) -> PluginResult<Value> {
         #[derive(Debug, Deserialize)]
         #[serde(rename_all = "snake_case")]
         struct ListFilesArgs {
@@ -160,7 +160,7 @@ impl SystemToolsPlugin {
     }
 
     /// Handle bulk_update_dependencies tool
-    async fn handle_bulk_update_dependencies(&self, params: Value) -> PluginResult<Value> {
+    async fn handle_bulk_update_dependencies(params: Value) -> PluginResult<Value> {
         #[derive(Debug, Deserialize)]
         #[serde(rename_all = "snake_case")]
         struct UpdateDependenciesArgs {
@@ -289,7 +289,7 @@ impl SystemToolsPlugin {
     }
 
     /// Handle web_fetch tool
-    async fn handle_web_fetch(&self, params: Value) -> PluginResult<Value> {
+    async fn handle_web_fetch(params: Value) -> PluginResult<Value> {
         #[derive(Debug, Deserialize)]
         #[serde(rename_all = "snake_case")]
         struct WebFetchArgs {
@@ -330,10 +330,12 @@ impl SystemToolsPlugin {
 
     /// Handle extract_module_to_package tool
     #[allow(unused_variables)] // params only used with lang-rust feature
-    async fn handle_extract_module_to_package(&self, params: Value) -> PluginResult<Value> {
+    async fn handle_extract_module_to_package(
+        plugin_registry: Arc<mill_plugin_api::PluginDiscovery>,
+        params: Value,
+    ) -> PluginResult<Value> {
         // Check if Rust plugin is available at runtime
-        let has_rust = self
-            .plugin_registry
+        let has_rust = plugin_registry
             .all()
             .iter()
             .any(|p| p.metadata().name == "rust");
@@ -365,7 +367,7 @@ impl SystemToolsPlugin {
         // mill-ast is now language-agnostic and uses capability-based dispatch
         let edit_plan = mill_ast::package_extractor::plan_extract_module_to_package_with_registry(
             parsed,
-            &self.plugin_registry,
+            plugin_registry,
         )
         .await
         .map_err(|e| PluginSystemError::PluginRequestFailed {
@@ -845,23 +847,41 @@ impl LanguagePlugin for SystemToolsPlugin {
     }
 
     async fn handle_request(&self, request: PluginRequest) -> PluginResult<PluginResponse> {
+        Self::handle_request_inner(
+            self.plugin_registry.clone(),
+            self.metadata.name.clone(),
+            request,
+        )
+        .await
+    }
+}
+
+impl SystemToolsPlugin {
+    async fn handle_request_inner(
+        plugin_registry: Arc<mill_plugin_api::PluginDiscovery>,
+        plugin_name: String,
+        request: PluginRequest,
+    ) -> PluginResult<PluginResponse> {
         debug!(method = %request.method, "System tools plugin handling request");
 
         let result = match request.method.as_str() {
-            "list_files" => self.handle_list_files(request.params.clone()).await?,
+            "list_files" => Self::handle_list_files(request.params.clone()).await?,
             "bulk_update_dependencies" => {
-                self.handle_bulk_update_dependencies(request.params.clone())
+                Self::handle_bulk_update_dependencies(request.params.clone())
                     .await?
             }
-            "web_fetch" => self.handle_web_fetch(request.params.clone()).await?,
+            "web_fetch" => Self::handle_web_fetch(request.params.clone()).await?,
             "extract_module_to_package" => {
-                self.handle_extract_module_to_package(request.params.clone())
-                    .await?
+                Self::handle_extract_module_to_package(
+                    plugin_registry.clone(),
+                    request.params.clone(),
+                )
+                .await?
             }
             _ => {
                 return Err(PluginSystemError::MethodNotSupported {
                     method: request.method.clone(),
-                    plugin: self.metadata.name.clone(),
+                    plugin: plugin_name.clone(),
                 });
             }
         };
@@ -872,7 +892,7 @@ impl LanguagePlugin for SystemToolsPlugin {
             error: None,
             request_id: request.request_id.clone(),
             metadata: ResponseMetadata {
-                plugin_name: self.metadata.name.clone(),
+                plugin_name,
                 processing_time_ms: Some(0), // Would be calculated in real implementation
                 cached: false,
                 plugin_metadata: json!({}),

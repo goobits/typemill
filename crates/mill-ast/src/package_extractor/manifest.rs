@@ -16,9 +16,10 @@ pub(crate) async fn extract_dependencies(
         }
     };
 
-    let all_dependencies = futures::stream::iter(located_files)
+    let all_dependencies = futures::stream::iter(located_files.to_vec())
         .map(|file_path| {
-            let file_path = file_path.clone();
+            // Explicitly capture the parser reference for the async block
+            let parser = import_parser;
             async move {
                 debug!(
                     file_path = %file_path.display(),
@@ -28,7 +29,7 @@ pub(crate) async fn extract_dependencies(
                 // Read file and parse imports using ImportParser capability
                 match tokio::fs::read_to_string(&file_path).await {
                     Ok(content) => {
-                        let deps = import_parser.parse_imports(&content);
+                        let deps = parser.parse_imports(&content);
                         Some(deps)
                     }
                     Err(e) => {

@@ -16,6 +16,7 @@ mod perf_benchmark;
 use crate::error::AstResult;
 use mill_foundation::protocol::EditPlan;
 use serde::Deserialize;
+use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
 pub struct ExtractModuleToPackageParams {
@@ -42,7 +43,7 @@ pub struct ExtractModuleToPackageParams {
 /// * `plugin_registry` - Registry of language plugins
 pub async fn plan_extract_module_to_package_with_registry(
     params: ExtractModuleToPackageParams,
-    plugin_registry: &mill_plugin_api::PluginDiscovery,
+    plugin_registry: Arc<mill_plugin_api::PluginDiscovery>,
 ) -> AstResult<EditPlan> {
     planner::plan_extract_module_to_package(params, plugin_registry).await
 }

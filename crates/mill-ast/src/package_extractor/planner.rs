@@ -4,11 +4,12 @@ use mill_plugin_api::language::detect_project_language;
 use serde_json::json;
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::Arc;
 use tracing::{debug, info};
 
 pub(crate) async fn plan_extract_module_to_package(
     params: ExtractModuleToPackageParams,
-    plugin_registry: &mill_plugin_api::PluginDiscovery,
+    plugin_registry: Arc<mill_plugin_api::PluginDiscovery>,
 ) -> AstResult<EditPlan> {
     info!(
         source_package = %params.source_package,
@@ -32,6 +33,7 @@ pub(crate) async fn plan_extract_module_to_package(
         .all()
         .iter()
         .find(|p| p.metadata().name == detected_language_name)
+        .cloned()
         .ok_or_else(|| crate::error::AstError::Analysis {
             message: format!(
                 "No plugin registered for language: {}",
@@ -73,7 +75,7 @@ pub(crate) async fn plan_extract_module_to_package(
                 ),
             })?;
 
-    let dependencies = manifest::extract_dependencies(&**plugin, &located_files).await;
+    let dependencies = manifest::extract_dependencies(plugin.as_ref(), &located_files).await;
     debug!(
         dependencies_count = dependencies.len(),
         "Aggregated dependencies from all module files"
@@ -93,19 +95,19 @@ pub(crate) async fn plan_extract_module_to_package(
 
     // Step 6: Construct file modification plan
     let mut edits = Vec::new();
-    edits::add_manifest_creation_edit(&mut edits, &params, plugin, &generated_manifest);
+    edits::add_manifest_creation_edit(&mut edits, &params, &plugin, &generated_manifest);
     debug!(edit_count = edits.len(), "Created manifest TextEdit");
 
     if let Some(original_file_path) = located_files.first() {
         let original_content =
-            edits::add_entrypoint_creation_edit(&mut edits, &params, plugin, original_file_path)
+            edits::add_entrypoint_creation_edit(&mut edits, &params, &plugin, original_file_path)
                 .await?;
         debug!(edit_count = edits.len(), "Created entrypoint TextEdit");
 
         edits::add_delete_original_file_edit(&mut edits, original_file_path, &original_content);
         debug!(edit_count = edits.len(), "Created delete TextEdit");
 
-        edits::add_remove_mod_declaration_edit(&mut edits, &params, source_path, &**plugin).await;
+        edits::add_remove_mod_declaration_edit(&mut edits, &params, source_path, plugin.as_ref()).await;
         debug!(
             edit_count = edits.len(),
             "Created parent mod removal TextEdit"
@@ -113,20 +115,26 @@ pub(crate) async fn plan_extract_module_to_package(
     }
 
     // Step 7: Update source crate's Cargo.toml to add new dependency
-    edits::add_dependency_to_source_edit(&mut edits, &params, source_path, &**plugin).await;
+    edits::add_dependency_to_source_edit(&mut edits, &params, source_path, plugin.as_ref()).await;
     debug!("Created source Cargo.toml update TextEdit");
 
     // Step 8: Update workspace Cargo.toml to add new member (if is_workspace_member is true)
     if params.is_workspace_member.unwrap_or(false) {
-        workspace::update_workspace(&mut edits, &params, source_path, &**plugin).await;
+        workspace::update_workspace(&mut edits, &params, source_path, plugin.as_ref()).await;
     } else {
         debug!("is_workspace_member=false: skipping workspace configuration");
     }
 
     // Step 9: Find and update all use statements in the workspace
     if params.update_imports.unwrap_or(true) {
-        edits::add_import_update_edits(&mut edits, &params, source_path, &**plugin, &located_files)
-            .await?;
+        edits::add_import_update_edits(
+            &mut edits,
+            &params,
+            source_path,
+            plugin.as_ref(),
+            &located_files,
+        )
+        .await?;
     }
 
     // Convert PathBuf to strings for JSON serialization
