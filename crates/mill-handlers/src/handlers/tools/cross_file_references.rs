@@ -526,25 +526,24 @@ fn contains_word(content: &str, word: &str) -> bool {
 
 /// Find all occurrences of a symbol in content
 /// Returns Vec<(line, character, length)> - all 0-indexed
-fn find_symbol_occurrences(content: &str, symbol: &str) -> Vec<(u32, u32, u32)> {
+pub(crate) fn find_symbol_occurrences(content: &str, symbol: &str) -> Vec<(u32, u32, u32)> {
     let mut occurrences = Vec::new();
-    let symbol_len = symbol.chars().count();
-    let symbol_chars: Vec<char> = symbol.chars().collect();
-
-    if symbol_chars.is_empty() {
+    if symbol.is_empty() {
         return occurrences;
     }
 
+    let symbol_len = symbol.chars().count() as u32;
+    let symbol_byte_len = symbol.len();
+    let first_char = symbol.chars().next().unwrap();
+
     for (line_idx, line) in content.lines().enumerate() {
-        let chars: Vec<char> = line.chars().collect();
-        let mut i = 0;
+        let mut char_idx: u32 = 0;
         let mut in_string = false;
         let mut quote_char = '\0';
         let mut escaped = false;
+        let mut prev_char_is_alphanum = false;
 
-        while i < chars.len() {
-            let c = chars[i];
-
+        for (byte_idx, c) in line.char_indices() {
             if in_string {
                 if escaped {
                     escaped = false;
@@ -554,30 +553,32 @@ fn find_symbol_occurrences(content: &str, symbol: &str) -> Vec<(u32, u32, u32)> 
                     in_string = false;
                 }
             } else {
-                // Not in string
                 if c == '"' || c == '\'' || c == '`' {
                     in_string = true;
                     quote_char = c;
-                } else if c == symbol_chars[0] {
-                    // Possible match
-                    if i + symbol_len <= chars.len()
-                        && &chars[i..i + symbol_len] == symbol_chars.as_slice()
-                    {
+                } else if c == first_char {
+                    // Check if the rest matches
+                    if line[byte_idx..].starts_with(symbol) {
                         // Check word boundaries
-                        let before_ok =
-                            i == 0 || (!chars[i - 1].is_alphanumeric() && chars[i - 1] != '_');
+                        let before_ok = char_idx == 0 || !prev_char_is_alphanum;
 
-                        let after_idx = i + symbol_len;
-                        let after_ok = after_idx >= chars.len()
-                            || (!chars[after_idx].is_alphanumeric() && chars[after_idx] != '_');
+                        let after_byte_idx = byte_idx + symbol_byte_len;
+                        let after_ok = if after_byte_idx >= line.len() {
+                            true
+                        } else {
+                            let after_char = line[after_byte_idx..].chars().next().unwrap();
+                            !after_char.is_alphanumeric() && after_char != '_'
+                        };
 
                         if before_ok && after_ok {
-                            occurrences.push((line_idx as u32, i as u32, symbol_len as u32));
+                            occurrences.push((line_idx as u32, char_idx, symbol_len));
                         }
                     }
                 }
             }
-            i += 1;
+
+            prev_char_is_alphanum = c.is_alphanumeric() || c == '_';
+            char_idx += 1;
         }
     }
 
