@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::handlers::tools::cross_file_references::{
-        discover_importing_files, enhance_find_references,
+        discover_importing_files, enhance_find_references, find_symbol_occurrences,
     };
     use async_trait::async_trait;
     use chrono::Utc;
@@ -238,5 +238,28 @@ mod tests {
         let locations = result["content"]["locations"].as_array().expect("Should be array");
         println!("Found {} references", locations.len());
         assert!(locations.len() >= num_files);
+    }
+
+    #[test]
+    fn benchmark_find_symbol_occurrences() {
+        // Generate a large content
+        let mut content = String::with_capacity(1_000_000);
+        for _ in 0..10_000 {
+            content.push_str("import { myVar } from './source';\n");
+            content.push_str("const x = myVar + 1;\n");
+            content.push_str("const y = 'some string with myVar inside';\n");
+            content.push_str("// comment with myVar\n");
+        }
+
+        let symbol = "myVar";
+
+        println!("Starting find_symbol_occurrences benchmark...");
+        let start = Instant::now();
+
+        let occurrences = find_symbol_occurrences(&content, symbol);
+
+        let duration = start.elapsed();
+        println!("Time taken: {:.2?}", duration);
+        println!("Found {} occurrences", occurrences.len());
     }
 }
