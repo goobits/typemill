@@ -7,7 +7,7 @@
 pub mod rust;
 pub mod typescript;
 
-pub use rust::RustSymbolExtractor;
+pub use rust::{IntraFileCall, RustSymbolExtractor};
 pub use typescript::TypeScriptSymbolExtractor;
 
 use mill_analysis_common::graph::SymbolNode;

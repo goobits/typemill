@@ -1,15 +1,21 @@
-//! Reference gathering via LSP.
+//! Reference gathering via LSP with AST fallback.
 
+use crate::ast::RustSymbolExtractor;
 use crate::error::Error;
 use crate::types::{Reference, Symbol};
 use mill_analysis_common::LspProvider;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::path::Path;
 use std::time::Duration;
 use tokio::time::timeout;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
-/// Gather all references between symbols via LSP.
+/// Gather all references between symbols via LSP with AST fallback.
+///
+/// This function:
+/// 1. Queries LSP for cross-file references
+/// 2. Uses AST to extract intra-file calls (reduces false positives without LSP)
 pub(crate) async fn gather(
     lsp: &dyn LspProvider,
     symbols: &[Symbol],
@@ -19,7 +25,7 @@ pub(crate) async fn gather(
 
     let mut references = Vec::new();
 
-    // Query references for each symbol
+    // 1. Query references via LSP
     for symbol in symbols {
         let refs = get_symbol_references(lsp, symbol).await?;
 
@@ -36,6 +42,101 @@ pub(crate) async fn gather(
             }
         }
     }
+
+    let lsp_ref_count = references.len();
+
+    // 2. Augment with intra-file AST calls (helps when LSP returns empty)
+    let ast_refs = gather_intra_file_calls(symbols)?;
+    let ast_ref_count = ast_refs.len();
+
+    // Merge, deduplicating
+    let existing: HashSet<(String, String)> = references
+        .iter()
+        .map(|r| (r.from_id.clone(), r.to_id.clone()))
+        .collect();
+
+    for ast_ref in ast_refs {
+        let key = (ast_ref.from_id.clone(), ast_ref.to_id.clone());
+        if !existing.contains(&key) {
+            references.push(ast_ref);
+        }
+    }
+
+    info!(
+        lsp_refs = lsp_ref_count,
+        ast_refs = ast_ref_count,
+        total = references.len(),
+        "Gathered references"
+    );
+
+    Ok(references)
+}
+
+/// Gather intra-file calls using AST parsing.
+///
+/// This finds function calls within the same file, reducing false positives
+/// for local helper functions when LSP is unavailable.
+fn gather_intra_file_calls(symbols: &[Symbol]) -> Result<Vec<Reference>, Error> {
+    // Group symbols by URI (which has absolute path)
+    let mut symbols_by_uri: HashMap<&str, Vec<&Symbol>> = HashMap::new();
+    for symbol in symbols {
+        symbols_by_uri
+            .entry(&symbol.uri)
+            .or_default()
+            .push(symbol);
+    }
+
+    let rust_extractor = RustSymbolExtractor::new();
+    let mut references = Vec::new();
+
+    for (uri, file_symbols) in symbols_by_uri {
+        // Only process Rust files for now
+        if !uri.ends_with(".rs") {
+            continue;
+        }
+
+        // Extract absolute path from file:// URI
+        let file_path = uri.strip_prefix("file://").unwrap_or(uri);
+        let path = Path::new(file_path);
+
+        if !path.exists() {
+            debug!(uri = uri, "Skipping non-existent file for call extraction");
+            continue;
+        }
+
+        let calls = match rust_extractor.extract_calls(path) {
+            Ok(c) => c,
+            Err(e) => {
+                debug!(
+                    error = %e,
+                    file = file_path,
+                    "Failed to extract intra-file calls"
+                );
+                continue;
+            }
+        };
+
+        // Build a map from function name to symbol ID
+        let name_to_id: HashMap<&str, &str> = file_symbols
+            .iter()
+            .map(|s| (s.name.as_str(), s.id.as_str()))
+            .collect();
+
+        // Convert calls to references
+        for call in calls {
+            if let (Some(caller_id), Some(callee_id)) = (
+                name_to_id.get(call.caller.as_str()),
+                name_to_id.get(call.callee.as_str()),
+            ) {
+                references.push(Reference {
+                    from_id: caller_id.to_string(),
+                    to_id: callee_id.to_string(),
+                });
+            }
+        }
+    }
+
+    debug!(count = references.len(), "Extracted intra-file call references");
 
     Ok(references)
 }
@@ -55,6 +156,7 @@ fn build_symbol_map(symbols: &[Symbol]) -> HashMap<String, Vec<&Symbol>> {
 struct RefLocation {
     uri: String,
     line: u32,
+    #[allow(dead_code)] // Parsed for future precise containment matching
     column: u32,
 }
 

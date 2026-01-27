@@ -11,7 +11,7 @@ mill-analysis-common = { path = "../mill-analysis-common" }
 mill-lang-common = { path = "../../crates/mill-lang-common" }
 
 # AST parsing
-syn = { version = "2.0", features = ["full", "parsing"] }
+syn = { version = "2.0", features = ["full", "parsing", "visit"] }
 proc-macro2 = { version = "1.0", features = ["span-locations"] }
 pathdiff = "0.2"
 

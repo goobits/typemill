@@ -238,6 +238,36 @@ pub struct Stats {
     pub duration_ms: u64,
 }
 
+/// Visibility level of a symbol.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SymbolVisibility {
+    /// Fully public (`pub`)
+    Public,
+    /// Public within crate (`pub(crate)`)
+    Crate,
+    /// Public to parent module (`pub(super)`)
+    Super,
+    /// Public to a specific path (`pub(in path)`)
+    Restricted,
+    /// Private (no visibility modifier)
+    Private,
+}
+
+impl SymbolVisibility {
+    /// Returns true if this is an external API symbol (fully public).
+    pub fn is_api_public(&self) -> bool {
+        matches!(self, SymbolVisibility::Public)
+    }
+
+    /// Returns true if this symbol could be used from other modules in the crate.
+    pub fn is_crate_visible(&self) -> bool {
+        matches!(
+            self,
+            SymbolVisibility::Public | SymbolVisibility::Crate
+        )
+    }
+}
+
 /// Internal symbol representation used during analysis.
 #[derive(Debug, Clone)]
 pub(crate) struct Symbol {
@@ -262,8 +292,8 @@ pub(crate) struct Symbol {
     /// Column number (0-indexed).
     pub column: u32,
 
-    /// Is this a public symbol?
-    pub is_public: bool,
+    /// Visibility level of this symbol.
+    pub visibility: SymbolVisibility,
 }
 
 /// A reference from one symbol to another.

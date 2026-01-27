@@ -61,6 +61,7 @@ impl CallGraph {
     }
 
     /// Get all node indices.
+    #[allow(dead_code)] // May be used for future analysis extensions
     pub fn nodes(&self) -> impl Iterator<Item = NodeIndex> + '_ {
         self.graph.node_indices()
     }

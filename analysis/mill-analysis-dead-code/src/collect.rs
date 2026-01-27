@@ -2,7 +2,7 @@
 
 use crate::ast::{RustSymbolExtractor, SymbolExtractor, TypeScriptSymbolExtractor};
 use crate::error::Error;
-use crate::types::{Kind, Symbol};
+use crate::types::{Kind, Symbol, SymbolVisibility};
 use mill_analysis_common::graph::SymbolNode;
 use mill_analysis_common::LspProvider;
 use serde_json::Value;
@@ -107,6 +107,14 @@ fn collect_ast_symbols(path: &Path) -> Result<Vec<SymbolNode>, Error> {
 
 /// Convert SymbolNode to our internal Symbol type.
 fn symbol_node_to_symbol(node: SymbolNode) -> Symbol {
+    // AST extraction sets is_public = true only for fully public (`pub`) symbols
+    // Other visibility levels (pub(crate), pub(super), private) have is_public = false
+    let visibility = if node.is_public {
+        SymbolVisibility::Public
+    } else {
+        SymbolVisibility::Private
+    };
+
     Symbol {
         id: node.id.clone(),
         name: node.name,
@@ -115,7 +123,7 @@ fn symbol_node_to_symbol(node: SymbolNode) -> Symbol {
         uri: format!("file://{}", node.file_path),
         line: node.range.start.line,
         column: node.range.start.character,
-        is_public: node.is_public,
+        visibility,
     }
 }
 
@@ -250,7 +258,7 @@ fn parse_symbol(value: Value) -> Option<Symbol> {
 
     // Heuristic: check if symbol might be public
     // This is imperfect but LSP doesn't give us visibility directly
-    let is_public = is_likely_public(&name, &file_path);
+    let visibility = infer_visibility(&name, &file_path);
 
     Some(Symbol {
         id,
@@ -260,7 +268,7 @@ fn parse_symbol(value: Value) -> Option<Symbol> {
         uri: uri.to_string(),
         line,
         column,
-        is_public,
+        visibility,
     })
 }
 
@@ -291,7 +299,7 @@ fn flatten_document_symbol(value: &Value, uri: &str, output: &mut Vec<Symbol>) {
 
             let file_path = uri.strip_prefix("file://").unwrap_or(uri).to_string();
             let id = format!("{}::{}:{}", file_path, line, name);
-            let is_public = is_likely_public(name, &file_path);
+            let visibility = infer_visibility(name, &file_path);
 
             output.push(Symbol {
                 id,
@@ -301,7 +309,7 @@ fn flatten_document_symbol(value: &Value, uri: &str, output: &mut Vec<Symbol>) {
                 uri: uri.to_string(),
                 line,
                 column,
-                is_public,
+                visibility,
             });
         }
 
@@ -320,17 +328,21 @@ fn flatten_document_symbol(value: &Value, uri: &str, output: &mut Vec<Symbol>) {
     }
 }
 
-/// Heuristic to check if a symbol is likely public.
-fn is_likely_public(name: &str, file_path: &str) -> bool {
+/// Heuristic to infer symbol visibility when AST parsing isn't available.
+/// LSP doesn't provide visibility info, so we use naming conventions.
+fn infer_visibility(name: &str, file_path: &str) -> SymbolVisibility {
     // In Rust, symbols in lib.rs or main.rs at top level are often public
-    // This is a rough heuristic since LSP doesn't tell us visibility
     let is_lib_or_main = file_path.ends_with("lib.rs") || file_path.ends_with("main.rs");
 
     // Convention: SCREAMING_CASE is usually public constants
-    let is_screaming_case = name.chars().all(|c| c.is_uppercase() || c == '_');
+    let is_screaming_case = name.chars().all(|c| c.is_uppercase() || c == '_') && name.len() > 1;
 
-    // Starts with uppercase usually means public type
+    // Starts with uppercase usually means public type (struct, enum, trait)
     let starts_upper = name.chars().next().is_some_and(|c| c.is_uppercase());
 
-    is_lib_or_main || is_screaming_case || starts_upper
+    if is_lib_or_main || is_screaming_case || starts_upper {
+        SymbolVisibility::Public
+    } else {
+        SymbolVisibility::Private
+    }
 }

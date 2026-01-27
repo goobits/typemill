@@ -30,8 +30,8 @@ fn is_entry_point(symbol: &Symbol, config: &EntryPoints) -> bool {
         return true;
     }
 
-    // Check public exports
-    if config.include_pub_exports && symbol.is_public {
+    // Check public exports (only fully `pub` symbols, not pub(crate) or pub(super))
+    if config.include_pub_exports && symbol.visibility.is_api_public() {
         return true;
     }
 

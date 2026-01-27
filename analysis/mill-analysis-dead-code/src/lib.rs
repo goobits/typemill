@@ -2,9 +2,21 @@
 //!
 //! This crate finds unused code by:
 //! 1. Extracting symbols via AST parsing (more accurate than LSP for visibility)
-//! 2. Building a call graph from LSP references
+//! 2. Building a call graph from LSP references + AST intra-file calls
 //! 3. Finding entry points (main, tests, pub exports)
 //! 4. Marking unreachable symbols as dead
+//!
+//! # LSP vs AST-Only Analysis
+//!
+//! The analyzer works in two modes:
+//!
+//! - **With LSP**: Full cross-file analysis. LSP provides references between
+//!   files, enabling detection of unused functions that are never called from
+//!   other modules.
+//!
+//! - **Without LSP** (using `NoOpLspProvider`): Intra-file analysis only.
+//!   AST parsing detects function calls within the same file, which is enough
+//!   to find dead code in single-file scenarios or when LSP isn't available.
 //!
 //! # Example
 //!
@@ -12,9 +24,16 @@
 //! use mill_analysis_dead_code::{DeadCodeAnalyzer, Config, EntryPoints};
 //! use std::path::Path;
 //!
+//! // With LSP (full cross-file analysis)
 //! let report = DeadCodeAnalyzer::analyze(
 //!     lsp.as_ref(),
 //!     Path::new("src/"),
+//!     Config::default(),
+//! ).await?;
+//!
+//! // Without LSP (intra-file only, useful for quick analysis)
+//! let report = DeadCodeAnalyzer::analyze_without_lsp(
+//!     Path::new("src/lib.rs"),
 //!     Config::default(),
 //! ).await?;
 //!
@@ -35,19 +54,63 @@ mod types;
 pub use error::Error;
 pub use types::*;
 
-use mill_analysis_common::LspProvider;
+use async_trait::async_trait;
+use mill_analysis_common::{AnalysisError, LspProvider};
+use serde_json::Value;
 use std::path::Path;
 use std::time::Instant;
 use tracing::info;
+
+/// A no-op LSP provider that returns empty results.
+///
+/// Use this when you don't have an LSP server available. The analyzer will
+/// still work using AST-based intra-file call detection, which is sufficient
+/// for single-file analysis.
+pub struct NoOpLspProvider;
+
+#[async_trait]
+impl LspProvider for NoOpLspProvider {
+    async fn workspace_symbols(&self, _query: &str) -> Result<Vec<Value>, AnalysisError> {
+        Ok(vec![])
+    }
+
+    async fn find_references(
+        &self,
+        _uri: &str,
+        _line: u32,
+        _character: u32,
+    ) -> Result<Vec<Value>, AnalysisError> {
+        Ok(vec![])
+    }
+
+    async fn document_symbols(&self, _uri: &str) -> Result<Vec<Value>, AnalysisError> {
+        Ok(vec![])
+    }
+}
 
 /// Dead code analyzer using LSP + call graph reachability.
 pub struct DeadCodeAnalyzer;
 
 impl DeadCodeAnalyzer {
+    /// Analyze a path for dead code without requiring an LSP server.
+    ///
+    /// This uses AST-based intra-file call detection only. Suitable for:
+    /// - Single-file analysis
+    /// - Quick analysis without LSP setup
+    /// - Environments where LSP servers aren't available
+    ///
+    /// For full cross-file analysis, use `analyze()` with an LSP provider.
+    pub async fn analyze_without_lsp(path: &Path, config: Config) -> Result<Report, Error> {
+        Self::analyze(&NoOpLspProvider, path, config).await
+    }
+
     /// Analyze a path for dead code.
     ///
     /// - File path: analyzes that file
     /// - Directory path: analyzes all files recursively
+    ///
+    /// The LSP provider is used for cross-file reference detection. If you
+    /// don't have an LSP server available, use `analyze_without_lsp()` instead.
     pub async fn analyze(
         lsp: &dyn LspProvider,
         path: &Path,

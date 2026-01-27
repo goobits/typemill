@@ -1,43 +1,17 @@
 //! Unit tests for the dead code analysis crate.
 
-use async_trait::async_trait;
-use mill_analysis_common::{AnalysisError, LspProvider};
-use mill_analysis_dead_code::{Config, DeadCodeAnalyzer, EntryPoints};
-use serde_json::Value;
-use std::path::{Path, PathBuf};
+use mill_analysis_dead_code::{Config, DeadCodeAnalyzer, EntryPoints, NoOpLspProvider};
+use std::path::PathBuf;
 use tempfile::TempDir;
-
-/// A mock LSP provider for testing purposes.
-struct MockLspProvider;
-
-#[async_trait]
-impl LspProvider for MockLspProvider {
-    async fn workspace_symbols(&self, _query: &str) -> Result<Vec<Value>, AnalysisError> {
-        Ok(vec![])
-    }
-
-    async fn find_references(
-        &self,
-        _uri: &str,
-        _line: u32,
-        _character: u32,
-    ) -> Result<Vec<Value>, AnalysisError> {
-        Ok(vec![])
-    }
-
-    async fn document_symbols(&self, _uri: &str) -> Result<Vec<Value>, AnalysisError> {
-        Ok(vec![])
-    }
-}
 
 #[tokio::test]
 async fn test_analyzer_runs_without_error_empty_workspace() {
     // Use a temporary empty directory
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
-    let mock_lsp = MockLspProvider;
+    let noop_lsp = NoOpLspProvider;
     let config = Config::default();
 
-    let result = DeadCodeAnalyzer::analyze(&mock_lsp, temp_dir.path(), config).await;
+    let result = DeadCodeAnalyzer::analyze(&noop_lsp, temp_dir.path(), config).await;
 
     assert!(result.is_ok(), "Analysis should not fail on empty directory");
     let report = result.unwrap();
@@ -62,10 +36,10 @@ fn private_function() {}
     )
     .expect("Failed to write test file");
 
-    let mock_lsp = MockLspProvider;
+    let noop_lsp = NoOpLspProvider;
     let config = Config::default();
 
-    let result = DeadCodeAnalyzer::analyze(&mock_lsp, temp_dir.path(), config).await;
+    let result = DeadCodeAnalyzer::analyze(&noop_lsp, temp_dir.path(), config).await;
 
     assert!(result.is_ok(), "Analysis should not fail: {:?}", result.err());
     let report = result.unwrap();
@@ -105,10 +79,10 @@ async fn test_analyzer_on_real_crate_circular_deps() {
         return;
     }
 
-    let mock_lsp = MockLspProvider;
+    let noop_lsp = NoOpLspProvider;
     let config = Config::default();
 
-    let result = DeadCodeAnalyzer::analyze(&mock_lsp, &circular_deps_crate, config).await;
+    let result = DeadCodeAnalyzer::analyze(&noop_lsp, &circular_deps_crate, config).await;
 
     assert!(result.is_ok(), "Analysis should succeed: {:?}", result.err());
     let report = result.unwrap();
@@ -172,7 +146,7 @@ const PRIVATE_CONST: i32 = 100;
     )
     .expect("Failed to write test file");
 
-    let mock_lsp = MockLspProvider;
+    let noop_lsp = NoOpLspProvider;
 
     // Only consider public exports as entry points
     let config = Config {
@@ -187,7 +161,7 @@ const PRIVATE_CONST: i32 = 100;
         max_symbols: None,
     };
 
-    let result = DeadCodeAnalyzer::analyze(&mock_lsp, temp_dir.path(), config).await;
+    let result = DeadCodeAnalyzer::analyze(&noop_lsp, temp_dir.path(), config).await;
 
     assert!(result.is_ok(), "Analysis should not fail: {:?}", result.err());
     let report = result.unwrap();
@@ -239,11 +213,11 @@ fn unused_in_single_file() {}
     )
     .expect("Failed to write test file");
 
-    let mock_lsp = MockLspProvider;
+    let noop_lsp = NoOpLspProvider;
     let config = Config::default();
 
     // Analyze just the single file
-    let result = DeadCodeAnalyzer::analyze(&mock_lsp, &rust_file, config).await;
+    let result = DeadCodeAnalyzer::analyze(&noop_lsp, &rust_file, config).await;
 
     assert!(result.is_ok(), "Analysis of single file should succeed: {:?}", result.err());
     let report = result.unwrap();
@@ -254,4 +228,70 @@ fn unused_in_single_file() {}
 
     assert_eq!(report.stats.files_analyzed, 1, "Should analyze exactly 1 file");
     assert!(report.stats.symbols_analyzed >= 2, "Should find struct and function");
+}
+
+/// Test the analyze_without_lsp convenience method.
+/// Demonstrates that intra-file call detection works without an LSP server.
+#[tokio::test]
+async fn test_analyze_without_lsp() {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let rust_file = temp_dir.path().join("example.rs");
+    std::fs::write(
+        &rust_file,
+        r#"
+pub fn entry_point() {
+    used_helper();
+}
+
+fn used_helper() {}
+
+fn unused_function() {}
+"#,
+    )
+    .expect("Failed to write test file");
+
+    let config = Config {
+        entry_points: EntryPoints {
+            include_main: false,
+            include_tests: false,
+            include_pub_exports: true,
+            custom: vec![],
+        },
+        min_confidence: 0.5,
+        file_extensions: None,
+        max_symbols: None,
+    };
+
+    // Use analyze_without_lsp - no LSP server needed!
+    let result = DeadCodeAnalyzer::analyze_without_lsp(&rust_file, config).await;
+
+    assert!(result.is_ok(), "Analysis without LSP should succeed: {:?}", result.err());
+    let report = result.unwrap();
+
+    println!("\n=== Analysis Without LSP ===");
+    println!("Symbols analyzed: {}", report.stats.symbols_analyzed);
+    println!("Dead code found: {}", report.stats.dead_found);
+
+    for dead in &report.dead_code {
+        println!("  - {} {} (confidence: {:.2})", dead.kind, dead.name, dead.confidence);
+    }
+
+    // Should find 3 symbols: entry_point, used_helper, unused_function
+    assert_eq!(report.stats.symbols_analyzed, 3, "Should find 3 symbols");
+
+    // Thanks to intra-file call detection, used_helper should NOT be marked as dead
+    // because entry_point calls it. Only unused_function should be dead.
+    let dead_names: Vec<&str> = report.dead_code.iter().map(|d| d.name.as_str()).collect();
+
+    assert!(
+        dead_names.contains(&"unused_function"),
+        "unused_function should be detected as dead"
+    );
+
+    // used_helper should NOT be in dead code because it's called by entry_point
+    // (detected via AST intra-file call detection)
+    assert!(
+        !dead_names.contains(&"used_helper"),
+        "used_helper should NOT be dead (it's called by entry_point)"
+    );
 }
