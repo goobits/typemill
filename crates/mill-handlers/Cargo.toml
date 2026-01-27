@@ -13,6 +13,10 @@ lang-rust = ["dep:mill-lang-rust"]
 # Exception: lang-java is optional for Java workspace operations (pom.xml manipulation)
 lang-java = ["dep:mill-lang-java"]
 
+# Analysis features (restored to satisfy dependencies)
+analysis-circular-deps = []
+analysis-dead-code = []
+
 # Refactoring operations - optional for faster compilation
 refactor-rename = []
 refactor-extract = []
