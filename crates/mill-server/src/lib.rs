@@ -160,7 +160,7 @@ impl ServerOptions {
     /// use mill_config::AppConfig;
     ///
     /// # let config = AppConfig::default();
-    /// let registry = build_language_plugin_registry();
+    /// let registry = build_language_plugin_registry(vec![]);
     /// let options = ServerOptions::from_config(config)
     ///     .with_plugin_registry(registry);
     /// ```
