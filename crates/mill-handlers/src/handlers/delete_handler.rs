@@ -502,19 +502,47 @@ impl DeleteHandler {
 
         // Walk directory to collect files and checksums
         let abs_dir = std::fs::canonicalize(dir_path).unwrap_or_else(|_| dir_path.to_path_buf());
+        let abs_dir_clone = abs_dir.clone();
+
+        // 1. Collect files in a blocking task to avoid blocking the runtime with directory traversal
+        let file_paths: Vec<std::path::PathBuf> = tokio::task::spawn_blocking(move || {
+            let walker = ignore::WalkBuilder::new(&abs_dir_clone).hidden(false).build();
+            walker
+                .flatten()
+                .filter(|entry| entry.path().is_file())
+                .map(|entry| entry.path().to_path_buf())
+                .collect()
+        })
+        .await
+        .map_err(|e| ServerError::internal(format!("Failed to walk directory: {}", e)))?;
+
+        // 2. Process files concurrently
+        use futures::StreamExt;
+
         let mut file_checksums = HashMap::new();
         let mut file_count = 0;
 
-        let walker = ignore::WalkBuilder::new(&abs_dir).hidden(false).build();
-        for entry in walker.flatten() {
-            if entry.path().is_file() {
-                if let Ok(content) = context.app_state.file_service.read_file(entry.path()).await {
-                    file_checksums.insert(
-                        entry.path().to_string_lossy().to_string(),
-                        calculate_checksum(&content),
-                    );
-                    file_count += 1;
+        let results = futures::stream::iter(file_paths)
+            .map(|path| {
+                let file_service = context.app_state.file_service.clone();
+                async move {
+                    match file_service.read_file(&path).await {
+                        Ok(content) => Some((
+                            path.to_string_lossy().to_string(),
+                            calculate_checksum(&content),
+                        )),
+                        Err(_) => None,
+                    }
                 }
+            })
+            .buffer_unordered(50) // Concurrency limit
+            .collect::<Vec<_>>()
+            .await;
+
+        for res in results {
+            if let Some((path, checksum)) = res {
+                file_checksums.insert(path, checksum);
+                file_count += 1;
             }
         }
 
