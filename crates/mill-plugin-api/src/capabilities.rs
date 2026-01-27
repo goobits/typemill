@@ -298,7 +298,6 @@ pub trait ImportAnalyzer: Send + Sync {
     ///
     /// Import graph with all imports and their metadata
     fn build_import_graph(&self, file_path: &Path) -> PluginResult<ImportGraph>;
-
 }
 
 // ============================================================================

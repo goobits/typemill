@@ -140,7 +140,6 @@ mod dispatch {
     }
 }
 
-
 /// Context provided to tool handlers in mill-handlers
 ///
 /// This is the concrete context used within mill-handlers, which has access
@@ -168,9 +167,7 @@ impl ToolHandlerContext {
     /// - Provides access to the full concrete AppState via the extensions field
     /// - Allows handlers to downcast to access concrete types when needed
     pub async fn to_api_context(&self) -> mill_handler_api::ToolHandlerContext {
-        use super::plugin_dispatcher::{
-            FileServiceWrapper, LanguagePluginRegistryWrapper,
-        };
+        use super::plugin_dispatcher::{FileServiceWrapper, LanguagePluginRegistryWrapper};
 
         mill_handler_api::ToolHandlerContext {
             user_id: self.user_id.clone(),

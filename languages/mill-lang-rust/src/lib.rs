@@ -250,7 +250,6 @@ impl LanguagePlugin for RustPlugin {
 
         final_result.ok()
     }
-
 }
 
 // ============================================================================
@@ -363,7 +362,6 @@ impl mill_plugin_api::ImportAnalyzer for RustPlugin {
         // Use the existing analyze_detailed_imports method
         self.analyze_detailed_imports(&content, Some(file_path))
     }
-
 }
 
 // ============================================================================

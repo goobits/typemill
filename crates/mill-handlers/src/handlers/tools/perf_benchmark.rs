@@ -218,7 +218,10 @@ mod tests {
             }
         });
 
-        println!("Starting enhance_find_references benchmark with {} files...", num_files);
+        println!(
+            "Starting enhance_find_references benchmark with {} files...",
+            num_files
+        );
         let start = Instant::now();
 
         let result = enhance_find_references(
@@ -235,7 +238,9 @@ mod tests {
         println!("Time taken: {:.2?}", duration);
 
         // Verify we found references
-        let locations = result["content"]["locations"].as_array().expect("Should be array");
+        let locations = result["content"]["locations"]
+            .as_array()
+            .expect("Should be array");
         println!("Found {} references", locations.len());
         assert!(locations.len() >= num_files);
     }

@@ -148,7 +148,6 @@ impl LanguagePlugin for TypeScriptPlugin {
             None
         }
     }
-
 }
 
 // ============================================================================
@@ -251,7 +250,6 @@ impl mill_plugin_api::ImportAnalyzer for TypeScriptPlugin {
         // Use the existing analyze_detailed_imports method
         self.analyze_detailed_imports(&content, Some(file_path))
     }
-
 }
 
 // ============================================================================

@@ -82,12 +82,13 @@ impl RenameHandler {
 
             // Validate that consolidation won't create circular dependencies
             // Find target crate root (the parent of src/ directory)
-            let target_crate_root = Self::find_target_crate_root(&new_path)
-                .await
-                .ok_or_else(|| mill_foundation::errors::MillError::InvalidRequest {
-                    message: "Could not find target crate root for consolidation".to_string(),
-                    parameter: Some("newName".to_string()),
-                })?;
+            let target_crate_root =
+                Self::find_target_crate_root(&new_path)
+                    .await
+                    .ok_or_else(|| mill_foundation::errors::MillError::InvalidRequest {
+                        message: "Could not find target crate root for consolidation".to_string(),
+                        parameter: Some("newName".to_string()),
+                    })?;
 
             // Validate circular dependencies using Rust-specific analysis
             debug!(
@@ -102,7 +103,7 @@ impl RenameHandler {
 
                 match validate_no_circular_dependencies(
                     &old_path,
-                    target_crate_root,
+                    &target_crate_root,
                     workspace_root,
                 )
                 .await

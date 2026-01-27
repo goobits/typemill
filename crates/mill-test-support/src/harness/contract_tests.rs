@@ -34,7 +34,6 @@ fn test_all_plugins_conform_to_contract() {
 
         // Test 3: Parsing must not panic on empty or simple input.
         rt.block_on(test_parsing_contract(plugin.as_ref()));
-
     }
 }
 

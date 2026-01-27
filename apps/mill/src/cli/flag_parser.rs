@@ -184,10 +184,12 @@ pub fn parse_flags_to_json(
         }),
 
         // Navigation tools - require JSON
-        "search_symbols" | "get_diagnostics" | "get_call_hierarchy" => Err(FlagParseError::JsonOnly {
-            tool: tool_name.to_string(),
-            example: get_example_for_tool(tool_name),
-        }),
+        "search_symbols" | "get_diagnostics" | "get_call_hierarchy" => {
+            Err(FlagParseError::JsonOnly {
+                tool: tool_name.to_string(),
+                example: get_example_for_tool(tool_name),
+            })
+        }
 
         // Health check - takes empty object
         "health_check" => {

@@ -105,7 +105,6 @@ pub trait LanguagePluginRegistry: Send + Sync {
     fn inner(&self) -> &dyn std::any::Any;
 }
 
-
 /// Trait for LSP adapter
 #[async_trait]
 pub trait LspAdapter: Send + Sync {

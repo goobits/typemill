@@ -348,7 +348,6 @@ impl mill_plugin_api::ImportAnalyzer for PythonPlugin {
         // Use the existing parser::analyze_imports method
         parser::analyze_imports(&content, Some(file_path))
     }
-
 }
 
 impl mill_plugin_api::ModuleReferenceScanner for PythonPlugin {
