@@ -1,26 +1,39 @@
-//! Symbol collection via LSP.
+//! Symbol collection via AST parsing with LSP fallback.
 
+use crate::ast::{RustSymbolExtractor, SymbolExtractor, TypeScriptSymbolExtractor};
 use crate::error::Error;
 use crate::types::{Kind, Symbol};
+use mill_analysis_common::graph::SymbolNode;
 use mill_analysis_common::LspProvider;
 use serde_json::Value;
 use std::collections::HashSet;
 use std::path::Path;
 use std::time::Duration;
 use tokio::time::timeout;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 use walkdir::WalkDir;
 
 /// Default file extensions to analyze.
-const DEFAULT_EXTENSIONS: &[&str] = &["rs", "ts", "tsx", "js", "jsx", "py", "go"];
+const DEFAULT_EXTENSIONS: &[&str] = &["rs", "ts", "tsx", "js", "jsx"];
 
-/// Collect all symbols from the given path via LSP.
+/// Collect all symbols from the given path using AST parsing.
+/// Falls back to LSP if AST parsing fails.
 pub(crate) async fn symbols(lsp: &dyn LspProvider, path: &Path) -> Result<Vec<Symbol>, Error> {
     if !path.exists() {
         return Err(Error::PathNotFound(path.display().to_string()));
     }
 
-    // Try workspace symbols first (more efficient)
+    // Primary: Extract symbols via AST parsing (more accurate for visibility)
+    let ast_symbols = collect_ast_symbols(path)?;
+
+    if !ast_symbols.is_empty() {
+        info!(count = ast_symbols.len(), "Extracted symbols via AST");
+        let symbols = ast_symbols.into_iter().map(symbol_node_to_symbol).collect();
+        return Ok(symbols);
+    }
+
+    // Fallback: Try LSP workspace symbols
+    warn!("AST extraction returned empty, falling back to LSP");
     let workspace_symbols = collect_workspace_symbols(lsp).await?;
 
     if !workspace_symbols.is_empty() {
@@ -39,9 +52,95 @@ pub(crate) async fn symbols(lsp: &dyn LspProvider, path: &Path) -> Result<Vec<Sy
         return Ok(filtered);
     }
 
-    // Fallback: collect per-document
+    // Last resort: collect per-document
     warn!("workspace/symbol returned empty, falling back to per-document collection");
     collect_document_symbols(lsp, path).await
+}
+
+/// Collect symbols via AST parsing.
+fn collect_ast_symbols(path: &Path) -> Result<Vec<SymbolNode>, Error> {
+    let files = discover_files(path)?;
+    debug!(count = files.len(), "Discovered source files for AST parsing");
+
+    let workspace_root = if path.is_file() {
+        path.parent().unwrap_or(path)
+    } else {
+        path
+    };
+
+    let rust_extractor = RustSymbolExtractor::new();
+    let ts_extractor = TypeScriptSymbolExtractor::new();
+
+    let mut all_symbols = Vec::new();
+
+    for file_path in files {
+        let extension = file_path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("");
+
+        let symbols = match extension {
+            "rs" => match rust_extractor.extract_symbols(&file_path, workspace_root) {
+                Ok(s) => s,
+                Err(e) => {
+                    warn!(error = %e, file = %file_path.display(), "Failed to parse Rust file");
+                    continue;
+                }
+            },
+            "ts" | "tsx" | "js" | "jsx" => {
+                match ts_extractor.extract_symbols(&file_path, workspace_root) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        warn!(error = %e, file = %file_path.display(), "Failed to parse TS/JS file");
+                        continue;
+                    }
+                }
+            }
+            _ => continue,
+        };
+
+        all_symbols.extend(symbols);
+    }
+
+    Ok(all_symbols)
+}
+
+/// Convert SymbolNode to our internal Symbol type.
+fn symbol_node_to_symbol(node: SymbolNode) -> Symbol {
+    Symbol {
+        id: node.id.clone(),
+        name: node.name,
+        kind: symbol_kind_to_kind(&node.kind),
+        file_path: node.file_path.clone(),
+        uri: format!("file://{}", node.file_path),
+        line: node.range.start.line,
+        column: node.range.start.character,
+        is_public: node.is_public,
+    }
+}
+
+/// Convert common SymbolKind to our Kind type.
+fn symbol_kind_to_kind(sk: &mill_analysis_common::graph::SymbolKind) -> Kind {
+    use mill_analysis_common::graph::SymbolKind;
+    match sk {
+        SymbolKind::Function => Kind::Function,
+        SymbolKind::Struct | SymbolKind::Type => Kind::Struct,
+        SymbolKind::Enum => Kind::Enum,
+        SymbolKind::Trait | SymbolKind::Interface => Kind::Interface,
+        SymbolKind::Constant => Kind::Const,
+        SymbolKind::Module => Kind::Module,
+        SymbolKind::TypeAlias => Kind::TypeAlias,
+        SymbolKind::Lsp(lsp_kind) => {
+            // Convert LspSymbolKind to u64 via serde
+            if let Ok(value) = serde_json::to_value(lsp_kind) {
+                if let Some(num) = value.as_u64() {
+                    return Kind::from_lsp(num);
+                }
+            }
+            Kind::Unknown
+        }
+        SymbolKind::Unknown => Kind::Unknown,
+    }
 }
 
 /// Try to collect symbols via workspace/symbol LSP request.
@@ -66,7 +165,10 @@ async fn collect_workspace_symbols(lsp: &dyn LspProvider) -> Result<Vec<Symbol>,
 }
 
 /// Collect symbols by walking files and querying documentSymbol for each.
-async fn collect_document_symbols(lsp: &dyn LspProvider, path: &Path) -> Result<Vec<Symbol>, Error> {
+async fn collect_document_symbols(
+    lsp: &dyn LspProvider,
+    path: &Path,
+) -> Result<Vec<Symbol>, Error> {
     let files = discover_files(path)?;
     debug!(count = files.len(), "Discovered source files");
 
@@ -110,6 +212,12 @@ fn discover_files(path: &Path) -> Result<Vec<std::path::PathBuf>, Error> {
                 .extension()
                 .and_then(|ext| ext.to_str())
                 .is_some_and(|ext| extensions.contains(ext))
+        })
+        // Skip target directories and node_modules
+        .filter(|e| {
+            !e.path()
+                .components()
+                .any(|c| c.as_os_str() == "target" || c.as_os_str() == "node_modules")
         })
         .map(|e| e.path().to_path_buf())
         .collect();

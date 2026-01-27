@@ -1,7 +1,7 @@
-//! Dead code analysis using LSP + call graph reachability.
+//! Dead code analysis using AST + LSP + call graph reachability.
 //!
 //! This crate finds unused code by:
-//! 1. Collecting all symbols via LSP
+//! 1. Extracting symbols via AST parsing (more accurate than LSP for visibility)
 //! 2. Building a call graph from LSP references
 //! 3. Finding entry points (main, tests, pub exports)
 //! 4. Marking unreachable symbols as dead
@@ -23,6 +23,7 @@
 //! }
 //! ```
 
+mod ast;
 mod collect;
 mod error;
 mod graph;
