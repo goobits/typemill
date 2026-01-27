@@ -4,7 +4,7 @@
 > - 👤 **Human users**: See [README.md](README.md) for project overview & getting started
 > - 📚 **Full docs**: See [docs/](docs/) for complete documentation
 
-TypeMill is a Pure Rust MCP server that bridges Language Server Protocol (LSP) functionality to AI coding assistants, providing 29 public tools for code navigation, refactoring, analysis, and workspace operations.
+TypeMill is a Pure Rust MCP server that bridges Language Server Protocol (LSP) functionality to AI coding assistants, providing public tools for code navigation, refactoring, and workspace operations.
 
 **Package**: `mill` | **Command**: `mill` | **Runtime**: Rust
 
@@ -25,7 +25,7 @@ TypeMill is a Pure Rust MCP server that bridges Language Server Protocol (LSP) f
 
 ---
 
-## Tool Quick Reference (29 Public Tools)
+## Tool Quick Reference
 
 ### Navigation & Intelligence (8 tools)
 - `find_definition` - Jump to symbol definition
@@ -47,17 +47,6 @@ All refactoring tools support **`options.dryRun`** for safe preview (default: tr
 - `reorder` - Reorder function parameters
 - `transform` - Transform code patterns (e.g., to async)
 - `delete` - Delete symbols, files, directories, dead code
-
-### Analysis (9 tools)
-- `analyze.quality` - Complexity, code smells, maintainability, readability
-- `analyze.dead_code` - Unused imports, symbols, variables, unreachable code
-- `analyze.dependencies` - Import analysis, dependency graph, circular deps
-- `analyze.cycles` - Dedicated circular dependency detection with paths
-- `analyze.structure` - Symbol hierarchy, interfaces, inheritance
-- `analyze.documentation` - Doc coverage, quality, style, todos
-- `analyze.tests` - Test coverage, quality, assertions, organization
-- `analyze.batch` - Multi-file batch analysis (optimized AST caching)
-- `analyze.module_dependencies` - Rust module dependencies for crate extraction
 
 ### Workspace (4 tools)
 - `workspace.create_package` - Create new packages (Rust, TypeScript, Python)
@@ -174,17 +163,6 @@ All refactoring tools support **`options.dryRun`** for safe preview (default: tr
 }
 ```
 
-### Code Quality Analysis
-```json
-{
-  "name": "analyze.quality",
-  "arguments": {
-    "kind": "complexity",
-    "scope": {"kind": "workspace"}
-  }
-}
-```
-
 ---
 
 ## Important Notes
@@ -264,7 +242,6 @@ cargo fmt && cargo clippy
 - [tools/README.md](docs/tools/README.md) - Complete catalog
 - [tools/navigation.md](docs/tools/navigation.md) - Navigation tools (8)
 - [tools/refactoring.md](docs/tools/refactoring.md) - Refactoring tools (7)
-- [tools/analysis.md](docs/tools/analysis.md) - Analysis tools (9)
 - [tools/workspace.md](docs/tools/workspace.md) - Workspace tools (4)
 
 **Architecture:**

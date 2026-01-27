@@ -36,9 +36,7 @@ use mill_lang_common::{
     manifest_templates::{ManifestTemplate, TomlManifestTemplate},
     read_manifest,
 };
-use mill_plugin_api::{
-    AnalysisMetadata, DocCommentStyle, LanguagePlugin, ManifestData, ParsedSource, PluginResult,
-};
+use mill_plugin_api::{LanguagePlugin, ManifestData, ParsedSource, PluginResult};
 use regex::Regex;
 use std::path::Path;
 
@@ -253,46 +251,11 @@ impl LanguagePlugin for RustPlugin {
         final_result.ok()
     }
 
-    fn analysis_metadata(&self) -> Option<&dyn AnalysisMetadata> {
-        Some(self)
-    }
 }
 
 // ============================================================================
 // Capability Trait Implementations
 // ============================================================================
-
-impl AnalysisMetadata for RustPlugin {
-    fn test_patterns(&self) -> Vec<Regex> {
-        constants::test_patterns()
-    }
-
-    fn assertion_patterns(&self) -> Vec<Regex> {
-        constants::assertion_patterns()
-    }
-
-    fn doc_comment_style(&self) -> DocCommentStyle {
-        DocCommentStyle::TripleSlash
-    }
-
-    fn visibility_keywords(&self) -> Vec<&'static str> {
-        vec!["pub", "pub(crate)", "pub(super)", "pub(in"]
-    }
-
-    fn interface_keywords(&self) -> Vec<&'static str> {
-        vec!["trait", "impl"]
-    }
-
-    fn complexity_keywords(&self) -> Vec<&'static str> {
-        vec![
-            "if", "else", "match", "for", "while", "loop", "?", "&&", "||", "unwrap", "expect",
-        ]
-    }
-
-    fn nesting_penalty(&self) -> f32 {
-        1.5
-    }
-}
 
 impl mill_plugin_api::ModuleReferenceScanner for RustPlugin {
     fn scan_references(
@@ -401,7 +364,6 @@ impl mill_plugin_api::ImportAnalyzer for RustPlugin {
         self.analyze_detailed_imports(&content, Some(file_path))
     }
 
-    // Note: Unused import detection delegated to analyze.dead_code tool (uses LSP)
 }
 
 // ============================================================================

@@ -4,16 +4,9 @@
 //! that are shared across all workspace crates. It has no dependencies
 //! on other cb-* crates to prevent circular dependencies.
 
-pub mod analysis_result;
 pub mod error;
 pub mod plugin_protocol;
 
-// Re-export analysis result types
-pub use analysis_result::{
-    AnalysisMetadata, AnalysisResult, AnalysisScope, AnalysisSummary, Finding, FindingLocation,
-    FixActions, Position, Range, RefactorCall, SafetyLevel, Severity, SeverityBreakdown,
-    Suggestion, SuggestionTarget,
-};
 // Legacy error types - deprecated in favor of MillError/MillResult
 #[allow(deprecated)]
 pub use error::{ApiError, ApiResult};

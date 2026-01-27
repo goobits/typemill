@@ -120,8 +120,7 @@ impl fmt::Display for FlagParseError {
                     "Unknown tool: '{}'\n\n\
                     Common tools:\n\
                     - Refactoring: rename, extract, inline, move, delete\n\
-                    - Navigation: find_definition, find_references, search_symbols\n\
-                    - Analysis: analyze.structure, analyze.dependencies, analyze.quality\n\n\
+                    - Navigation: find_definition, find_references, search_symbols\n\n\
                     List all tools: mill tools\n\
                     Tool help: mill docs tools/[category]",
                     name
@@ -184,18 +183,8 @@ pub fn parse_flags_to_json(
             example: get_example_for_tool(tool_name),
         }),
 
-        // Analysis tools - require JSON
-        "search_symbols"
-        | "get_diagnostics"
-        | "get_call_hierarchy"
-        | "analyze.structure"
-        | "analyze.dependencies"
-        | "analyze.quality"
-        | "analyze.dead_code"
-        | "analyze.documentation"
-        | "analyze.tests"
-        | "analyze.batch"
-        | "analyze.module_dependencies" => Err(FlagParseError::JsonOnly {
+        // Navigation tools - require JSON
+        "search_symbols" | "get_diagnostics" | "get_call_hierarchy" => Err(FlagParseError::JsonOnly {
             tool: tool_name.to_string(),
             example: get_example_for_tool(tool_name),
         }),
@@ -855,22 +844,6 @@ fn get_example_for_tool(tool: &str) -> String {
             "mill tool get_diagnostics '{\"file_path\":\"src/app.rs\"}'".to_string(),
         "get_call_hierarchy" =>
             "mill tool get_call_hierarchy '{\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
-        "analyze.structure" =>
-            "mill tool analyze.structure '{\"kind\":\"symbols\",\"scope\":{\"type\":\"file\",\"path\":\"src/app.rs\"}}'".to_string(),
-        "analyze.dependencies" =>
-            "mill tool analyze.dependencies '{\"kind\":\"imports\",\"scope\":{\"type\":\"file\",\"path\":\"src\"}}'".to_string(),
-        "analyze.quality" =>
-            "mill tool analyze.quality '{\"scope\":{\"type\":\"file\",\"path\":\"src\"}}'".to_string(),
-        "analyze.dead_code" =>
-            "mill tool analyze.dead_code '{\"kind\":\"unused_imports\",\"scope\":{\"type\":\"file\",\"path\":\"src\"}}'".to_string(),
-        "analyze.documentation" =>
-            "mill tool analyze.documentation '{\"scope\":{\"type\":\"file\",\"path\":\"src/app.rs\"}}'".to_string(),
-        "analyze.tests" =>
-            "mill tool analyze.tests '{\"scope\":{\"type\":\"file\",\"path\":\"src\"}}'".to_string(),
-        "analyze.batch" =>
-            "mill tool analyze.batch '{\"analyses\":[{\"kind\":\"quality\",\"scope\":{\"type\":\"file\",\"path\":\"src\"}}]}'".to_string(),
-        "analyze.module_dependencies" =>
-            "mill tool analyze.module_dependencies '{\"scope\":{\"type\":\"file\",\"path\":\"src/lib.rs\"}}'".to_string(),
         _ => format!("mill tool {} '<JSON arguments>'", tool),
     }
 }

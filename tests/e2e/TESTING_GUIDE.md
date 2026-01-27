@@ -276,41 +276,6 @@ cargo nextest run --test e2e_workflow_execution test_execute_simple_workflow
 # Run with output
 cargo nextest run --test e2e_workflow_execution --no-capture
 ```
-## Testing Code Analysis Tools
-
-The `e2e_analysis_features.rs` test suite now includes tests for:
-
-- `analyze.quality` - Project-wide complexity analysis
-- `find_complexity_hotspots` - Identify most complex code
-- `analyze.dead_code` - Detect unused code
-
-### Example: Testing Complexity Analysis
-
-```rust
-# [tokio::test]
-async fn test_analyze_quality_typescript() {
-    let workspace = TestWorkspace::new();
-    let mut client = TestClient::new(workspace.path());
-
-    // Create files with varying complexity
-    let simple = workspace.path().join("simple.ts");
-    std::fs::write(&simple, "export function simple() { return 1; }").unwrap();
-
-    let complex = workspace.path().join("complex.ts");
-    std::fs::write(&complex, "export function complex(a, b) { /* complex logic */ }").unwrap();
-
-    // Call analysis tool
-    let response = client.call_tool("analyze.quality", json!({
-        "kind": "complexity",
-        "scope": {"type": "workspace"}
-    })).await;
-
-    // Verify results
-    assert!(response.is_ok());
-    let result = response.unwrap();
-    assert!(result["result"]["files"].as_array().unwrap().len() >= 2);
-}
-```
 ## Current Test Coverage
 
 ### LSP Feature Tests (Data-Driven)
@@ -318,7 +283,6 @@ async fn test_analyze_quality_typescript() {
 - **Features**: Go to Definition, Find References, Hover, Document Symbols, Workspace Symbols, Completion, Rename
 
 ### E2E Integration Tests
-- **Analysis Features**: 9 tests (analyze.dead_code, analyze.quality, find_complexity_hotspots)
 - **Workflow Execution**: 10 tests (simple workflows, complex workflows, failure handling, dry-run, rollback, batch operations)
 - **File Operations**: Tests for create, read, write, delete, rename
 - **Refactoring**: Cross-language refactoring tests
@@ -338,7 +302,6 @@ cargo nextest run --test '*'
 
 # Run specific test suite
 cargo nextest run --test lsp_features
-cargo nextest run --test e2e_analysis_features
 cargo nextest run --test e2e_workflow_execution
 
 # Run with verbose output

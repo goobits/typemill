@@ -20,76 +20,7 @@ This document explains TypeMill's architectural foundations through three lenses
 
 ## Code Primitives Framework
 
-TypeMill's design philosophy is built on **two foundational pillars** that work together to provide comprehensive code intelligence and transformation capabilities.
-
-### The Two Pillars
-
-**Pillar 1: Refactoring Primitives** (Code Transformation)
-Atomic operations for restructuring code without changing external behavior. Each primitive is composable, focused, and language-independent.
-
-**Pillar 2: Analysis Primitives** (Code Understanding)
-Intelligence operations that measure code health, structure, and relationships, enabling informed refactoring decisions.
-
-**Philosophy**: Analysis informs refactoring, refactoring builds on analysis.
-
-```mermaid
-graph TB
-    subgraph "Pillar 2: Analysis Primitives"
-        Lint[Linting<br/>Style & Errors]
-        Complex[Complexity<br/>Metrics]
-        Dead[Dead Code<br/>Detection]
-        Smell[Code Smells<br/>Patterns]
-        Deps[Dependencies<br/>Graph Analysis]
-    end
-
-    subgraph "Pillar 1: Refactoring Primitives"
-        Rename[Rename<br/>Symbols/Files]
-        Extract[Extract<br/>Functions/Modules]
-        Move[Move<br/>Code Between Files]
-        Inline[Inline<br/>Variables/Functions]
-        Reorder[Reorder<br/>Parameters/Imports]
-        Transform[Transform<br/>Patterns]
-        Delete[Delete<br/>Dead Code]
-    end
-
-    subgraph "Unified dryRun Safety"
-        Preview[Preview Mode<br/>dryRun: true]
-        Execute[Execute Mode<br/>dryRun: false]
-    end
-
-    Complex -.informs.-> Extract
-    Complex -.informs.-> Inline
-    Dead -.informs.-> Delete
-    Smell -.informs.-> Extract
-    Smell -.informs.-> Transform
-    Deps -.informs.-> Move
-    Deps -.informs.-> Extract
-
-    Rename --> Preview
-    Extract --> Preview
-    Move --> Preview
-    Inline --> Preview
-    Reorder --> Preview
-    Transform --> Preview
-    Delete --> Preview
-
-    Preview --> Execute
-
-    style Complex fill:#87CEEB
-    style Dead fill:#87CEEB
-    style Smell fill:#87CEEB
-    style Deps fill:#87CEEB
-    style Lint fill:#87CEEB
-    style Rename fill:#FFB6C1
-    style Extract fill:#FFB6C1
-    style Move fill:#FFB6C1
-    style Inline fill:#FFB6C1
-    style Reorder fill:#FFB6C1
-    style Transform fill:#FFB6C1
-    style Delete fill:#FFB6C1
-    style Preview fill:#90EE90
-    style Execute fill:#FF6B6B
-```
+TypeMill's design philosophy centers on **refactoring primitives** that provide safe, composable code transformations across languages.
 
 ---
 
@@ -120,7 +51,7 @@ All refactoring primitives support the **unified dryRun API**: preview mode (def
 **Key Characteristics**:
 - Scope preservation (captures parameters)
 - Return value detection
-- Dependency analysis
+- Dependency tracking
 - Automatic import generation
 
 **Use Cases**: Breaking down large functions, eliminating duplication, modularizing monoliths
@@ -235,51 +166,6 @@ Analysis primitives provide intelligence that informs refactoring decisions.
 
 ---
 
-#### 3. Dead Code Detection
-**Concept**: Find unused or unreachable code.
-
-**Tools**: `analyze.dead_code`, `find_references`, `analyze.dependencies`
-
-**Key Characteristics**:
-- Whole-program analysis
-- Export tracking
-- Import validation
-- Safe removal suggestions
-
-**Use Cases**: Cleaning legacy code, reducing bundle size, improving compile times
-
----
-
-#### 4. Code Smell Detection
-**Concept**: Identify patterns suggesting poor structure.
-
-**Tools**: `get_diagnostics`, `get_code_actions`, `analyze.dead_code`
-
-**Common Smells**:
-- Long functions (extract candidate)
-- Duplicate code (shared function)
-- Large classes (split modules)
-- Deep nesting (flatten control flow)
-
-**Use Cases**: Pattern recognition, refactoring suggestions, context-aware analysis
-
----
-
-#### 5. Dependency Analysis
-**Concept**: Map relationships between modules, functions, files.
-
-**Tools**: `analyze.dependencies`, `find_references`, call hierarchy tools
-
-**Key Characteristics**:
-- Graph construction
-- Circular dependency detection
-- Impact analysis
-- Layering validation
-
-**Use Cases**: Impact assessment, architectural analysis, breaking circular deps
-
----
-
 ### Primitive Composition
 
 The power of this framework comes from **composing primitives** to achieve complex goals.
@@ -289,12 +175,12 @@ The power of this framework comes from **composing primitives** to achieve compl
 **Goal**: Extract large file into multiple smaller modules.
 
 **Primitive Sequence**:
-1. **Analyze Dependencies** (`analyze.dependencies`) - Understand structure
-2. **Detect Complexity** (`get_document_symbols`) - Identify candidates
+1. **Inspect References** (`find_references`) - Understand structure
+2. **Identify Candidates** (`search_symbols`) - Locate extraction targets
 3. **Extract Functions** (`extract` with `dryRun: false`) - Pull out logical units
 4. **Move to New Files** (`move` with `dryRun: false`) - Create module structure
 5. **Update Imports** (automatic via unified API) - Maintain references
-6. **Verify No Dead Code** (`analyze.dead_code`) - Ensure clean migration
+6. **Verify Behavior** (tests/build) - Ensure clean migration
 7. **Format All Files** (`format_document`) - Apply consistent style
 
 ---
@@ -376,7 +262,7 @@ graph TB
     end
 
     subgraph "Layer 6: Handlers"
-        Handlers[Tool Handlers<br/>mill-handlers<br/>mill-handlers-analysis<br/>mill-handler-api]
+        Handlers[Tool Handlers<br/>mill-handlers<br/>mill-handler-api]
     end
 
     subgraph "Layer 5: Services"
@@ -423,9 +309,9 @@ graph TB
 ### Layer Definitions
 
 #### Layer 1: Support (Special Status)
-**Purpose**: Testing infrastructure, build tooling, analysis tools
+**Purpose**: Testing infrastructure, build tooling
 
-**Crates**: `mill-test-support`, `xtask`, `analysis/*`
+**Crates**: `mill-test-support`, `xtask`
 
 **Dependencies**: Can access any layer (testing needs)
 
@@ -492,7 +378,7 @@ graph TB
 #### Layer 6: Handlers
 **Purpose**: MCP tool implementations that delegate to services
 
-**Crates**: `mill-handlers`, `mill-handlers-analysis`, `mill-handler-api`
+**Crates**: `mill-handlers`, `mill-handler-api`
 
 **Dependencies**: Layer 5 (Services), Layer 4 (Plugins - for delegation), Layer 3 (Plugin API), Layer 2 (Foundation)
 
@@ -557,7 +443,7 @@ TypeMill is built on a multi-crate architecture with focused responsibilities:
 ```
 apps/mill                    → CLI entry point
 ├─ mill-server               → MCP server orchestration
-   ├─ mill-handlers          → Tool implementations (29 public tools)
+   ├─ mill-handlers          → Tool implementations
       ├─ mill-services       → Business logic, LSP, AST
          ├─ mill-ast         → Language plugin coordination
          ├─ mill-lsp         → LSP client management
@@ -654,14 +540,14 @@ pub struct ToolHandlerContext {
 }
 ```
 
-**Current Handlers (7 total, 45 tools)**:
+**Current Handlers**:
 - **SystemHandler** (3 tools): health_check, web_fetch, ping
 - **LifecycleHandler** (3 tools): file open/save/close notifications
 - **NavigationHandler** (10 tools): Symbol navigation, references, definitions
 - **EditingHandler** (9 tools): Formatting, code actions, diagnostics
 - **RefactoringHandler** (7 tools): Unified refactoring with dryRun
 - **FileOpsHandler** (6 tools): File read/write/delete operations
-- **WorkspaceHandler** (7 tools): Workspace-wide analysis and refactoring
+- **WorkspaceHandler** (7 tools): Workspace-wide refactoring and file operations
 
 ---
 
@@ -718,12 +604,11 @@ pub fn build_language_plugin_registry() -> Arc<PluginRegistry> {
 **Full Parity (100%)**: Rust, TypeScript, Python, Swift, C#, Java, Go
 **Partial Support**: C, C++ (experimental)
 
-All full-parity languages implement 15 common capability traits:
+All full-parity languages implement 13 common capability traits:
 - **Core LanguagePlugin** (5 methods): parse, analyze_manifest, list_functions, analyze_detailed_imports
 - **Import Support** (5 traits): ImportParser, ImportRenameSupport, ImportMoveSupport, ImportMutationSupport, ImportAdvancedSupport
 - **Workspace Operations** (1 trait): Multi-package management
 - **Refactoring Operations** (1 trait, 3 operations): Extract Function, Inline Variable, Extract Variable
-- **Code Analysis** (2 traits): ModuleReferenceScanner, ImportAnalyzer
 - **Manifest Management** (1 trait): Update dependencies, generate manifests
 - **Project Creation** (1 trait): Package scaffolding
 

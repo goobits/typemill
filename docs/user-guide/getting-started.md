@@ -175,14 +175,6 @@ Mill will:
 2. Ask for confirmation
 3. Execute the rename and update all imports/references
 
-### 4. Analyze Code Quality
-```
-"Check for code quality issues in src/services/"
-```
-Mill runs quality analysis and provides actionable suggestions.
-
----
-
 ## Team Setup
 
 ### Configuration Strategies
@@ -345,14 +337,13 @@ mill setup
 ### Explore Tools
 
 ```bash
-mill tools              # List all 29 tools
+mill tools              # List all tools
 mill docs tools         # View tool documentation
 ```
 ### Learn Common Workflows
 
 - **[cheatsheet.md](cheatsheet.md)** - Quick command reference
 - **[../tools/refactoring.md](../tools/refactoring.md)** - Advanced refactoring patterns
-- **[../tools/analysis.md](../tools/analysis.md)** - Code analysis tools
 
 ### Configure Advanced Features
 
@@ -373,9 +364,6 @@ mill tool rename --target file:src/old.ts --new-name src/new.ts
 
 # Rename file (execute)
 mill tool rename --target file:src/old.ts --new-name src/new.ts --dry-run false
-
-# Analyze code quality
-mill tool analyze.quality '{"kind": "complexity", "scope": {"kind": "workspace"}}'
 ```
 ---
 
@@ -387,4 +375,4 @@ mill tool analyze.quality '{"kind": "complexity", "scope": {"kind": "workspace"}
 
 ---
 
-**🎉 You're ready to use Mill!** Ask your AI assistant to analyze, refactor, or navigate your codebase with precise LSP-powered intelligence.
+**🎉 You're ready to use Mill!** Ask your AI assistant to refactor or navigate your codebase with precise LSP-powered intelligence.

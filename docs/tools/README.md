@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-**Complete API reference for all 29 TypeMill MCP tools**
+**Complete API reference for all TypeMill MCP tools**
 
 This directory contains focused documentation for each tool category. Each category file follows a consistent structure with terse but complete documentation, real examples from the codebase, and common patterns.
 
@@ -29,16 +29,6 @@ This directory contains focused documentation for each tool category. Each categ
 | `reorder` | Refactoring | Reorder params/imports (dryRun option) | [refactoring.md](refactoring.md#reorder) |
 | `transform` | Refactoring | Code transformations (dryRun option) | [refactoring.md](refactoring.md#transform) |
 | `delete` | Refactoring | Delete symbols/files/directories (dryRun option) | [refactoring.md](refactoring.md#delete) |
-| **Analysis (9 tools)** ||||
-| `analyze.quality` | Analysis | Code quality analysis | [analysis.md](analysis.md#analyzequality) |
-| `analyze.dead_code` | Analysis | Unused code detection | [analysis.md](analysis.md#analyzedead_code) |
-| `analyze.dependencies` | Analysis | Dependency analysis | [analysis.md](analysis.md#analyzedependencies) |
-| `analyze.cycles` | Analysis | Circular dependency detection | [analysis.md](analysis.md#analyzecycles) |
-| `analyze.structure` | Analysis | Code structure analysis | [analysis.md](analysis.md#analyzestructure) |
-| `analyze.documentation` | Analysis | Documentation quality | [analysis.md](analysis.md#analyzedocumentation) |
-| `analyze.tests` | Analysis | Test analysis | [analysis.md](analysis.md#analyzetests) |
-| `analyze.batch` | Analysis | Multi-file batch analysis | [analysis.md](analysis.md#analyzebatch) |
-| `analyze.module_dependencies` | Analysis | Rust module dependencies | [analysis.md](analysis.md#analyzemodule_dependencies) |
 | **Workspace (4 tools)** ||||
 | `workspace.create_package` | Workspace | Create new package | [workspace.md](workspace.md#workspacecreate_package) |
 | `workspace.extract_dependencies` | Workspace | Extract module dependencies | [workspace.md](workspace.md#workspaceextract_dependencies) |
@@ -60,11 +50,6 @@ Navigate codebases with precision using language server protocol integration. Fi
 **7 tools** with unified dryRun API for safe, reviewable refactoring.
 
 All refactoring operations use a single tool with `options.dryRun` parameter: default `true` generates a preview plan without modifying files, explicit `false` applies changes immediately with validation and rollback support.
-
-### [Analysis](analysis.md)
-**9 unified analysis tools** with consistent kind/scope API.
-
-Comprehensive code analysis covering quality, dead code, dependencies, structure, documentation, and tests. All tools follow the same parameter pattern for easy adoption.
 
 ### [Workspace](workspace.md)
 **4 workspace management tools** for package and text operations.
@@ -252,8 +237,8 @@ Common error codes:
 
 | Language | Extensions | LSP Server | Tools Supported |
 |----------|-----------|------------|-----------------|
-| TypeScript/JavaScript | ts, tsx, js, jsx | typescript-language-server | All navigation, refactoring, analysis |
-| Rust | rs | rust-analyzer | All navigation, refactoring, analysis + Rust-specific features |
+| TypeScript/JavaScript | ts, tsx, js, jsx | typescript-language-server | All navigation and refactoring |
+| Rust | rs | rust-analyzer | All navigation and refactoring + Rust-specific features |
 
 **Note:** Additional languages (Python, Go, Java, Swift, C#) available in git tag `pre-language-reduction`.
 
@@ -268,7 +253,6 @@ Common error codes:
 
 - **[Navigation Tools](navigation.md)** - Code navigation and intelligence
 - **[Refactoring Tools](refactoring.md)** - Editing and refactoring operations
-- **[Analysis Tools](analysis.md)** - Code analysis and quality checks
 - **[Workspace Tools](workspace.md)** - Workspace operations
 - **[System Tools](system.md)** - Health checks and server status
 

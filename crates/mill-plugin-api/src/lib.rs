@@ -23,7 +23,6 @@ use std::path::Path;
 // Module Declarations
 // ============================================================================
 
-pub mod analysis_metadata;
 pub mod capabilities;
 pub mod import_support;
 pub mod language;
@@ -38,7 +37,6 @@ pub mod test_fixtures;
 pub mod workspace_support;
 
 // Re-exports
-pub use analysis_metadata::{AnalysisMetadata, DocCommentStyle};
 pub use capabilities::{
     ExtractParams, ImportAnalyzer, InlineParams, ManifestUpdater, ModuleDeclarationSupport,
     ModuleLocator, ModuleReferenceScanner, RefactoringProvider, TextEdit, WorkspaceEdit,
@@ -536,14 +534,6 @@ pub trait LanguagePlugin: Send + Sync {
 
     /// Get import analyzer capability if available
     fn import_analyzer(&self) -> Option<&dyn crate::capabilities::ImportAnalyzer> {
-        None
-    }
-
-    /// Get analysis metadata capability if available
-    ///
-    /// This provides language-specific patterns and rules for analysis tools,
-    /// eliminating the need for hardcoded language matching.
-    fn analysis_metadata(&self) -> Option<&dyn crate::analysis_metadata::AnalysisMetadata> {
         None
     }
 

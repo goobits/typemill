@@ -1,7 +1,7 @@
 //! Handler API for TypeMill
 //!
-//! This crate defines the core traits and types for tool handlers, breaking
-//! the circular dependency between mill-handlers and mill-handlers-analysis.
+//! This crate defines the core traits and types for tool handlers, separating
+//! handler contracts from server implementations.
 
 use async_trait::async_trait;
 use mill_foundation::core::dry_run::DryRunnable;
@@ -105,10 +105,6 @@ pub trait LanguagePluginRegistry: Send + Sync {
     fn inner(&self) -> &dyn std::any::Any;
 }
 
-/// Trait for analysis configuration
-pub trait AnalysisConfigTrait: Send + Sync {
-    fn as_any(&self) -> &dyn std::any::Any;
-}
 
 /// Trait for LSP adapter
 #[async_trait]
@@ -144,8 +140,6 @@ pub struct ToolHandlerContext {
     pub plugin_manager: Arc<PluginManager>,
     /// Direct LSP adapter for refactoring operations
     pub lsp_adapter: Arc<Mutex<Option<Arc<dyn LspAdapter>>>>,
-    /// Loaded analysis configuration
-    pub analysis_config: Arc<dyn AnalysisConfigTrait>,
 }
 
 // Type alias for convenience

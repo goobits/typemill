@@ -2,7 +2,7 @@
 
 > **Quick navigation for understanding TypeMill's system design**
 
-TypeMill is a Pure Rust MCP server that bridges Language Server Protocol (LSP) functionality to AI coding assistants. The architecture is organized around **29 public tools** built on a layered, service-oriented design.
+TypeMill is a Pure Rust MCP server that bridges Language Server Protocol (LSP) functionality to AI coding assistants. The architecture is organized around a layered, service-oriented design.
 
 ---
 
@@ -13,12 +13,11 @@ TypeMill is a Pure Rust MCP server that bridges Language Server Protocol (LSP) f
 **1. [core-concepts.md](core-concepts.md)** - System architecture fundamentals
 - High-level crate structure and dependencies
 - 7-layer architectural model with enforcement
-- Code primitives framework (refactoring + analysis pillars)
+- Code primitives framework (refactoring-focused)
 - Request lifecycle and data flow
 
 **2. [specifications.md](specifications.md)** - API contracts and tool visibility
-- Public vs internal tools (29 public, 20 internal)
-- Unified Analysis API contracts (request/response formats)
+- Public vs internal tools
 - Unified Refactoring API with dryRun pattern
 - Error codes and validation rules
 
@@ -26,7 +25,7 @@ TypeMill is a Pure Rust MCP server that bridges Language Server Protocol (LSP) f
 
 **3. [lang_common_api.md](lang_common_api.md)** - Language plugin development
 - LanguagePlugin trait implementation
-- Import analysis, symbol extraction
+- Import handling, symbol extraction
 - Language-specific capabilities
 - Plugin registration and discovery
 
@@ -42,7 +41,7 @@ TypeMill is a Pure Rust MCP server that bridges Language Server Protocol (LSP) f
 ### Layer Model (7 Layers)
 ```
 Application    → Entry points (CLI, servers)
-Handlers       → MCP tool implementations (29 public)
+Handlers       → MCP tool implementations
 Services       → Business logic, LSP integration
 Language       → Language-specific plugins
 Plugin API     → Plugin trait contracts
@@ -54,25 +53,19 @@ Support        → Testing, tooling
 
 ### Tool Organization
 
-**29 Public MCP Tools:**
+**Public MCP Tools:**
 - **Navigation** (8) - find_definition, find_references, search_symbols, etc.
 - **Refactoring** (7) - rename, extract, inline, move, reorder, transform, delete
-- **Analysis** (9) - analyze.quality, analyze.dead_code, analyze.dependencies, etc.
 - **Workspace** (4) - create_package, extract_dependencies, update_members, find_replace
 - **System** (1) - health_check
 
-**20 Internal Tools** - Backend plumbing, LSP integration, legacy operations
+**Internal Tools** - Backend plumbing and LSP integration
 
 See [specifications.md#tools-visibility](specifications.md#tools-visibility-specification) for complete lists.
 
 ### Code Primitives Framework
 
-TypeMill is built on **two pillars**:
-
-1. **Refactoring Primitives** - Atomic code transformations (rename, extract, inline, move, etc.)
-2. **Analysis Primitives** - Code understanding (quality, dead code, dependencies, structure, etc.)
-
-**Analysis informs refactoring, refactoring builds on analysis.**
+TypeMill is built on **refactoring primitives**: atomic code transformations (rename, extract, inline, move, etc.).
 
 See [core-concepts.md#code-primitives](core-concepts.md#code-primitives-framework) for details.
 

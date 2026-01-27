@@ -10,7 +10,7 @@
 
 Pure Rust MCP server bridging Language Server Protocol (LSP) to AI coding assistants
 
-Provides 29 MCP tools for code navigation, refactoring, analysis, and batch operations across TypeScript and Rust projects.
+Provides MCP tools for code navigation, refactoring, and workspace operations across TypeScript and Rust projects.
 
 ## ✨ Key Features
 - **Safe Refactoring** - Unified dryRun API (default: preview, explicit opt-in to execute) with automatic rollback on failure
@@ -18,7 +18,7 @@ Provides 29 MCP tools for code navigation, refactoring, analysis, and batch oper
 - **Rust Performance** - Zero-cost abstractions, memory safety, async I/O
 - **Comprehensive Updates** - Automatic import updates, cross-file reference tracking
 - **Production Ready** - WebSocket server, JWT auth, multi-tenant isolation, Docker support
-- **49 Tools** - 29 public MCP tools + 20 internal tools for navigation, refactoring, analysis, workspace operations
+- **Tooling Depth** - Public MCP tools plus internal handlers for navigation, refactoring, and workspace operations
 
 ## 🚀 Quick Start
 ```bash
@@ -73,10 +73,6 @@ mill tool rename --target directory:old-dir --new-name new-dir
 mill tool move --source src/app.rs:10:5 --destination src/utils.rs
 mill tool extract --kind function --source src/app.rs:10:5 --name handleLogin
 
-# Analysis
-mill tool analyze.quality --kind complexity --scope workspace
-mill tool analyze.dead_code --kind unused_imports --scope file:src/app.rs
-
 # Workspace operations
 mill tool workspace.find_replace '{"pattern": "oldName", "replacement": "newName", "scope": "workspace"}'
 ```
@@ -84,7 +80,7 @@ mill tool workspace.find_replace '{"pattern": "oldName", "replacement": "newName
 - Use `rename` for file/directory operations
 - Use `move` for code symbol operations (requires source position)
 
-## 📚 Available Tools (29 total)
+## 📚 Available Tools
 
 **Navigation & Intelligence (8 tools)**
 - `find_definition`, `find_references`, `search_symbols`
@@ -94,11 +90,6 @@ mill tool workspace.find_replace '{"pattern": "oldName", "replacement": "newName
 **Editing & Refactoring (7 tools with dryRun API)**
 - `rename`, `extract`, `inline`, `move`, `reorder`, `transform`, `delete`
 - Each tool supports `options.dryRun` (default: true for safety, false to execute)
-
-**Analysis (8 tools)**
-- `analyze.quality`, `analyze.dead_code`, `analyze.dependencies`
-- `analyze.structure`, `analyze.documentation`, `analyze.tests`
-- `analyze.batch`, `analyze.module_dependencies`
 
 **Workspace (4 tools)**
 - `workspace.create_package`, `workspace.extract_dependencies`
@@ -270,7 +261,7 @@ curl -I https://github.com/rust-lang/rust-analyzer/releases
 ## 📖 Documentation
 - **[Getting Started](docs/user-guide/getting-started.md)** - Complete setup guide
 - **[Configuration Reference](docs/user-guide/configuration.md)** - Configuration options
-- **[Tool Reference](docs/tools/)** - Complete API for all 29 tools
+- **[Tool Reference](docs/tools/)** - Complete API for all tools
 - **[Core Concepts](docs/architecture/core-concepts.md)** - System architecture and design philosophy
 - **[Contributing Guide](contributing.md)** - Development setup and workflow
 - **[Docker Deployment](docs/operations/docker_deployment.md)** - Production deployment

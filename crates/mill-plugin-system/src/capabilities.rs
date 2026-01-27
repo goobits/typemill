@@ -240,15 +240,6 @@ impl Capabilities {
             | "rename_directory"
             | "extract_module_to_package" => Some(ToolScope::Workspace),
 
-            // Unified Analysis API - supports both file and workspace scopes
-            "analyze.quality"
-            | "analyze.dead_code"
-            | "analyze.dependencies"
-            | "analyze.structure"
-            | "analyze.documentation"
-            | "analyze.tests"
-            | "analyze.batch" => Some(ToolScope::Workspace),
-
             // Custom capabilities - default to workspace scope
             _ if self.custom.contains_key(method) => Some(ToolScope::Workspace),
 
@@ -341,11 +332,11 @@ mod tests {
     #[test]
     fn test_custom_tool_scope() {
         let mut caps = Capabilities::default();
-        caps.add_custom("custom.analysis".to_string(), json!(true));
+        caps.add_custom("custom.example".to_string(), json!(true));
 
         // Custom tools default to workspace scope
         assert_eq!(
-            caps.get_tool_scope("custom.analysis"),
+            caps.get_tool_scope("custom.example"),
             Some(ToolScope::Workspace)
         );
     }

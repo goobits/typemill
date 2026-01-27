@@ -395,47 +395,6 @@ let package = Package(
     }
 }
 
-impl mill_plugin_api::AnalysisMetadata for SwiftPlugin {
-    fn test_patterns(&self) -> Vec<regex::Regex> {
-        vec![
-            regex::Regex::new(r"func\s+test").unwrap(),
-            regex::Regex::new(r"class\s+.*Tests").unwrap(),
-            regex::Regex::new(r"@Test").unwrap(),
-        ]
-    }
-
-    fn assertion_patterns(&self) -> Vec<regex::Regex> {
-        vec![
-            regex::Regex::new(r"XCTAssert").unwrap(),
-            regex::Regex::new(r"XCTAssertEqual").unwrap(),
-            regex::Regex::new(r"XCTAssertTrue").unwrap(),
-            regex::Regex::new(r"#expect").unwrap(),
-        ]
-    }
-
-    fn doc_comment_style(&self) -> mill_plugin_api::DocCommentStyle {
-        mill_plugin_api::DocCommentStyle::TripleSlash
-    }
-
-    fn visibility_keywords(&self) -> Vec<&'static str> {
-        vec!["public", "private", "internal", "fileprivate", "open"]
-    }
-
-    fn interface_keywords(&self) -> Vec<&'static str> {
-        vec!["protocol", "class", "struct", "enum"]
-    }
-
-    fn complexity_keywords(&self) -> Vec<&'static str> {
-        vec![
-            "if", "guard", "switch", "case", "for", "while", "catch", "&&", "||", "??",
-        ]
-    }
-
-    fn nesting_penalty(&self) -> f32 {
-        1.4
-    }
-}
-
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -1824,68 +1783,6 @@ protocol DataSource {
         assert_eq!(installer.lsp_name(), "sourcekit-lsp");
         // check_installed() returns Result, test it doesn't panic
         let _ = installer.check_installed();
-    }
-
-    // ========================================================================
-    // ANALYSIS METADATA TESTS (3 tests)
-    // ========================================================================
-
-    #[test]
-    fn test_analysis_metadata_test_patterns() {
-        use mill_plugin_api::AnalysisMetadata;
-        let plugin = SwiftPlugin::default();
-        let patterns = plugin.test_patterns();
-
-        // Should match XCTest test methods
-        let sample = "func testSomething() {\n    XCTAssertTrue(true)\n}";
-        assert!(patterns.iter().any(|p| p.is_match(sample)));
-
-        // Should match XCTest test classes
-        let class_sample = "class MyFeatureTests: XCTestCase {}";
-        assert!(patterns.iter().any(|p| p.is_match(class_sample)));
-
-        // Should match Swift Testing attribute
-        let attr_sample = "@Test func validateBehavior() {}";
-        assert!(patterns.iter().any(|p| p.is_match(attr_sample)));
-    }
-
-    #[test]
-    fn test_analysis_metadata_assertion_patterns() {
-        use mill_plugin_api::AnalysisMetadata;
-        let plugin = SwiftPlugin::default();
-        let patterns = plugin.assertion_patterns();
-
-        // Should match XCTest assertions
-        let assert_sample = "XCTAssertEqual(x, y)";
-        assert!(patterns.iter().any(|p| p.is_match(assert_sample)));
-
-        // Should match XCTAssertTrue
-        let true_sample = "XCTAssertTrue(condition)";
-        assert!(patterns.iter().any(|p| p.is_match(true_sample)));
-
-        // Should match Swift Testing expectations
-        let expect_sample = "#expect(value == expected)";
-        assert!(patterns.iter().any(|p| p.is_match(expect_sample)));
-    }
-
-    #[test]
-    fn test_analysis_metadata_complexity_keywords() {
-        use mill_plugin_api::AnalysisMetadata;
-        let plugin = SwiftPlugin::default();
-        let keywords = plugin.complexity_keywords();
-
-        // Should include Swift control flow keywords
-        assert!(keywords.contains(&"if"));
-        assert!(keywords.contains(&"guard"));
-        assert!(keywords.contains(&"switch"));
-        assert!(keywords.contains(&"case"));
-        assert!(keywords.contains(&"for"));
-        assert!(keywords.contains(&"while"));
-        assert!(keywords.contains(&"catch"));
-        assert!(keywords.contains(&"??"));
-
-        // Check nesting penalty
-        assert_eq!(plugin.nesting_penalty(), 1.4);
     }
 
     // List functions tests moved to mill-test-support/tests/list_functions_harness_integration.rs

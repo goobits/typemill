@@ -255,7 +255,7 @@ $ mill tool find_definition --target file:src/app.rs:10:5
 Error: Tool 'find_definition' does not support flag-based arguments
 ```
 **Explanation:**
-Navigation and analysis tools require JSON arguments, not flags.
+Navigation tools require JSON arguments, not flags.
 
 **Solution:**
 ```bash
@@ -267,8 +267,7 @@ mill tool find_definition '{
 }'
 ```
 **Which tools need JSON:**
-- Navigation: `find_definition`, `find_references`, `search_symbols`, etc.
-- Analysis: `get_diagnostics`, `analyze.*`
+- Navigation: `find_definition`, `find_references`, `search_symbols`, `get_diagnostics`
 - Use `mill tools` to see all tools and their argument types
 
 ---
@@ -366,4 +365,4 @@ Report at: https://github.com/goobits/typemill/issues
 - **[configuration.md](configuration.md)** - Complete configuration reference
 - **[getting-started.md](getting-started.md)** - Getting started guide
 - **[cheatsheet.md](cheatsheet.md)** - Quick command reference
-- **[tools/README.md](../tools/README.md)** - All 29 tools
+- **[tools/README.md](../tools/README.md)** - Tool catalog

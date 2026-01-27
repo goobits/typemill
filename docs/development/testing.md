@@ -51,7 +51,6 @@ Fast reference for test organization, execution, and best practices.
 
 | Category | Tests | Coverage |
 |----------|-------|----------|
-| Analysis Features | 9 | analyze.dead_code, analyze.quality, find_complexity_hotspots |
 | Workflow Execution | 10 | simple, complex, failure, dry-run, rollback, batch |
 | File Operations | 6 | create, read, write, delete, rename, list |
 | Refactoring | 8 | Cross-language, imports, symbols |

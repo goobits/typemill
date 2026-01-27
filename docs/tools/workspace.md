@@ -4,7 +4,7 @@ Package management operations for multi-language workspaces. Create new packages
 
 **Supported languages:** Rust (Cargo), TypeScript (npm/yarn/pnpm), Python (PDM/Poetry/Hatch)
 **Tool count:** 4 tools
-**Related categories:** [Refactoring](refactoring.md) (rename for crate consolidation), [Analysis](analysis.md) (analyze.module_dependencies for dependency analysis)
+**Related categories:** [Refactoring](refactoring.md) (rename for crate consolidation)
 
 **Language-specific guides:**
 - **[Rust/Cargo](workspace-rust.md)** - Cargo.toml, crate structure, Rust conventions
@@ -26,7 +26,6 @@ Package management operations for multi-language workspaces. Create new packages
   - [Project-Wide Text Replacement](#project-wide-text-replacement)
 - [Integration with Other Tools](#integration-with-other-tools)
   - [With rename (Crate Consolidation)](#with-renameplan-crate-consolidation)
-  - [With analyze.module_dependencies](#with-analyzemodule_dependencies)
 
 ---
 
@@ -677,17 +676,11 @@ When `dryRun: false`, returns ApplyResult:
 Complete workflow for extracting a module into a standalone crate:
 
 ```bash
-# 1. Analyze dependencies for the module
-mill tool analyze.module_dependencies '{
-  "target": {
-    "kind": "directory",
-    "path": "crates/big-crate/src/analysis"
-  }
-}'
+# 1. Gather dependencies for the module (manual review)
 
 # 2. Create new package
 mill tool workspace.create_package '{
-  "packagePath": "crates/mill-analysis",
+  "packagePath": "crates/mill-core",
   "package_type": "library",
   "options": {
     "addToWorkspace": true,
@@ -698,7 +691,7 @@ mill tool workspace.create_package '{
 # 3. Extract dependencies to new package
 mill tool workspace.extract_dependencies '{
   "source_manifest": "crates/big-crate/Cargo.toml",
-  "target_manifest": "crates/mill-analysis/Cargo.toml",
+  "target_manifest": "crates/mill-core/Cargo.toml",
   "dependencies": ["tokio", "serde", "anyhow"],
   "options": {
     "preserve_versions": true,
@@ -710,18 +703,18 @@ mill tool workspace.extract_dependencies '{
 mill tool rename '{
   "target": {
     "kind": "directory",
-    "path": "crates/big-crate/src/analysis"
+    "path": "crates/big-crate/src/core"
   },
-  "newName": "crates/mill-analysis/src"
+  "newName": "crates/mill-core/src"
 }'
 
 # 5. Execute the move (explicit dryRun: false)
 mill tool rename '{
   "target": {
     "kind": "directory",
-    "path": "crates/big-crate/src/analysis"
+    "path": "crates/big-crate/src/core"
   },
-  "newName": "crates/mill-analysis/src",
+  "newName": "crates/mill-core/src",
   "options": { "dryRun": false }
 }'
 ```
@@ -852,28 +845,6 @@ mill tool rename '{
 # - Removes from workspace members (uses workspace.update_members)
 # - Updates imports across workspace
 ```
-### With analyze.module_dependencies
-
-Use dependency analysis before extraction:
-
-```bash
-# 1. Analyze what dependencies a module needs
-mill tool analyze.module_dependencies '{
-  "target": {"kind": "directory", "path": "crates/big-crate/src/module"}
-}'
-
-# Returns: external_dependencies, workspace_dependencies, std_dependencies
-
-# 2. Use results to extract exact dependencies needed
-mill tool workspace.extract_dependencies '{
-  "source_manifest": "crates/big-crate/Cargo.toml",
-  "target_manifest": "crates/new-crate/Cargo.toml",
-  "dependencies": ["<deps from analysis>"]
-}'
-```
----
-
 **Related Documentation:**
 - [Refactoring Tools](refactoring.md) - rename for crate consolidation
-- [Analysis Tools](analysis.md) - analyze.module_dependencies for dependency analysis
 - [Main API Reference](README.md) - Complete API documentation

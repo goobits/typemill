@@ -1,6 +1,5 @@
 //! MCP tool handlers module
 
-pub mod analysis_handler;
 pub mod common;
 pub mod delete_handler;
 pub mod dependency_handler;
@@ -22,9 +21,6 @@ pub mod transform_handler;
 pub mod workflow_handler;
 pub mod workspace;
 // Note: mcp_tools module removed - all functionality now handled by plugin system
-// Note: dead_code module moved from system_handler to analysis_handler
-
-pub use analysis_handler::AnalysisHandler;
 pub use delete_handler::DeleteHandler;
 pub use extract_handler::ExtractHandler;
 pub use file_operation_handler::FileOperationHandler;

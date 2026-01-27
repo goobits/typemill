@@ -228,7 +228,7 @@ install-lsp-servers:
 dev-extras:
 	@echo "🛠️  Installing optional development tools..."
 	@echo ""
-	@echo "📦 Code Quality & Analysis Tools:"
+	@echo "📦 Code Quality Tools:"
 	@if ! command -v cargo-binstall >/dev/null 2>&1; then \
 		echo "  ⚠️  cargo-binstall not found. Installing..."; \
 		curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash; \

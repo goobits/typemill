@@ -10,7 +10,7 @@ The Unified Refactoring API provides a single tool per refactoring operation wit
 All refactoring operations support checksum validation, rollback on error, and post-apply validation.
 
 **Tool count:** 7 tools
-**Related categories:** [Navigation](navigation.md), [Analysis](analysis.md), [Workspace](workspace.md)
+**Related categories:** [Navigation](navigation.md), [Workspace](workspace.md)
 
 ## Table of Contents
 
@@ -739,7 +739,7 @@ All refactoring operations support checksum validation, rollback on error, and p
   - **Status:** Fully implemented
   - **Warning:** Deletes all files in directory!
 - `"dead_code"` - Automatically detect and delete unused code
-  - **Status:** Placeholder (requires analysis integration)
+  - **Status:** Placeholder (requires refactor engine integration)
 
 **Safety Features:**
 - `cleanup_imports: true` - Automatically removes imports after deletion
@@ -854,7 +854,7 @@ mill tool extract '{
 **Why MCP tool interface?**
 - Refactoring requires complex structured data (ranges, positions, options)
 - JSON format prevents ambiguity and parsing errors
-- Consistent with analysis tools and other MCP operations
+- Consistent with other MCP operations
 - Enables programmatic/AI agent use
 
 ---

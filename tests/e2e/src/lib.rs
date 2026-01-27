@@ -72,56 +72,9 @@ pub mod test_delete_integration;
 
 // Note: test_workspace_apply_integration was deleted in Phase 5 (unified API replaced separate plan/apply workflow)
 
-// Unified Analysis API integration tests (Proposal 40)
-#[cfg(test)]
-pub mod test_analyze_quality;
-
-#[cfg(test)]
-pub mod test_analyze_dead_code;
-
-#[cfg(test)]
-pub mod test_analyze_dependencies;
-
-#[cfg(test)]
-pub mod test_analyze_structure;
-
-#[cfg(test)]
-pub mod test_analyze_documentation;
-
-#[cfg(test)]
-pub mod test_analyze_tests;
-
-#[cfg(test)]
-pub mod test_analyze_batch;
-
-#[cfg(test)]
-pub mod test_suggestions_dead_code;
-
-#[cfg(test)]
-pub mod test_suggestions_quality;
-
-#[cfg(test)]
-pub mod test_suggestions_dependencies;
-
-#[cfg(test)]
-pub mod test_suggestions_structure;
-
-#[cfg(test)]
-pub mod test_suggestions_documentation;
-
-#[cfg(test)]
-pub mod test_suggestions_tests;
-
-#[cfg(test)]
-pub mod test_closed_loop_workflow;
-
 // Workspace package creation tests (Proposal 50)
 #[cfg(test)]
 pub mod test_workspace_create;
-
-// Module dependency analysis tests (Proposal 50)
-#[cfg(test)]
-pub mod test_analyze_module_dependencies;
 
 // Workspace dependency extraction tests (Proposal 50)
 #[cfg(test)]

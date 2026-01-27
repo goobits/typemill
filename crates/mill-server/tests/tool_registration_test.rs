@@ -1,14 +1,14 @@
 use mill_server::handlers::plugin_dispatcher::create_test_dispatcher;
 
 #[tokio::test]
-async fn test_all_30_public_tools_are_registered() {
+async fn test_all_public_tools_are_registered() {
     let dispatcher = create_test_dispatcher().await;
     dispatcher.initialize().await.unwrap();
 
     let registry = dispatcher.tool_registry.lock().await;
     let registered_tools = registry.list_tools();
 
-    const EXPECTED_TOOLS: [&str; 30] = [
+    const EXPECTED_TOOLS: [&str; 21] = [
         // Navigation (8) - get_document_symbols moved to internal
         "find_definition",
         "find_references",
@@ -34,16 +34,6 @@ async fn test_all_30_public_tools_are_registered() {
         "workspace.add_java_dependency",
         // System (1)
         "health_check",
-        // Analysis (9) - Unified Analysis API
-        "analyze.quality",
-        "analyze.dead_code",
-        "analyze.dependencies",
-        "analyze.cycles",
-        "analyze.documentation",
-        "analyze.structure",
-        "analyze.tests",
-        "analyze.batch",
-        "analyze.module_dependencies",
     ];
 
     fn find_missing<'a>(expected: &'a [&str], actual: &[String]) -> Vec<&'a str> {
@@ -111,7 +101,7 @@ async fn test_all_20_internal_tools_are_registered_and_hidden() {
         "read_file",
         "write_file",
         "list_files",
-        // Structure Analysis (1) - Made internal, replaced by analyze.structure
+        // Document Symbols (1) - Internal navigation primitive
         "get_document_symbols",
         // Advanced (2) - Made internal, low-level plumbing
         "execute_edits",

@@ -227,15 +227,6 @@ impl mill_handler_api::LanguagePluginRegistry for LanguagePluginRegistryWrapper 
     }
 }
 
-/// Wrapper for AnalysisConfig to implement mill_handler_api::AnalysisConfigTrait
-pub struct AnalysisConfigWrapper(pub mill_handlers_analysis::config::AnalysisConfig);
-
-impl mill_handler_api::AnalysisConfigTrait for AnalysisConfigWrapper {
-    fn as_any(&self) -> &dyn std::any::Any {
-        &self.0
-    }
-}
-
 /// Plugin-based MCP dispatcher
 pub struct PluginDispatcher {
     /// Plugin manager for handling requests
@@ -358,7 +349,6 @@ impl PluginDispatcher {
                     SystemToolsHandler, WorkspaceToolsHandler, WorkspaceCreateHandler, WorkspaceExtractDepsHandler,
                     WorkspaceUpdateMembersHandler, WorkspaceAddJavaDependencyHandler,
                 };
-                use super::tools::analysis::{BatchAnalysisHandler, CircularDependenciesHandler, DeadCodeHandler, DependenciesHandler, DocumentationHandler, ModuleDependenciesHandler, QualityHandler, StructureHandler, TestsHandler};
                 use super::workspace::FindReplaceHandler;
                 use super::FileOperationHandler;
 
@@ -369,14 +359,6 @@ impl PluginDispatcher {
                     FileToolsHandler => "FileToolsHandler with 3 utility tools (read_file, write_file, list_files)",
                     AdvancedToolsHandler => "AdvancedToolsHandler with 2 INTERNAL tools (execute_edits, execute_batch)",
                     NavigationHandler => "NavigationHandler with 8 tools (find_definition, find_references, find_implementations, find_type_definition, search_symbols, get_symbol_info, get_diagnostics, get_call_hierarchy)",
-                    QualityHandler => "QualityHandler with 1 tool (analyze.quality)",
-                    DeadCodeHandler => "DeadCodeHandler with 1 tool (analyze.dead_code)",
-                    DependenciesHandler => "DependenciesHandler with 1 tool (analyze.dependencies)",
-                    StructureHandler => "StructureHandler with 1 tool (analyze.structure)",
-                    DocumentationHandler => "DocumentationHandler with 1 tool (analyze.documentation)",
-                    TestsHandler => "TestsHandler with 1 tool (analyze.tests)",
-                    BatchAnalysisHandler => "BatchAnalysisHandler with 1 tool (analyze.batch)",
-                    CircularDependenciesHandler => "CircularDependenciesHandler with 1 tool (analyze.cycles)",
                     InternalNavigationHandler => "InternalNavigationHandler with 1 INTERNAL tool (get_document_symbols)",
                     LifecycleHandler => "LifecycleHandler with 3 INTERNAL tools (notify_file_opened, notify_file_saved, notify_file_closed)",
                     InternalEditingToolsHandler => "InternalEditingToolsHandler with 1 INTERNAL tool (rename_symbol_with_imports)",
@@ -387,8 +369,7 @@ impl PluginDispatcher {
                     WorkspaceExtractDepsHandler => "WorkspaceExtractDepsHandler with 1 tool (workspace.extract_dependencies)",
                     WorkspaceUpdateMembersHandler => "WorkspaceUpdateMembersHandler with 1 tool (workspace.update_members)",
                     WorkspaceAddJavaDependencyHandler => "WorkspaceAddJavaDependencyHandler with 1 tool (workspace.add_java_dependency)",
-                    FindReplaceHandler => "FindReplaceHandler with 1 tool (workspace.find_replace)",
-                    ModuleDependenciesHandler => "ModuleDependenciesHandler with 1 tool (analyze.module_dependencies)"
+                    FindReplaceHandler => "FindReplaceHandler with 1 tool (workspace.find_replace)"
                 });
 
                 // Register refactoring handlers (feature-gated)
@@ -533,12 +514,6 @@ impl PluginDispatcher {
             .map_err(|e| ServerError::invalid_request(format!("Invalid tool call: {}", e)))?;
 
         let tool_name = tool_call.name.clone();
-        let analysis_config = Arc::new(
-            mill_handlers_analysis::config::AnalysisConfig::load(&self.app_state.project_root)
-                .map_err(|e| {
-                    ServerError::internal(format!("Failed to load analysis config: {}", e))
-                })?,
-        );
 
         // Create concrete context first
         let concrete_context = super::tools::ToolHandlerContext {
@@ -546,7 +521,6 @@ impl PluginDispatcher {
             app_state: self.app_state.clone(),
             plugin_manager: self.plugin_manager.clone(),
             lsp_adapter: self.lsp_adapter.clone(),
-            analysis_config,
         };
 
         // Convert to trait-based context for handler compatibility

@@ -299,15 +299,6 @@ pub trait ImportAnalyzer: Send + Sync {
     /// Import graph with all imports and their metadata
     fn build_import_graph(&self, file_path: &Path) -> PluginResult<ImportGraph>;
 
-    // Note: Unused import detection is handled by analyze.dead_code tool,
-    // which delegates to LSP servers (rust-analyzer, typescript-language-server, pylsp)
-    // for accurate semantic analysis with full type information.
-    //
-    // Language plugins should NOT implement unused import detection themselves.
-    // LSP integration provides:
-    // - Real-time analysis with full type context
-    // - Cross-file usage tracking
-    // - Support for complex patterns (macros, conditional compilation, etc.)
 }
 
 // ============================================================================

@@ -3,7 +3,6 @@
 //! Handles: health_check, notify_file_opened, notify_file_saved,
 //!          notify_file_closed
 //!
-//! Note: Dead code detection available via analyze.dead_code (unified API)
 //! Note: Import optimization available via optimize_imports
 
 use super::lsp_adapter::DirectLspAdapter;

@@ -290,7 +290,7 @@ impl ToolHandler for NavigationHandler {
     }
 }
 
-/// Internal navigation handler for structure analysis tools
+/// Internal navigation handler for symbol queries
 /// These are replaced by the Unified Analysis API
 pub struct InternalNavigationHandler;
 
@@ -322,7 +322,7 @@ impl ToolHandler for InternalNavigationHandler {
     }
 
     fn is_internal(&self) -> bool {
-        // get_document_symbols is internal - replaced by analyze.structure("symbols")
+        // get_document_symbols is internal-only
         true
     }
 

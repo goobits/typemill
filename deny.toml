@@ -308,28 +308,6 @@ wrappers = ["mill-test-support", "e2e"]
 name = "mill-test-support"
 wrappers = ["mill", "e2e"]
 
-# =============================================================================
-# ANALYSIS WORKSPACE ISOLATION
-# =============================================================================
-# Analysis crates are optional runtime dependencies (feature-gated in mill-handlers)
-# Allow mill-handlers to optionally depend on them via feature flags
-
-[[bans.deny]]
-name = "mill-analysis-common"
-wrappers = ["mill-handlers", "mill-analysis-dead-code", "mill-analysis-graph", "mill-analysis-circular-deps"]
-
-[[bans.deny]]
-name = "mill-analysis-dead-code"
-wrappers = ["mill-handlers"]
-
-[[bans.deny]]
-name = "mill-analysis-graph"
-wrappers = ["mill-handlers", "mill-analysis-circular-deps"]
-
-[[bans.deny]]
-name = "mill-analysis-circular-deps"
-wrappers = ["mill-handlers"]
-
 # List of features to allow/deny
 # Each entry the name of a crate and a version range. If version is
 # not specified, all versions will be matched.

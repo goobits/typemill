@@ -1,4 +1,4 @@
-//! System tools plugin providing workspace-level and AST analysis tools
+//! System tools plugin providing workspace-level utilities
 
 use crate::capabilities::Capabilities;
 use crate::{
@@ -30,7 +30,6 @@ impl SystemToolsPlugin {
     /// This plugin provides system-level tools that work across all file types, including:
     /// - File system operations (list_files)
     /// - Dependency management (bulk_update_dependencies)
-    /// - Code quality tools (optimize_imports)
     /// - Refactoring operations (extract_function, inline_variable, extract_variable)
     ///
     /// The plugin advertises all available tools through its capabilities, even though
@@ -80,7 +79,7 @@ impl SystemToolsPlugin {
             metadata: PluginMetadata {
                 name: "system-tools".to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
-                description: "System-level tools for workspace and AST analysis".to_string(),
+                description: "System-level tools for workspace operations".to_string(),
                 author: "Codeflow Buddy Team".to_string(),
                 config_schema: None,
                 min_system_version: env!("CARGO_PKG_VERSION").to_string(),
@@ -590,194 +589,6 @@ impl LanguagePlugin for SystemToolsPlugin {
                 "inputSchema": {
                     "type": "object",
                     "properties": {}
-                }
-            }),
-            json!({
-                "name": "analyze.quality",
-                "description": "Analyze code quality metrics including complexity, code smells, maintainability, and readability.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "kind": {
-                            "type": "string",
-                            "enum": ["complexity", "smells", "maintainability", "readability"],
-                            "description": "Type of quality analysis to perform"
-                        },
-                        "scope": {
-                            "type": "object",
-                            "properties": {
-                                "type": { "type": "string", "enum": ["file", "directory", "workspace"] },
-                                "path": { "type": "string" }
-                            },
-                            "required": ["path"]
-                        },
-                        "options": {
-                            "type": "object",
-                            "properties": {
-                                "thresholds": { "type": "object" },
-                                "include_suggestions": { "type": "boolean" }
-                            }
-                        }
-                    },
-                    "required": ["kind", "scope"]
-                }
-            }),
-            json!({
-                "name": "analyze.dead_code",
-                "description": "Detect unused code including imports, symbols, parameters, variables, types, and unreachable code.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "kind": {
-                            "type": "string",
-                            "enum": ["unused_imports", "unused_symbols", "unused_parameters", "unused_variables", "unused_types", "unreachable_code"],
-                            "description": "Type of dead code detection to perform"
-                        },
-                        "scope": {
-                            "type": "object",
-                            "properties": {
-                                "type": { "type": "string", "enum": ["file", "directory", "workspace"] },
-                                "path": { "type": "string" }
-                            },
-                            "required": ["path"]
-                        }
-                    },
-                    "required": ["kind", "scope"]
-                }
-            }),
-            json!({
-                "name": "analyze.dependencies",
-                "description": "Analyze dependency relationships including imports, dependency graph, circular dependencies, coupling, and cohesion.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "kind": {
-                            "type": "string",
-                            "enum": ["imports", "graph", "circular", "coupling", "cohesion", "depth"],
-                            "description": "Type of dependency analysis to perform"
-                        },
-                        "scope": {
-                            "type": "object",
-                            "properties": {
-                                "type": { "type": "string", "enum": ["file", "directory", "workspace"] },
-                                "path": { "type": "string" }
-                            },
-                            "required": ["path"]
-                        }
-                    },
-                    "required": ["kind", "scope"]
-                }
-            }),
-            json!({
-                "name": "analyze.structure",
-                "description": "Analyze code structure including symbols, hierarchy, interfaces, inheritance, and module organization.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "kind": {
-                            "type": "string",
-                            "enum": ["symbols", "hierarchy", "interfaces", "inheritance", "modules"],
-                            "description": "Type of structure analysis to perform"
-                        },
-                        "scope": {
-                            "type": "object",
-                            "properties": {
-                                "type": { "type": "string", "enum": ["file", "directory", "workspace"] },
-                                "path": { "type": "string" }
-                            },
-                            "required": ["path"]
-                        }
-                    },
-                    "required": ["kind", "scope"]
-                }
-            }),
-            json!({
-                "name": "analyze.documentation",
-                "description": "Analyze documentation quality including coverage, quality, style consistency, examples, and TODO items.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "kind": {
-                            "type": "string",
-                            "enum": ["coverage", "quality", "style", "examples", "todos"],
-                            "description": "Type of documentation analysis to perform"
-                        },
-                        "scope": {
-                            "type": "object",
-                            "properties": {
-                                "type": { "type": "string", "enum": ["file", "directory", "workspace"] },
-                                "path": { "type": "string" }
-                            },
-                            "required": ["path"]
-                        }
-                    },
-                    "required": ["kind", "scope"]
-                }
-            }),
-            json!({
-                "name": "analyze.tests",
-                "description": "Analyze test quality including coverage, test quality, assertions, and test organization.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "kind": {
-                            "type": "string",
-                            "enum": ["coverage", "quality", "assertions", "organization"],
-                            "description": "Type of test analysis to perform"
-                        },
-                        "scope": {
-                            "type": "object",
-                            "properties": {
-                                "type": { "type": "string", "enum": ["file", "directory", "workspace"] },
-                                "path": { "type": "string" }
-                            },
-                            "required": ["path"]
-                        }
-                    },
-                    "required": ["kind", "scope"]
-                }
-            }),
-            json!({
-                "name": "analyze.batch",
-                "description": "Executes multiple analysis queries in a single batch for optimized performance. Leverages shared AST parsing to analyze code efficiently across different categories and kinds. Returns an aggregated result for all queries.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "queries": {
-                            "type": "array",
-                            "description": "An array of analysis queries to execute in a batch.",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "command": {
-                                        "type": "string",
-                                        "description": "The analysis command to run, e.g., 'analyze.quality'."
-                                    },
-                                    "kind": {
-                                        "type": "string",
-                                        "description": "The specific kind of analysis to perform, e.g., 'complexity'."
-                                    },
-                                    "scope": {
-                                        "type": "object",
-                                        "description": "The scope of the analysis (file, directory, workspace).",
-                                        "properties": {
-                                            "type": { "type": "string", "enum": ["file", "directory", "workspace", "symbol"] },
-                                            "path": { "type": "string" },
-                                            "include": { "type": "array", "items": { "type": "string" } },
-                                            "exclude": { "type": "array", "items": { "type": "string" } }
-                                        },
-                                        "required": ["type"]
-                                    },
-                                    "options": {
-                                        "type": "object",
-                                        "description": "Optional parameters for the analysis."
-                                    }
-                                },
-                                "required": ["command", "kind", "scope"]
-                            }
-                        }
-                    },
-                    "required": ["queries"]
                 }
             }),
             // Note: rename_file and rename_directory are handled by FileOperationHandler

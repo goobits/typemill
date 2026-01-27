@@ -1,5 +1,4 @@
 pub mod client;
-pub mod complexity_harness;
 pub mod contract_tests;
 pub mod edge_case_tests;
 pub mod fixtures;
@@ -23,7 +22,6 @@ pub mod workspace;
 pub mod workspace_harness;
 
 pub use client::TestClient;
-pub use complexity_harness::*;
 pub use fixtures::*;
 pub use import_harness::*;
 pub use list_functions_harness::*;

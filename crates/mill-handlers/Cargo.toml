@@ -12,8 +12,6 @@ default = ["refactor-all", "lang-java"]
 lang-rust = ["dep:mill-lang-rust"]
 # Exception: lang-java is optional for Java workspace operations (pom.xml manipulation)
 lang-java = ["dep:mill-lang-java"]
-analysis-dead-code = ["mill-handlers-analysis/analysis-dead-code"]
-analysis-circular-deps = ["mill-handlers-analysis/analysis-circular-deps"]
 
 # Refactoring operations - optional for faster compilation
 refactor-rename = []
@@ -34,7 +32,6 @@ mill-services = { path = "../mill-services", default-features = false }
 mill-plugin-api = { path = "../mill-plugin-api" }
 mill-lsp = { path = "../mill-lsp" }
 mill-handler-api = { path = "../mill-handler-api" }
-mill-handlers-analysis = { path = "../mill-handlers-analysis", default-features = false }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }

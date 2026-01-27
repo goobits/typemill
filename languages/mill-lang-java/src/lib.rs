@@ -185,38 +185,6 @@ impl RefactoringProvider for JavaPlugin {
     }
 }
 
-impl mill_plugin_api::AnalysisMetadata for JavaPlugin {
-    fn test_patterns(&self) -> Vec<Regex> {
-        test_patterns()
-    }
-
-    fn assertion_patterns(&self) -> Vec<Regex> {
-        assertion_patterns()
-    }
-
-    fn doc_comment_style(&self) -> mill_plugin_api::DocCommentStyle {
-        mill_plugin_api::DocCommentStyle::JavaDoc
-    }
-
-    fn visibility_keywords(&self) -> Vec<&'static str> {
-        vec!["public", "private", "protected", "package-private"]
-    }
-
-    fn interface_keywords(&self) -> Vec<&'static str> {
-        vec!["interface", "class", "enum", "record", "@interface"]
-    }
-
-    fn complexity_keywords(&self) -> Vec<&'static str> {
-        vec![
-            "if", "else", "switch", "case", "for", "while", "catch", "&&", "||",
-        ]
-    }
-
-    fn nesting_penalty(&self) -> f32 {
-        1.3
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -265,65 +233,6 @@ mod tests {
         assert_eq!(metadata.entry_point, "");
         assert_eq!(metadata.module_separator, ".");
         assert_eq!(metadata.source_dir, "src/main/java");
-    }
-
-    #[test]
-    fn test_analysis_metadata_test_patterns() {
-        use mill_plugin_api::AnalysisMetadata;
-        let plugin = JavaPlugin::default();
-        let patterns = plugin.test_patterns();
-
-        // Should match JUnit @Test annotation
-        let test_sample = "@Test\npublic void testMethod() {}";
-        assert!(patterns.iter().any(|p| p.is_match(test_sample)));
-
-        // Should match JUnit 5 parameterized test
-        let param_sample = "@ParameterizedTest\npublic void testWithParams() {}";
-        assert!(patterns.iter().any(|p| p.is_match(param_sample)));
-
-        // Should match JUnit 5 repeated test
-        let repeated_sample = "@RepeatedTest(10)\npublic void testRepeated() {}";
-        assert!(patterns.iter().any(|p| p.is_match(repeated_sample)));
-    }
-
-    #[test]
-    fn test_analysis_metadata_assertion_patterns() {
-        use mill_plugin_api::AnalysisMetadata;
-        let plugin = JavaPlugin::default();
-        let patterns = plugin.assertion_patterns();
-
-        // Should match Java assert keyword
-        let assert_sample = "assert x == 5;";
-        assert!(patterns.iter().any(|p| p.is_match(assert_sample)));
-
-        // Should match JUnit assertEquals
-        let junit_sample = "assertEquals(expected, actual);";
-        assert!(patterns.iter().any(|p| p.is_match(junit_sample)));
-
-        // Should match AssertJ/Hamcrest
-        let assertj_sample = "assertThat(value).isEqualTo(expected);";
-        assert!(patterns.iter().any(|p| p.is_match(assertj_sample)));
-    }
-
-    #[test]
-    fn test_analysis_metadata_complexity_keywords() {
-        use mill_plugin_api::AnalysisMetadata;
-        let plugin = JavaPlugin::default();
-        let keywords = plugin.complexity_keywords();
-
-        // Should include Java control flow keywords
-        assert!(keywords.contains(&"if"));
-        assert!(keywords.contains(&"else"));
-        assert!(keywords.contains(&"switch"));
-        assert!(keywords.contains(&"case"));
-        assert!(keywords.contains(&"for"));
-        assert!(keywords.contains(&"while"));
-        assert!(keywords.contains(&"catch"));
-        assert!(keywords.contains(&"&&"));
-        assert!(keywords.contains(&"||"));
-
-        // Check nesting penalty
-        assert_eq!(plugin.nesting_penalty(), 1.3);
     }
 
     // ========================================================================

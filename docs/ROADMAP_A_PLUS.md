@@ -28,11 +28,9 @@ This roadmap outlines a strategic plan to elevate the TypeMill codebase from "Pr
 **Status:** Proposed
 **Goal:** Ensure all tools work exactly as documented and behave consistently.
 
-*   **Problem:** `analyze.dependencies` claims `scope: workspace` support but only supports files.
 *   **Tasks:**
-    1.  **Fix Workspace Analysis**: Implement a "Workspace Crawler" in the analysis engine that iterates over all files in the workspace when `scope: workspace` is requested, aggregating the results.
-    2.  **Unified Dry-Run**: Audit all 29 tools to ensure they strictly adhere to the `dryRun` contract (preview by default).
-    3.  **Doc-Code Parity**: Write a test that verifies `docs/tools/` documentation matches the actual `tool_definitions` in code (e.g., ensuring argument lists match).
+    1.  **Unified Dry-Run**: Audit all tools to ensure they strictly adhere to the `dryRun` contract (preview by default).
+    2.  **Doc-Code Parity**: Write a test that verifies `docs/tools/` documentation matches the actual `tool_definitions` in code (e.g., ensuring argument lists match).
 
 ## 🚀 Phase 4: Performance & Scalability (The "Speed" Phase)
 **Status:** Proposed
@@ -41,7 +39,6 @@ This roadmap outlines a strategic plan to elevate the TypeMill codebase from "Pr
 *   **Tasks:**
     1.  **Async Audit**: Scan for blocking I/O (e.g., `std::fs` usage) in async contexts and replace with `tokio::fs` or `spawn_blocking`.
     2.  **Smart Caching**: Review `AstCache`. Implement an LRU (Least Recently Used) eviction policy to prevent memory bloat on massive projects.
-    3.  **Parallel Analysis**: Update `analyze.batch` to utilize `rayon` (for CPU-bound parsing) or `tokio::spawn` (for I/O) to parallelize analysis across all available cores.
 
 ## 💎 Phase 5: DevEx & Observability (The "Polish" Phase)
 **Status:** Proposed
@@ -49,5 +46,4 @@ This roadmap outlines a strategic plan to elevate the TypeMill codebase from "Pr
 
 *   **Tasks:**
     1.  **Structured Logging**: Ensure every log line includes `request_id` and `trace_id` for request tracing.
-    2.  **Dogfooding CI**: Add a CI job that runs `mill tool analyze.quality` on the TypeMill codebase itself and fails if quality drops below a threshold.
-    3.  **Developer Tools**: Create a `debug` tool that dumps the current state of the LSP registry and AST cache for troubleshooting.
+    2.  **Developer Tools**: Create a `debug` tool that dumps the current state of the LSP registry and AST cache for troubleshooting.

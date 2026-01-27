@@ -24,7 +24,7 @@ This guide ensures consistency, clarity, and professionalism across all TypeMill
 **TypeMill** (capital T, capital M)
 - Product name in prose
 - Used when referring to the project, system, or capabilities
-- Examples: "TypeMill provides 29 tools", "TypeMill architecture"
+- Examples: "TypeMill provides core tools", "TypeMill architecture"
 
 **mill** (lowercase, in backticks)
 - CLI command in code examples
@@ -48,26 +48,26 @@ This guide ensures consistency, clarity, and professionalism across all TypeMill
 ### Present Tense
 
 ✅ **Good:**
-- "TypeMill provides 29 tools"
+- "TypeMill provides core refactoring tools"
 - "The server listens on port 3000"
-- "Analysis tools detect code smells"
+- "Navigation tools find symbol definitions"
 
 ❌ **Avoid:**
-- "TypeMill will provide 29 tools"
+- "TypeMill will provide core refactoring tools"
 - "The server will listen on port 3000"
-- "Analysis tools can detect code smells"
+- "Navigation tools can find symbol definitions"
 
 ### Direct & Confident
 
 ✅ **Good:**
 - "Set `dryRun: false` to execute changes"
 - "The default port is 3000"
-- "Three analysis tools are available"
+- "Refactoring tools are available"
 
 ❌ **Avoid:**
 - "You should probably set `dryRun: false` if you want to execute changes"
 - "The default port is typically 3000"
-- "There are three analysis tools you can use"
+- "There are refactoring tools you can use"
 
 ---
 
@@ -126,7 +126,7 @@ Use emojis that add meaning, not decoration.
 
 **Tool**: Public MCP tool that users/AI call
 - "The `rename` tool supports files and directories"
-- "`analyze.quality` is an analysis tool"
+- "`find_definition` is a navigation tool"
 
 **Command**: CLI subcommand
 - "The `mill setup` command detects languages"
@@ -138,13 +138,13 @@ Use emojis that add meaning, not decoration.
 
 ### Tool Counts
 
-**In user-facing docs**: Use "29 public MCP tools"
+**In user-facing docs**: Use "public MCP tools" and link to the catalog
 - README.md (project overview)
 - docs/tools/README.md (tool catalog)
 
 **Elsewhere**: Avoid specific numbers, use qualitative descriptions
 - "comprehensive tools for..."
-- "extensive analysis capabilities"
+- "extensive refactoring capabilities"
 - Link to the catalog instead of repeating counts
 
 **Rationale**: Tool counts change. Keeping them in 2 places prevents drift.
@@ -314,7 +314,7 @@ docs/
 ├── tools/                    (tool reference docs)
 │   ├── README.md            (catalog)
 │   ├── refactoring.md
-│   └── analysis.md
+│   └── navigation.md
 ├── architecture/             (system design)
 │   ├── overview.md
 │   └── api_contracts.md

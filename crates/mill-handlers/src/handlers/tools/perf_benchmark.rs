@@ -7,10 +7,7 @@ mod tests {
     use chrono::Utc;
     use mill_foundation::core::dry_run::DryRunnable;
     use mill_foundation::errors::MillError;
-    use mill_handler_api::{
-        AnalysisConfigTrait, AppState, FileService, LanguagePluginRegistry,
-        ToolHandlerContext,
-    };
+    use mill_handler_api::{AppState, FileService, LanguagePluginRegistry, ToolHandlerContext};
     use mill_plugin_system::PluginManager;
     use serde_json::Value;
     use std::fs::File;
@@ -125,13 +122,6 @@ mod tests {
         }
     }
 
-    struct DummyAnalysisConfig;
-    impl AnalysisConfigTrait for DummyAnalysisConfig {
-        fn as_any(&self) -> &dyn std::any::Any {
-            self
-        }
-    }
-
     fn create_dummy_context() -> ToolHandlerContext {
         ToolHandlerContext {
             user_id: None,
@@ -143,7 +133,6 @@ mod tests {
             }),
             plugin_manager: Arc::new(PluginManager::new()),
             lsp_adapter: Arc::new(Mutex::new(None)),
-            analysis_config: Arc::new(DummyAnalysisConfig),
         }
     }
 

@@ -182,21 +182,6 @@ async fn test_mcp_protocol_layer() {
         .await;
     println!("   ✓ Refactoring tools route correctly (rename)");
 
-    // Test analysis tool
-    let _analysis_response = client
-        .call_tool(
-            "analyze.quality",
-            json!({
-                "kind": "complexity",
-                "targets": {
-                    "paths": [workspace.path().to_str().unwrap()]
-                }
-            }),
-        )
-        .await;
-    println!("   ✓ Analysis tools route correctly (analyze.quality)");
-    println!();
-
     println!("✅ MCP Protocol Smoke Test Complete!");
     println!();
     println!("   All MCP protocol layers verified:");

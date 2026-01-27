@@ -19,7 +19,7 @@
 |--------------|-----------|-------------|
 | Get started from scratch | [user-guide/getting-started](user-guide/getting-started.md) | `mill docs user-guide/getting-started` |
 | See common commands | [user-guide/cheatsheet](user-guide/cheatsheet.md) | `mill docs user-guide/cheatsheet` |
-| Browse all 29 tools | [tools/](tools/) | `mill docs tools` |
+| Browse the tool catalog | [tools/](tools/) | `mill docs tools` |
 | Search documentation | - | `mill docs --search "keyword"` |
 
 **For GitHub users:** See [../README.md](https://github.com/goobits/typemill#readme) for project overview
@@ -35,12 +35,11 @@
 2. **[user-guide/cheatsheet.md](user-guide/cheatsheet.md)** - Quick command reference
 3. **[user-guide/configuration.md](user-guide/configuration.md)** - Configuration reference
 4. **[user-guide/troubleshooting.md](user-guide/troubleshooting.md)** - Common issues and solutions
-5. **[tools/README.md](tools/README.md)** - Complete tool catalog (29 tools, see **[architecture/specifications.md](architecture/specifications.md#tools-visibility-specification)** for full specification)
+5. **[tools/README.md](tools/README.md)** - Complete tool catalog (see **[architecture/specifications.md](architecture/specifications.md#tools-visibility-specification)** for full specification)
 
 **Tool categories:**
 - **[Navigation Tools](tools/navigation.md)** - Find definitions, references, symbols (8 tools)
 - **[Refactoring Tools](tools/refactoring.md)** - Rename, extract, move, inline (7 tools)
-- **[Analysis Tools](tools/analysis.md)** - Quality, dead code, dependencies (8 tools)
 - **[Workspace Tools](tools/workspace.md)** - Package management, find-replace (4 tools)
 - **[System Tools](tools/system.md)** - Health checks, server status (1 tool)
 
@@ -97,12 +96,11 @@
 - **[user-guide/cheatsheet.md](user-guide/cheatsheet.md)** - Command quick reference
 - **[user-guide/troubleshooting.md](user-guide/troubleshooting.md)** - Troubleshooting guide
 
-### Tool Reference (29 Public Tools)
+### Tool Reference
 - **[tools/README.md](tools/README.md)** - Complete tool catalog
   _For authoritative specification including internal tools, see **[architecture/specifications.md](architecture/specifications.md#tools-visibility-specification)**_
 - **[tools/navigation.md](tools/navigation.md)** - Navigation & intelligence (8 tools)
 - **[tools/refactoring.md](tools/refactoring.md)** - Editing & refactoring (7 tools)
-- **[tools/analysis.md](tools/analysis.md)** - Code analysis (8 tools)
 - **[tools/workspace.md](tools/workspace.md)** - Workspace operations (4 tools)
 - **[tools/workspace-rust.md](tools/workspace-rust.md)** - Rust-specific workspace tools
 - **[tools/workspace-typescript.md](tools/workspace-typescript.md)** - TypeScript-specific workspace tools
@@ -125,9 +123,6 @@
 - **[architecture/specifications.md](architecture/specifications.md)** - API contracts & tool visibility
 - **[architecture/internal_tools.md](architecture/internal_tools.md)** - Public vs internal tools policy
 - **[architecture/lang_common_api.md](architecture/lang_common_api.md)** - Language plugin common API
-
-### Features
-- **[features/actionable_suggestions.md](features/actionable_suggestions.md)** - Actionable suggestions system
 
 ### Guides
 - **[guides/plugin-migration.md](guides/plugin-migration.md)** - Plugin refactoring migration guide

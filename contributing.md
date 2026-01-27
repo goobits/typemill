@@ -326,14 +326,12 @@ To add new tools and handlers to the system:
 
 - **[docs/development/overview.md#adding-new-mcp-tools](docs/development/overview.md#adding-new-mcp-tools)** - Tool creation workflow
   - Understanding the Unified Refactoring API (dryRun pattern)
-  - Understanding the Unified Analysis API
   - Adding a tool to an existing handler
   - Creating a new handler
   - Best practices for naming, logging, error handling, testing
 
 **Handler organization:**
 - Navigation tools → `crates/mill-handlers/src/handlers/tools/navigation.rs`
-- Analysis tools → `crates/mill-handlers-analysis/src/*.rs`
 - Refactoring tools → `crates/mill-handlers/src/handlers/<operation>_handler.rs`
 - System tools → `crates/mill-handlers/src/handlers/tools/system.rs`
 

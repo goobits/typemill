@@ -37,7 +37,6 @@ typemill/
 │   ├── mill-plugin-*/     # Plugin system
 │   ├── mill-lang-*/       # Language plugins (rust, typescript, python)
 │   └── mill-*/            # Various utilities
-├── analysis/              # Analysis tools (dead code, dependencies, etc.)
 ├── tests/e2e/             # End-to-end tests
 ├── docs/                  # Documentation (you are here!)
 └── xtask/                 # Build automation tasks
@@ -193,17 +192,6 @@ cargo nextest run --no-capture
 | `mill-plugin-system` | Plugin registry | Rarely |
 | `mill-plugin-bundle` | Plugin collection | Auto-generated |
 | `mill-lang-*` | Language plugins | Adding language support |
-
-### Analysis Tools
-
-| Package | Purpose | When to Edit |
-|---------|---------|--------------|
-| `mill-analysis-common` | Shared analysis code | Common analysis logic |
-| `mill-analysis-dead-code` | Dead code detection | Improving dead code analysis |
-| `mill-analysis-graph` | Dependency graphs | Graph algorithms |
-| `mill-analysis-circular-deps` | Circular dependency detection | Circular dep logic |
-
----
 
 ## 🔧 Build Automation (xtask)
 

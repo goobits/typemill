@@ -14,8 +14,6 @@ use tokio::sync::Mutex;
 
 // Tool handler modules
 pub mod advanced;
-// Analysis handlers moved to mill-handlers-analysis crate
-pub use mill_handlers_analysis as analysis;
 // pub mod editing;  // TODO: Create editing module
 pub mod cross_file_references;
 pub mod file_ops;
@@ -142,13 +140,12 @@ mod dispatch {
     }
 }
 
-use mill_handlers_analysis::config::AnalysisConfig;
 
 /// Context provided to tool handlers in mill-handlers
 ///
 /// This is the concrete context used within mill-handlers, which has access
-/// to the full AppState with all services. mill-handlers-analysis uses a
-/// trait-based context from mill-handler-api.
+/// to the full AppState with all services. External handlers use the trait-based
+/// context from mill-handler-api.
 pub struct ToolHandlerContext {
     /// The ID of the user making the request, for multi-tenancy.
     pub user_id: Option<String>,
@@ -158,8 +155,6 @@ pub struct ToolHandlerContext {
     pub plugin_manager: Arc<PluginManager>,
     /// Direct LSP adapter for refactoring operations
     pub lsp_adapter: Arc<Mutex<Option<Arc<DirectLspAdapter>>>>,
-    /// Loaded analysis configuration
-    pub analysis_config: Arc<AnalysisConfig>,
 }
 
 // Type alias for convenience
@@ -169,12 +164,12 @@ impl ToolHandlerContext {
     /// Convert to mill_handler_api::ToolHandlerContext for handler compatibility
     ///
     /// This creates a trait-based context that:
-    /// - Works with both mill-handlers and mill-handlers-analysis handlers
+    /// - Works with handler implementations that only depend on mill-handler-api
     /// - Provides access to the full concrete AppState via the extensions field
     /// - Allows handlers to downcast to access concrete types when needed
     pub async fn to_api_context(&self) -> mill_handler_api::ToolHandlerContext {
         use super::plugin_dispatcher::{
-            AnalysisConfigWrapper, FileServiceWrapper, LanguagePluginRegistryWrapper,
+            FileServiceWrapper, LanguagePluginRegistryWrapper,
         };
 
         mill_handler_api::ToolHandlerContext {
@@ -199,8 +194,6 @@ impl ToolHandlerContext {
                     .as_ref()
                     .map(|adapter| adapter.clone() as Arc<dyn mill_handler_api::LspAdapter>),
             )),
-            analysis_config: Arc::new(AnalysisConfigWrapper((*self.analysis_config).clone()))
-                as Arc<dyn mill_handler_api::AnalysisConfigTrait>,
         }
     }
 }

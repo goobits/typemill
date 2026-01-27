@@ -3,7 +3,7 @@
 LSP-powered code navigation with IDE-quality intelligence. Jump to definitions, find references, search symbols workspace-wide, explore implementations, get diagnostics, and traverse call hierarchies. All tools leverage language server protocol for accurate, project-aware results.
 
 **Tool count:** 8 tools
-**Related categories:** [Analysis](analysis.md) for code structure analysis, [Refactoring](refactoring.md) for code transformations
+**Related categories:** [Refactoring](refactoring.md) for code transformations
 
 ---
 
@@ -765,6 +765,5 @@ Run `mill setup` for automatic language server detection and configuration.
 ---
 
 **See also:**
-- [Analysis Tools](analysis.md) - Code structure and quality analysis
 - [Refactoring Tools](refactoring.md) - Code transformations
 - [System Tools](system.md) - Server health and diagnostics

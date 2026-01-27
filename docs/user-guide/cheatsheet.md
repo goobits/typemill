@@ -124,43 +124,6 @@ mill tool delete '{"target": {"kind": "file", "path": "src/unused.ts"}, "options
 ```
 ---
 
-## Analysis Tools
-
-### Code Quality
-```bash
-# Analyze complexity
-mill tool analyze.quality '{"kind": "complexity", "scope": "workspace"}'
-
-# Check specific file
-mill tool analyze.quality '{"kind": "complexity", "scope": "file:src/app.ts"}'
-```
-### Find Dead Code
-```bash
-# Find unused imports
-mill tool analyze.dead_code '{"kind": "unused_imports", "scope": "workspace"}'
-
-# Find unused symbols
-mill tool analyze.dead_code '{"kind": "unused_symbols", "scope": "workspace"}'
-```
-### Dependency Analysis
-```bash
-mill tool analyze.dependencies '{"kind": "imports", "scope": "file:src/app.ts"}'
-mill tool analyze.dependencies '{"kind": "circular", "scope": "workspace"}'
-```
-### Batch Analysis (Multiple Files)
-```bash
-mill tool analyze.batch '{"scope": "workspace", "analyzers": ["complexity", "dead_code"]}'
-```
-### Markdown Analysis
-```bash
-# Check for structural issues like heading hierarchy
-mill tool analyze.quality '{"kind": "markdown_structure", "scope": "file:README.md"}'
-
-# Check for formatting issues like missing alt text
-mill tool analyze.quality '{"kind": "markdown_formatting", "scope": "file:docs/user-guide.md"}'
-```
----
-
 ## Workspace Tools
 
 ### Find and Replace
@@ -237,16 +200,6 @@ mill tool rename --target file:src/old.ts --new-name src/new.ts
 
 # 2. Execute
 mill tool rename '{"target": {"kind": "file", "path": "src/old.ts"}, "newName": "src/new.ts", "options": {"dryRun": false}}'
-```
-### Find and Fix Dead Code
-```bash
-# 1. Find unused imports
-mill tool analyze.dead_code '{"kind": "unused_imports", "scope": "workspace"}'
-
-# 2. Review the findings
-
-# 3. Use Claude to remove them:
-"Remove all unused imports from src/app.ts"
 ```
 ### Refactor with AI
 Ask Claude:
@@ -360,32 +313,6 @@ All refactoring tools support `options.dryRun` (default: `true`)
 **Example:**
 ```bash
 mill tool rename '{"target": {"kind": "file", "path": "old.ts"}, "newName": "new.ts", "options": {"dryRun": false}}'
-```
-
----
-
-### Analysis Tools
-
-| Tool | Required Parameters | Optional Parameters | Returns |
-|------|-------------------|-------------------|---------|
-| `analyze.quality` | `kind`, `scope` | - | AnalysisResult |
-| `analyze.dead_code` | `kind`, `scope` | - | AnalysisResult |
-| `analyze.dependencies` | `kind`, `scope` | - | DependencyGraph |
-| `analyze.cycles` | `scope` | `max_depth` | CircularDependency[] |
-| `analyze.structure` | `scope` | `depth` | StructureInfo |
-| `analyze.documentation` | `scope` | `check_coverage` | DocAnalysis |
-| `analyze.tests` | `scope` | `check_coverage` | TestAnalysis |
-| `analyze.batch` | `scope`, `analyzers` | `parallel` | BatchResult |
-| `analyze.module_dependencies` | `crate_path`, `module_path` | - | ModuleDependencies |
-
-**Scope formats:**
-- Workspace: `{"kind": "workspace"}`
-- File: `{"kind": "file", "path": "src/app.ts"}`
-- Directory: `{"kind": "directory", "path": "src/utils"}`
-
-**Example:**
-```bash
-mill tool analyze.quality '{"kind": "complexity", "scope": {"kind": "workspace"}}'
 ```
 
 ---

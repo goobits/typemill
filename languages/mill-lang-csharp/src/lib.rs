@@ -344,55 +344,6 @@ impl ManifestUpdater for CsharpPlugin {
     }
 }
 
-impl mill_plugin_api::AnalysisMetadata for CsharpPlugin {
-    fn test_patterns(&self) -> Vec<regex::Regex> {
-        vec![
-            regex::Regex::new(r"\[Test\]").unwrap(),
-            regex::Regex::new(r"\[Fact\]").unwrap(),
-            regex::Regex::new(r"\[Theory\]").unwrap(),
-            regex::Regex::new(r"\[TestMethod\]").unwrap(),
-        ]
-    }
-
-    fn assertion_patterns(&self) -> Vec<regex::Regex> {
-        vec![
-            regex::Regex::new(r"Assert\.").unwrap(),
-            regex::Regex::new(r"Assert\.Equal").unwrap(),
-            regex::Regex::new(r"Assert\.True").unwrap(),
-            regex::Regex::new(r"\.Should\(\)").unwrap(),
-        ]
-    }
-
-    fn doc_comment_style(&self) -> mill_plugin_api::DocCommentStyle {
-        mill_plugin_api::DocCommentStyle::TripleSlash
-    }
-
-    fn visibility_keywords(&self) -> Vec<&'static str> {
-        vec![
-            "public",
-            "private",
-            "protected",
-            "internal",
-            "protected internal",
-            "private protected",
-        ]
-    }
-
-    fn interface_keywords(&self) -> Vec<&'static str> {
-        vec!["interface", "class", "struct", "enum", "record"]
-    }
-
-    fn complexity_keywords(&self) -> Vec<&'static str> {
-        vec![
-            "if", "else", "switch", "case", "for", "foreach", "while", "catch", "&&", "||", "??",
-        ]
-    }
-
-    fn nesting_penalty(&self) -> f32 {
-        1.3
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -564,65 +515,6 @@ namespace MyNamespace
         let installer = plugin.lsp_installer().unwrap();
         assert_eq!(installer.lsp_name(), "csharp-ls");
         // We can't easily test the installation itself, but we can check the name
-    }
-
-    #[test]
-    fn test_analysis_metadata_test_patterns() {
-        use mill_plugin_api::AnalysisMetadata;
-        let plugin = CsharpPlugin::default();
-        let patterns = plugin.test_patterns();
-
-        // Should match NUnit test attribute
-        let nunit_sample = "[Test]\npublic void MyTest() {}";
-        assert!(patterns.iter().any(|p| p.is_match(nunit_sample)));
-
-        // Should match xUnit fact attribute
-        let xunit_sample = "[Fact]\npublic void MyFact() {}";
-        assert!(patterns.iter().any(|p| p.is_match(xunit_sample)));
-
-        // Should match MSTest attribute
-        let mstest_sample = "[TestMethod]\npublic void MyMethod() {}";
-        assert!(patterns.iter().any(|p| p.is_match(mstest_sample)));
-    }
-
-    #[test]
-    fn test_analysis_metadata_assertion_patterns() {
-        use mill_plugin_api::AnalysisMetadata;
-        let plugin = CsharpPlugin::default();
-        let patterns = plugin.assertion_patterns();
-
-        // Should match Assert.Equal
-        let assert_sample = "Assert.Equal(expected, actual);";
-        assert!(patterns.iter().any(|p| p.is_match(assert_sample)));
-
-        // Should match Assert.True
-        let true_sample = "Assert.True(condition);";
-        assert!(patterns.iter().any(|p| p.is_match(true_sample)));
-
-        // Should match FluentAssertions
-        let fluent_sample = "result.Should().Be(expected);";
-        assert!(patterns.iter().any(|p| p.is_match(fluent_sample)));
-    }
-
-    #[test]
-    fn test_analysis_metadata_complexity_keywords() {
-        use mill_plugin_api::AnalysisMetadata;
-        let plugin = CsharpPlugin::default();
-        let keywords = plugin.complexity_keywords();
-
-        // Should include C# control flow keywords
-        assert!(keywords.contains(&"if"));
-        assert!(keywords.contains(&"else"));
-        assert!(keywords.contains(&"switch"));
-        assert!(keywords.contains(&"case"));
-        assert!(keywords.contains(&"for"));
-        assert!(keywords.contains(&"foreach"));
-        assert!(keywords.contains(&"while"));
-        assert!(keywords.contains(&"catch"));
-        assert!(keywords.contains(&"??"));
-
-        // Check nesting penalty
-        assert_eq!(plugin.nesting_penalty(), 1.3);
     }
 
     // ========================================================================

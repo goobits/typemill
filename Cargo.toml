@@ -17,14 +17,10 @@ members = [
     "languages/mill-lang-gitignore",
     "crates/mill-plugin-bundle",
     "apps/mill",
-    "analysis/mill-analysis-common",
-    "analysis/mill-analysis-dead-code",
-    "analysis/mill-analysis-graph",
-    "analysis/mill-analysis-circular-deps",
     "tests/e2e",
     "crates/mill-workspaces",
     "crates/mill-auth",
-    "crates/xtask", "crates/mill-ast", "crates/mill-client", "crates/mill-test-support", "crates/mill-handlers", "crates/mill-handlers-analysis", "crates/mill-handler-api", "crates/mill-config", "crates/mill-foundation",
+    "crates/xtask", "crates/mill-ast", "crates/mill-client", "crates/mill-test-support", "crates/mill-handlers", "crates/mill-handler-api", "crates/mill-config", "crates/mill-foundation",
     "languages/mill-lang-cpp",
     "languages/mill-lang-csharp",
     "languages/mill-lang-swift",
@@ -105,9 +101,6 @@ bincode = "1.3"
 walkdir = "2.5"
 tree-sitter-java = "0.20"
 
-# Analysis crates
-mill-analysis-common = { path = "analysis/mill-analysis-common" }
-
 # Note: Multiple versions of hashbrown, bitflags, dirs, and getrandom exist
 # due to transitive dependencies from upstream crates (dashmap, lsp-types, swc_*, etc.)
 # These cannot be consolidated without upstream updates
@@ -122,8 +115,6 @@ mill-lang-csharp = { path = "languages/mill-lang-csharp", default-features = fal
 mill-lang-c = { path = "languages/mill-lang-c", default-features = false }
 mill-lang-go = { path = "languages/mill-lang-go", default-features = false }
 mill-lang-java = { path = "languages/mill-lang-java", default-features = false }
-mill-analysis-dead-code = { path = "analysis/mill-analysis-dead-code" }
-mill-analysis-graph = { path = "analysis/mill-analysis-graph" }
 mill-lang-markdown = { path = "languages/mill-lang-markdown", default-features = false }
 mill-lang-cpp = { path = "languages/mill-lang-cpp", default-features = false }
 
@@ -140,4 +131,3 @@ panic = "abort"
 [profile.dev]
 opt-level = 0
 debug = true
-

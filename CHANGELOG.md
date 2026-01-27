@@ -15,24 +15,11 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 ### [0.8.4] - 2025-11-10
 
-🧪 **Version 0.8.4** - Analysis & workspace test consolidation (Phase 13 completion)
+🧪 **Version 0.8.4** - Workspace test consolidation (Phase 13 completion)
 
 #### Added
 
-- **Shared Analysis Test Helper** - Centralized test infrastructure for analysis tools
-  - Created `run_analysis_test()` helper in `tests/e2e/src/test_helpers.rs`
-  - Handles workspace setup, file creation, tool invocation, and result verification
-  - Consolidates duplicate helpers across 6 analysis test files (~230 LOC saved)
-
 #### Removed
-
-- **Analysis Test Helpers** - Deleted duplicate helper functions from analysis test files
-  - Removed `run_analysis_test()` from `test_analyze_quality.rs` (46 lines)
-  - Removed `run_dead_code_test()` from `test_analyze_dead_code.rs` (40 lines)
-  - Removed `run_dependency_test()` from `test_analyze_dependencies.rs` (40 lines)
-  - Removed `run_structure_test()` from `test_analyze_structure.rs` (40 lines)
-  - Removed `analyze_documentation()` from `test_analyze_documentation.rs` (32 lines)
-  - Removed `analyze_tests()` from `test_analyze_tests.rs` (32 lines)
 
 - **Workspace Unit Tests** - Deleted duplicate workspace tests from language plugins
   - Removed 8 tests from `mill-lang-typescript/src/workspace_support.rs` (119 lines)
@@ -46,11 +33,8 @@ The project underwent a complete architectural transformation from TypeScript/No
 #### Changed
 
 - **Test Consolidation Progress** - Phase 13 of test infrastructure consolidation
-  - Updated 9 analysis test calls to use shared `test_helpers::run_analysis_test()`
-  - All analysis tests now use consistent error handling and result verification
   - Workspace tests centralized in `crates/mill-test-support/src/harness/workspace_harness.rs`
-  - **Phase 13 savings:** ~857 LOC saved (230 analysis + 627 workspace)
-  - **Total consolidation to date:** ~2,204 LOC saved, 162 tests eliminated
+  - **Phase 13 savings:** ~627 LOC saved (workspace)
 
 #### Fixed
 
@@ -118,10 +102,6 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 #### Added
 
-- **Deep Dead Code Analysis** - Workspace-scoped dead code analysis with LspAdapter integration
-  - Cross-file dependency tracking and import/export analysis
-  - Integrated with LSP provider for accurate symbol resolution
-
 - **Test Infrastructure Consolidation** - Major test deduplication effort
   - Phase 1: Import harness migration (18 tests consolidated, ~216 LOC saved)
   - Phase 2: Refactoring test consolidation (9 tests eliminated, 214 LOC saved)
@@ -137,10 +117,6 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Unified error handling across all crates
   - Cleaner error propagation and handling
   - Removed deprecated error types
-
-- **Analysis Handler Extraction** - Extracted analysis handlers to separate `mill-handlers-analysis` crate
-  - Better separation of concerns
-  - Cleaner crate organization
 
 - **API Clarity Improvements** - Enhanced public/private API boundaries
   - Added 242+ `pub(crate)` markers across codebase
@@ -289,7 +265,7 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Conflict detection and validation
 
 - **Tool Access Control** - Internal tools blocked from CLI/MCP
-  - Clean separation of public API (29 tools) vs internal tools (20 tools)
+  - Clean separation of public API vs internal tools
   - Prevents accidental usage of internal plumbing tools
   - Better security and API surface management
 
@@ -310,7 +286,6 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Fixed broken internal links and case sensitivity issues
 
 - **Rust Crate Organization** - Complete mill-* naming convention
-  - Analysis crates: cb-analysis-* → mill-analysis-* (5 crates)
   - Language plugins: cb-lang-* → mill-lang-* (5 crates)
   - Core crates: mill-* → mill-* (17 crates)
   - Foundation crates: cb-plugin-api → mill-plugin-api, etc.
@@ -422,7 +397,7 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 ### [0.6.0] - 2025-10-21
 
-🚀 **Version 0.6.0** - Plugin architecture modernization and refactoring/analysis APIs
+🚀 **Version 0.6.0** - Plugin architecture modernization and refactoring APIs
 
 #### Added
 
@@ -452,16 +427,6 @@ The project underwent a complete architectural transformation from TypeScript/No
   - Atomic execution with rollback on errors
   - **See**: [docs/tools/refactoring.md](docs/tools/refactoring.md) for complete unified API documentation
 
-- **Unified Analysis API** - 6 analysis tools with 26 detection kinds
-  - `analyze.quality` - complexity, smells, maintainability, readability
-  - `analyze.dead_code` - unused imports/symbols/parameters/variables/types
-  - `analyze.dependencies` - imports, circular deps, coupling, cohesion
-  - `analyze.structure` - symbols, hierarchy, interfaces, inheritance
-  - `analyze.documentation` - coverage, quality, style, examples
-  - `analyze.tests` - coverage, quality, assertions, organization
-  - `analyze.batch` - optimized multi-file analysis with AST caching
-  - Configuration via `.typemill/analysis.toml` with 3 presets
-
 - **Additional Language Plugins** - Markdown, TOML, YAML plugins for rename support
 - **Build Automation** - xtask pattern with cross-platform Rust tasks (`cargo xtask install`, `check-all`, etc.)
 - **Dependency Auditing** - cargo-deny integration for security and license checks
@@ -483,7 +448,6 @@ The project underwent a complete architectural transformation from TypeScript/No
 #### Removed
 
 - **Legacy Refactoring Tools** - Replaced by unified API (evolved to dryRun option in Phase 5)
-- **Dead-Weight Analysis Tools** - Removed tools fully covered by unified analysis API
 - **Internal Tool Count** - Reduced from 25 → 20 tools
 
 ---
@@ -542,16 +506,9 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 ### [0.4.0] - 2025-10-09
 
-🚀 **Version 0.4.0** - Analysis subsystem architecture, Go refactoring parity, and major setup simplification
+🚀 **Version 0.4.0** - Go refactoring parity and major setup simplification
 
 #### Added
-
-- **Analysis Subsystem Architecture** - Complete implementation of advanced analysis subsystem
-  - New `analysis/mill-analysis-common` crate with shared traits (`AnalysisEngine`, `LspProvider`)
-  - New `analysis/mill-analysis-deep-dead-code` crate with dependency graph analysis
-  - Cross-file dead code detection with import/export tracking
-  - Configurable analysis via feature flags (`analysis-dead-code`)
-  - Trait-based architecture for dependency inversion and extensibility
 
 - **Go Language Refactoring Parity** - Go now has full AST-based refactoring support (4 of 7 languages complete: TypeScript, Python, Rust, Go)
 
@@ -580,9 +537,6 @@ The project underwent a complete architectural transformation from TypeScript/No
 🚀 **Version 0.3.0** - Swift language support, documentation updates, build/test optimizations, and import handling fixes
 
 #### Added
-
-- **Advanced MCP Analysis Tools** - Added 4 new tools: `find_unused_imports`, `optimize_imports`, `analyze_complexity`, `suggest_refactoring`
-- **Cognitive Complexity Metrics** - Enhanced code metrics with cognitive complexity scoring
 
 - **Enhanced `rename_directory` Workspace Operations** - Auto-update Cargo.toml path dependencies and manifest updates
 - **mill-lang-common Utility Library** - Shared utility modules for language plugins with ImportGraph builder
@@ -674,7 +628,6 @@ The project underwent a complete architectural transformation from TypeScript/No
 
 - install.sh now installs git before attempting to clone repository
 - Java tests compilation errors and unused imports
-- LSP tools plugin delegation in analyze_imports
 - Text edits correctly apply to target files in EditPlan
 
 ---
