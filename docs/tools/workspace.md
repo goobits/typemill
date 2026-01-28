@@ -1,9 +1,9 @@
 # Workspace Tools
 
-Package management operations for multi-language workspaces. Create new packages, extract dependencies, and manage workspace member lists.
+Package management operations for multi-language workspaces. Create new packages, extract dependencies, and perform workspace-wide text operations.
 
 **Supported languages:** Rust (Cargo), TypeScript (npm/yarn/pnpm), Python (PDM/Poetry/Hatch)
-**Tool count:** 4 tools
+**Tool count:** 3 tools
 **Related categories:** [Refactoring](refactoring.md) (rename for crate consolidation)
 
 **Language-specific guides:**
@@ -16,12 +16,10 @@ Package management operations for multi-language workspaces. Create new packages
 - [Tools](#tools)
   - [workspace.create_package](#workspacecreate_package)
   - [workspace.extract_dependencies](#workspaceextract_dependencies)
-  - [workspace.update_members](#workspaceupdate_members)
   - [workspace.find_replace](#workspacefind_replace)
 - [Common Patterns](#common-patterns)
   - [Crate Extraction Workflow](#crate-extraction-workflow)
   - [Package Creation with Dependencies](#package-creation-with-dependencies)
-  - [Workspace Reorganization](#workspace-reorganization)
   - [Dependency Audit Before Extraction](#dependency-audit-before-extraction)
   - [Project-Wide Text Replacement](#project-wide-text-replacement)
 - [Integration with Other Tools](#integration-with-other-tools)
@@ -258,183 +256,6 @@ Object with extraction results:
 - Idempotent: Safe to run multiple times (skips already-existing dependencies)
 - Section-aware: Can extract from dependencies, dev-dependencies, or build-dependencies
 - Creates target section if missing (e.g., adds `[dev-dependencies]` if extracting dev deps)
-
----
-
-### workspace.update_members
-
-**Purpose:** Add, remove, or list workspace members in the root Cargo.toml manifest.
-
-**Parameters:**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| workspace_manifest | string | Yes | Path to workspace Cargo.toml |
-| action | string | Yes | Action: "add", "remove", or "list" |
-| members | string[] | Conditional | Member paths (required for add/remove, ignored for list) |
-| options | object | No | Update options |
-| options.dryRun | boolean | No | Preview without modifying file (default: false) |
-| options.create_if_missing | boolean | No | Create [workspace] section if missing (default: false) |
-
-**Returns:**
-
-Object with update results:
-- `action` (string): Action performed
-- `members_before` (string[]): Members list before operation
-- `members_after` (string[]): Members list after operation
-- `changes_made` (number): Count of changes made
-- `workspace_updated` (boolean): Whether file was modified
-- `dryRun` (boolean): Whether this was a dry-run
-
-**Example - Add members:**
-
-```json
-// MCP request
-{
-  "method": "tools/call",
-  "params": {
-    "name": "workspace.update_members",
-    "arguments": {
-      "workspace_manifest": "/workspace/Cargo.toml",
-      "action": "add",
-      "members": ["crates/new-crate1", "crates/new-crate2"],
-      "options": {
-        "dryRun": false,
-        "create_if_missing": false
-      }
-    }
-  }
-}
-
-// Response
-{
-  "result": {
-    "action": "add",
-    "members_before": ["crates/existing-crate"],
-    "members_after": [
-      "crates/existing-crate",
-      "crates/new-crate1",
-      "crates/new-crate2"
-    ],
-    "changes_made": 2,
-    "workspace_updated": true,
-    "dryRun": false
-  }
-}
-```
-**Example - Remove member:**
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "workspace.update_members",
-    "arguments": {
-      "workspace_manifest": "/workspace/Cargo.toml",
-      "action": "remove",
-      "members": ["crates/deprecated"],
-      "options": {
-        "dryRun": false
-      }
-    }
-  }
-}
-
-// Response
-{
-  "result": {
-    "action": "remove",
-    "members_before": ["crates/foo", "crates/deprecated", "crates/bar"],
-    "members_after": ["crates/foo", "crates/bar"],
-    "changes_made": 1,
-    "workspace_updated": true,
-    "dryRun": false
-  }
-}
-```
-**Example - List members:**
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "workspace.update_members",
-    "arguments": {
-      "workspace_manifest": "/workspace/Cargo.toml",
-      "action": "list"
-    }
-  }
-}
-
-// Response (no modifications)
-{
-  "result": {
-    "action": "list",
-    "members_before": ["crates/a", "crates/b", "crates/c"],
-    "members_after": ["crates/a", "crates/b", "crates/c"],
-    "changes_made": 0,
-    "workspace_updated": false,
-    "dryRun": false
-  }
-}
-```
-**Example - Create workspace section:**
-
-```json
-// If Cargo.toml has no [workspace] section
-{
-  "method": "tools/call",
-  "params": {
-    "name": "workspace.update_members",
-    "arguments": {
-      "workspace_manifest": "/workspace/Cargo.toml",
-      "action": "add",
-      "members": ["crates/first-member"],
-      "options": {
-        "create_if_missing": true
-      }
-    }
-  }
-}
-
-// Creates [workspace] section with members array
-```
-**Example - Dry-run preview:**
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "workspace.update_members",
-    "arguments": {
-      "workspace_manifest": "/workspace/Cargo.toml",
-      "action": "add",
-      "members": ["crates/preview"],
-      "options": {
-        "dryRun": true
-      }
-    }
-  }
-}
-
-// Shows what would change, but file is NOT modified
-{
-  "result": {
-    "changes_made": 1,
-    "workspace_updated": false,
-    "dryRun": true
-  }
-}
-```
-**Notes:**
-- Idempotent operations: Adding existing member or removing non-existent member is no-op
-- Automatically normalizes paths to forward slashes (even on Windows)
-- Preserves TOML formatting and comments
-- Duplicate detection: Adding an already-present member returns `changes_made: 0`
-- Missing workspace section: Returns error unless `create_if_missing: true`
-- Error handling: Returns error if manifest file not found
-- Member validation: For "add" action, ensures paths are valid
-- Atomic operations: File only modified if action succeeds
 
 ---
 
@@ -736,30 +557,6 @@ mill tool workspace.extract_dependencies '{
   "dependencies": ["tokio", "tracing", "serde"]
 }'
 ```
-### Workspace Reorganization
-
-Remove deprecated crates from workspace:
-
-```bash
-# 1. List current members
-mill tool workspace.update_members '{
-  "workspace_manifest": "Cargo.toml",
-  "action": "list"
-}'
-
-# 2. Remove deprecated crates
-mill tool workspace.update_members '{
-  "workspace_manifest": "Cargo.toml",
-  "action": "remove",
-  "members": ["crates/deprecated-a", "crates/deprecated-b"]
-}'
-
-# 3. Verify removal
-mill tool workspace.update_members '{
-  "workspace_manifest": "Cargo.toml",
-  "action": "list"
-}'
-```
 ### Dependency Audit Before Extraction
 
 Preview dependencies before extracting a module:
@@ -842,7 +639,7 @@ mill tool rename '{
 # This automatically:
 # - Moves source-crate/src/* to target-crate/src/module/*
 # - Merges dependencies (uses workspace.extract_dependencies internally)
-# - Removes from workspace members (uses workspace.update_members)
+# - Removes source from workspace members
 # - Updates imports across workspace
 ```
 **Related Documentation:**

@@ -37,21 +37,18 @@ TypeMill is a Pure Rust MCP server that bridges Language Server Protocol (LSP) f
 - `get_diagnostics` - Fetch errors/warnings
 - `get_call_hierarchy` - Show call graph
 
-### Editing & Refactoring (7 tools)
+### Editing & Refactoring (5 tools)
 All refactoring tools support **`options.dryRun`** for safe preview (default: true).
 
 - `rename` - Rename symbols, files, directories (updates all references)
 - `extract` - Extract functions, variables, constants, modules
 - `inline` - Inline variables, functions, constants
 - `move` - Move symbols, files, directories, modules
-- `reorder` - Reorder function parameters
-- `transform` - Transform code patterns (e.g., to async)
 - `delete` - Delete symbols, files, directories, dead code
 
-### Workspace (4 tools)
+### Workspace (3 tools)
 - `workspace.create_package` - Create new packages (Rust, TypeScript, Python)
 - `workspace.extract_dependencies` - Extract module dependencies
-- `workspace.update_members` - Update workspace member list
 - `workspace.find_replace` - Find and replace across workspace
 
 ### System (1 tool)
@@ -241,8 +238,8 @@ cargo fmt && cargo clippy
 **Tool Documentation:**
 - [tools/README.md](docs/tools/README.md) - Complete catalog
 - [tools/navigation.md](docs/tools/navigation.md) - Navigation tools (8)
-- [tools/refactoring.md](docs/tools/refactoring.md) - Refactoring tools (7)
-- [tools/workspace.md](docs/tools/workspace.md) - Workspace tools (4)
+- [tools/refactoring.md](docs/tools/refactoring.md) - Refactoring tools (5)
+- [tools/workspace.md](docs/tools/workspace.md) - Workspace tools (3)
 
 **Architecture:**
 - [architecture/core-concepts.md](docs/architecture/core-concepts.md) - System design, data flow

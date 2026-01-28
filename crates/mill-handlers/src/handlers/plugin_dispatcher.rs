@@ -347,7 +347,6 @@ impl PluginDispatcher {
                     InternalEditingToolsHandler, InternalIntelligenceHandler, InternalNavigationHandler,
                     InternalWorkspaceHandler, LifecycleHandler, NavigationHandler,
                     SystemToolsHandler, WorkspaceToolsHandler, WorkspaceCreateHandler, WorkspaceExtractDepsHandler,
-                    WorkspaceUpdateMembersHandler,
                 };
                 use super::workspace::FindReplaceHandler;
                 use super::FileOperationHandler;
@@ -368,7 +367,6 @@ impl PluginDispatcher {
                     WorkspaceToolsHandler => "WorkspaceToolsHandler with 2 INTERNAL tools (move_directory, update_dependencies)",
                     WorkspaceCreateHandler => "WorkspaceCreateHandler with 1 tool (workspace.create_package)",
                     WorkspaceExtractDepsHandler => "WorkspaceExtractDepsHandler with 1 tool (workspace.extract_dependencies)",
-                    WorkspaceUpdateMembersHandler => "WorkspaceUpdateMembersHandler with 1 tool (workspace.update_members)",
                     FindReplaceHandler => "FindReplaceHandler with 1 tool (workspace.find_replace)"
                 });
 
@@ -408,22 +406,6 @@ impl PluginDispatcher {
                     let move_handler = Arc::new(MoveHandler::new());
                     register_handlers_with_logging!(registry, @arc {
                         move_handler => "Unified move handler (supports dryRun)"
-                    });
-                }
-                #[cfg(feature = "refactor-reorder")]
-                {
-                    use super::ReorderHandler;
-                    let reorder_handler = Arc::new(ReorderHandler::new());
-                    register_handlers_with_logging!(registry, @arc {
-                        reorder_handler => "Unified reorder handler (supports dryRun)"
-                    });
-                }
-                #[cfg(feature = "refactor-transform")]
-                {
-                    use super::TransformHandler;
-                    let transform_handler = Arc::new(TransformHandler::new());
-                    register_handlers_with_logging!(registry, @arc {
-                        transform_handler => "Unified transform handler (supports dryRun)"
                     });
                 }
                 #[cfg(feature = "refactor-delete")]

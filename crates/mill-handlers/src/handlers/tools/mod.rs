@@ -26,7 +26,6 @@ pub mod system;
 pub mod workspace;
 pub mod workspace_create;
 pub mod workspace_extract_deps;
-pub mod workspace_update_members;
 
 #[cfg(test)]
 pub mod perf_benchmark;
@@ -44,7 +43,6 @@ pub use system::SystemToolsHandler;
 pub use workspace::WorkspaceToolsHandler;
 pub use workspace_create::WorkspaceCreateHandler;
 pub use workspace_extract_deps::WorkspaceExtractDepsHandler;
-pub use workspace_update_members::WorkspaceUpdateMembersHandler;
 
 // Re-export dispatch helpers
 pub use dispatch::dispatch_to_language_plugin;

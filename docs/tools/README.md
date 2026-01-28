@@ -21,18 +21,15 @@ This directory contains focused documentation for each tool category. Each categ
 | `get_symbol_info` | Navigation | Get detailed symbol information | [navigation.md](navigation.md#get_symbol_info) |
 | `get_diagnostics` | Navigation | Get errors/warnings/hints | [navigation.md](navigation.md#get_diagnostics) |
 | `get_call_hierarchy` | Navigation | Get call hierarchy (callers/callees) | [navigation.md](navigation.md#get_call_hierarchy) |
-| **Editing & Refactoring (7 tools)** ||||
+| **Editing & Refactoring (5 tools)** ||||
 | `rename` | Refactoring | Rename symbols/files/directories (dryRun option) | [refactoring.md](refactoring.md#rename) |
 | `extract` | Refactoring | Extract functions/variables (dryRun option) | [refactoring.md](refactoring.md#extract) |
 | `inline` | Refactoring | Inline variables/functions (dryRun option) | [refactoring.md](refactoring.md#inline) |
 | `move` | Refactoring | Move symbols/files (dryRun option) | [refactoring.md](refactoring.md#move) |
-| `reorder` | Refactoring | Reorder params/imports (dryRun option) | [refactoring.md](refactoring.md#reorder) |
-| `transform` | Refactoring | Code transformations (dryRun option) | [refactoring.md](refactoring.md#transform) |
 | `delete` | Refactoring | Delete symbols/files/directories (dryRun option) | [refactoring.md](refactoring.md#delete) |
-| **Workspace (4 tools)** ||||
+| **Workspace (3 tools)** ||||
 | `workspace.create_package` | Workspace | Create new package | [workspace.md](workspace.md#workspacecreate_package) |
 | `workspace.extract_dependencies` | Workspace | Extract module dependencies | [workspace.md](workspace.md#workspaceextract_dependencies) |
-| `workspace.update_members` | Workspace | Update workspace members | [workspace.md](workspace.md#workspaceupdate_members) |
 | `workspace.find_replace` | Workspace | Find and replace text workspace-wide | [workspace.md](workspace.md#workspacefind_replace) |
 | **System (1 tool)** ||||
 | `health_check` | System | Server health & statistics | [system.md](system.md#health_check) |
@@ -47,12 +44,12 @@ This directory contains focused documentation for each tool category. Each categ
 Navigate codebases with precision using language server protocol integration. Find definitions, references, implementations, and get rich symbol information with full IDE-quality intelligence.
 
 ### [Editing & Refactoring](refactoring.md)
-**7 tools** with unified dryRun API for safe, reviewable refactoring.
+**5 tools** with unified dryRun API for safe, reviewable refactoring.
 
 All refactoring operations use a single tool with `options.dryRun` parameter: default `true` generates a preview plan without modifying files, explicit `false` applies changes immediately with validation and rollback support.
 
 ### [Workspace](workspace.md)
-**4 workspace management tools** for package and text operations.
+**3 workspace management tools** for package and text operations.
 **Language-specific guides:** [Rust](workspace-rust.md) | [TypeScript](workspace-typescript.md) | [Python](workspace-python.md)
 
 Create packages, extract dependencies, manage workspace member lists, and perform workspace-wide find/replace operations. Supports Rust (Cargo), TypeScript (npm/yarn/pnpm), and Python (PDM/Poetry/Hatch) workspaces.

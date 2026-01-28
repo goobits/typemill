@@ -1,6 +1,6 @@
 # Editing & Refactoring Tools
 
-**7 tools with unified dryRun API for safe, reviewable refactoring operations**
+**5 tools with unified dryRun API for safe, reviewable refactoring operations**
 
 The Unified Refactoring API provides a single tool per refactoring operation with an `options.dryRun` parameter:
 
@@ -9,7 +9,7 @@ The Unified Refactoring API provides a single tool per refactoring operation wit
 
 All refactoring operations support checksum validation, rollback on error, and post-apply validation.
 
-**Tool count:** 7 tools
+**Tool count:** 5 tools
 **Related categories:** [Navigation](navigation.md), [Workspace](workspace.md)
 
 ## Table of Contents
@@ -19,8 +19,6 @@ All refactoring operations support checksum validation, rollback on error, and p
   - [extract](#extract)
   - [inline](#inline)
   - [move](#move)
-  - [reorder](#reorder)
-  - [transform](#transform)
   - [delete](#delete)
 - [Common Patterns](#common-patterns)
   - [Safe Preview Pattern (Recommended)](#safe-preview-pattern-recommended)
@@ -556,154 +554,6 @@ All refactoring operations support checksum validation, rollback on error, and p
 - Handles cross-file symbol moves
 - File/directory moves update all references
 - Module moves require language plugin support
-
----
-
-### reorder
-
-**Purpose:** Reorder function parameters, struct fields, imports, or statements.
-
-**Parameters:**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `target` | `object` | **Yes** | Target to reorder (see target structure) |
-| `target.kind` | `string` | **Yes** | Reorder type: `"parameters"` \| `"fields"` \| `"imports"` \| `"statements"` |
-| `target.file_path` | `string` | **Yes** | Absolute path to file |
-| `target.position` | `object` | **Yes** | Position: `{line: number, character: number}` (0-indexed) |
-| `new_order` | `array` | **Yes** | Array of strings specifying new order (parameter/field names) |
-| `options` | `object` | No | Reorder options (see options below) |
-| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (**default: true**) |
-| `options.preserve_formatting` | `boolean` | No | Preserve code formatting (**default: true**) |
-| `options.update_call_sites` | `boolean` | No | Update all call sites for parameter reordering (**default: true**) |
-
-**Reorder Types:**
-- `"parameters"` - Reorder function/method parameters
-  - **Important:** Updates all call sites across workspace when `update_call_sites: true`
-  - **Requires:** `new_order` array with parameter names in desired order
-- `"fields"` - Reorder struct/class fields
-  - Preserves field values, just changes declaration order
-- `"imports"` - Reorder import statements
-  - Can use LSP "organize imports" feature
-- `"statements"` - Reorder statements within a block
-
-**Example `new_order` for parameters:**
-```json
-{
-  "new_order": ["endpoint", "method", "headers", "body"]
-}
-```
-**Error Messages:**
-- Missing `new_order`: "Invalid request: Missing 'new_order' parameter"
-- Invalid `target.kind`: "Unsupported kind 'invalid'. Valid: parameters, fields, imports, statements"
-- Invalid order: "new_order must contain all existing parameter names"
-
-**Returns:**
-
-**Preview mode (`dryRun: true`, default):** Returns a `ReorderPlan` object.
-**Execution mode (`dryRun: false`):** Returns an `ExecutionResult` object.
-
-**Example:**
-
-```json
-// Request - Preview parameter reorder
-{
-  "method": "tools/call",
-  "params": {
-    "name": "reorder",
-    "arguments": {
-      "target": {
-        "kind": "parameters",
-        "file_path": "/workspace/src/api.rs",
-        "position": {"line": 10, "character": 8}
-      },
-      "new_order": ["endpoint", "method", "headers", "body"],
-      "options": {
-        "update_call_sites": true
-      }
-    }
-  }
-}
-```
-**Notes:**
-- Parameter reordering updates all call sites across the codebase
-- Requires LSP server support for best results
-- Import reordering uses LSP organize imports feature
-
----
-
-### transform
-
-**Purpose:** Apply syntax transformations (if-to-match, add/remove async, etc.).
-
-**Parameters:**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `transformation` | `object` | **Yes** | Transformation specification (see structure below) |
-| `transformation.kind` | `string` | **Yes** | Transformation type (see Transformation Types below) |
-| `transformation.file_path` | `string` | **Yes** | Absolute path to file |
-| `transformation.range` | `object` | **Yes** | LSP range to transform |
-| `transformation.range.start` | `object` | **Yes** | Start position: `{line: number, character: number}` (0-indexed) |
-| `transformation.range.end` | `object` | **Yes** | End position: `{line: number, character: number}` (0-indexed) |
-| `options` | `object` | No | Transform options (see options below) |
-| `options.dryRun` | `boolean` | No | Preview mode - don't apply changes (**default: true**) |
-| `options.preserve_formatting` | `boolean` | No | Preserve code formatting (**default: true**) |
-| `options.preserve_comments` | `boolean` | No | Preserve comments (**default: true**) |
-
-**Transformation Types:**
-- `"if_to_match"` - Convert if/else chain to match expression (Rust)
-- `"match_to_if"` - Convert match expression to if/else chain
-- `"add_async"` - Make function async
-- `"remove_async"` - Remove async from function
-- `"fn_to_closure"` - Convert function to closure
-- `"closure_to_fn"` - Convert closure to function
-
-**Language Support:**
-- Rust: All transformation types
-- TypeScript/JavaScript: `add_async`, `remove_async`
-- Other languages: Limited support
-
-**Error Messages:**
-- Missing `transformation.kind`: "Invalid request: Missing 'kind' parameter"
-- Invalid `kind`: "Unsupported transformation 'invalid'. Valid: if_to_match, match_to_if, add_async, remove_async, fn_to_closure, closure_to_fn"
-- Invalid range: "Range must specify valid start and end positions"
-
-**Returns:**
-
-**Preview mode (`dryRun: true`, default):** Returns a `TransformPlan` object.
-**Execution mode (`dryRun: false`):** Returns an `ExecutionResult` object.
-
-**Example:**
-
-```json
-// Request - Preview if-to-match transformation
-{
-  "method": "tools/call",
-  "params": {
-    "name": "transform",
-    "arguments": {
-      "transformation": {
-        "kind": "if_to_match",
-        "file_path": "/workspace/src/logic.rs",
-        "range": {
-          "start": {"line": 15, "character": 4},
-          "end": {"line": 25, "character": 5}
-        }
-      },
-      "options": {
-        "preserve_formatting": true,
-        "preserve_comments": true
-      }
-    }
-  }
-}
-```
-**Notes:**
-- Uses LSP code actions when available
-- Falls back to AST-based transformations
-- Language-specific transformation support
-- Preview mode is the safe default
 
 ---
 

@@ -16,10 +16,8 @@ refactor-rename = []
 refactor-extract = []
 refactor-inline = []
 refactor-move = []
-refactor-reorder = []
-refactor-transform = []
 refactor-delete = []
-refactor-all = ["refactor-rename", "refactor-extract", "refactor-inline", "refactor-move", "refactor-reorder", "refactor-transform", "refactor-delete"]
+refactor-all = ["refactor-rename", "refactor-extract", "refactor-inline", "refactor-move", "refactor-delete"]
 
 # Test features
 lsp-tests = []
