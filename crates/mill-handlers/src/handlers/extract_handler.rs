@@ -522,7 +522,7 @@ struct SourceRange {
     destination: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ExtractOptions {
     /// Preview mode - don't actually apply changes (default: true for safety)
@@ -532,4 +532,15 @@ struct ExtractOptions {
     visibility: Option<String>, // "public" | "private"
     #[serde(default)]
     destination_path: Option<String>,
+}
+
+// Manual Default to ensure dry_run defaults to true (safe preview mode)
+impl Default for ExtractOptions {
+    fn default() -> Self {
+        Self {
+            dry_run: true,
+            visibility: None,
+            destination_path: None,
+        }
+    }
 }
