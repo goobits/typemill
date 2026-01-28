@@ -417,8 +417,9 @@ impl DeleteHandler {
         );
 
         // Canonicalize path to ensure proper path handling
-        let abs_file_path =
-            std::fs::canonicalize(file_path).unwrap_or_else(|_| file_path.to_path_buf());
+        let abs_file_path = tokio::fs::canonicalize(file_path)
+            .await
+            .unwrap_or_else(|_| file_path.to_path_buf());
 
         // Create explicit deletion target
         let deletions = vec![DeletionTarget {
