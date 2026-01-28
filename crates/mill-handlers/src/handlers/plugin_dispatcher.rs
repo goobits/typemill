@@ -223,7 +223,7 @@ impl mill_handler_api::LanguagePluginRegistry for LanguagePluginRegistryWrapper 
     }
 
     fn inner(&self) -> &dyn std::any::Any {
-        &self.0.inner as &dyn std::any::Any
+        self.0.inner.as_ref() as &dyn std::any::Any
     }
 }
 
