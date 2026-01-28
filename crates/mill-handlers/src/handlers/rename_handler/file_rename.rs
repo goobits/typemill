@@ -23,15 +23,28 @@ impl RenameHandler {
 
         // Resolve paths relative to project root (not CWD) BEFORE passing to MoveService
         let old_path = Path::new(&target.path);
-        let new_path = Path::new(new_name);
         let abs_old = context
             .app_state
             .file_service
             .to_absolute_path_checked(old_path)?;
-        let abs_new = context
-            .app_state
-            .file_service
-            .to_absolute_path_checked(new_path)?;
+
+        // If new_name is just a filename (no path separators), keep file in same directory
+        // Otherwise, treat it as a path relative to project root
+        let new_path_buf = if !new_name.contains('/') && !new_name.contains('\\') {
+            // Just a filename - keep in the same directory as the old file
+            if let Some(parent) = abs_old.parent() {
+                parent.join(new_name)
+            } else {
+                Path::new(new_name).to_path_buf()
+            }
+        } else {
+            // Path provided - resolve relative to project root
+            context
+                .app_state
+                .file_service
+                .to_absolute_path_checked(Path::new(new_name))?
+        };
+        let abs_new = new_path_buf;
 
         // Get scope configuration from options
         let rename_scope = options.to_rename_scope();
@@ -62,7 +75,7 @@ impl RenameHandler {
         } else {
             tracing::warn!(
                 old_path = %old_path.display(),
-                new_path = %new_path.display(),
+                new_path = %abs_new.display(),
                 "plan_file_rename: No edits received from MoveService for file rename!"
             );
         }
