@@ -559,14 +559,14 @@ All refactoring operations support checksum validation, rollback on error, and p
 
 ### delete
 
-**Purpose:** Delete symbols, files, directories, or dead code.
+**Purpose:** Delete symbols, files, or directories.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `target` | `object` | **Yes** | Target to delete (see target structure) |
-| `target.kind` | `string` | **Yes** | Delete type: `"symbol"` \| `"file"` \| `"directory"` \| `"dead_code"` |
+| `target.kind` | `string` | **Yes** | Delete type: `"symbol"` \| `"file"` \| `"directory"` |
 | `target.path` | `string` | **Yes** | Absolute path to file/directory, or file containing symbol |
 | `target.selector` | `object` | Conditional | Symbol selector - **required for symbol deletes** |
 | `target.selector.line` | `number` | Conditional | Line number (0-indexed) |
@@ -588,8 +588,6 @@ All refactoring operations support checksum validation, rollback on error, and p
 - `"directory"` - Delete a directory recursively
   - **Status:** Fully implemented
   - **Warning:** Deletes all files in directory!
-- `"dead_code"` - Automatically detect and delete unused code
-  - **Status:** Placeholder (requires refactor engine integration)
 
 **Safety Features:**
 - `cleanup_imports: true` - Automatically removes imports after deletion
@@ -598,7 +596,7 @@ All refactoring operations support checksum validation, rollback on error, and p
 
 **Error Messages:**
 - Missing `target`: "Invalid request: Missing 'target' parameter"
-- Invalid `target.kind`: "Unsupported kind 'invalid'. Valid: symbol, file, directory, dead_code"
+- Invalid `target.kind`: "Unsupported kind 'invalid'. Valid: symbol, file, directory"
 - Symbol without selector: "Symbol deletes require 'selector' with line and character"
 
 **Returns:**
@@ -666,7 +664,7 @@ All refactoring operations support checksum validation, rollback on error, and p
 ```
 **Notes:**
 - File/directory deletes are fully implemented
-- Symbol/dead_code deletes are placeholders (require AST support)
+- Symbol deletes are placeholders (require AST support)
 - Cleanup imports automatically when deleting files
 - DeletePlan uses `deletions` field instead of LSP `WorkspaceEdit`
 - Preview mode is the safe default

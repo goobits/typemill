@@ -250,6 +250,20 @@ impl mill_plugin_api::RefactoringProvider for TypeScriptPlugin {
     ) -> mill_plugin_api::PluginResult<mill_foundation::protocol::EditPlan> {
         refactoring::plan_symbol_move(source, symbol_line, symbol_col, file_path, destination)
     }
+
+    fn supports_symbol_delete(&self) -> bool {
+        true
+    }
+
+    async fn plan_symbol_delete(
+        &self,
+        source: &str,
+        symbol_line: u32,
+        symbol_col: u32,
+        file_path: &str,
+    ) -> mill_plugin_api::PluginResult<mill_foundation::protocol::EditPlan> {
+        refactoring::plan_symbol_delete(source, symbol_line, symbol_col, file_path)
+    }
 }
 
 impl mill_plugin_api::ImportAnalyzer for TypeScriptPlugin {

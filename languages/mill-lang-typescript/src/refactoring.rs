@@ -201,6 +201,29 @@ pub fn plan_symbol_move(
     ast_symbol_move_ts_js(source, &analysis, file_path, destination)
 }
 
+/// Plans a symbol delete refactoring for TypeScript/JavaScript code.
+///
+/// Creates an edit plan that removes a symbol (function, class, variable, etc.)
+/// from the source file.
+///
+/// # Arguments
+/// * `source` - The TypeScript/JavaScript source code
+/// * `symbol_line` - Zero-based line number where the symbol is defined
+/// * `symbol_col` - Zero-based character offset of the symbol
+/// * `file_path` - Path to the source file
+///
+/// # Returns
+/// Edit plan with symbol deletion
+pub fn plan_symbol_delete(
+    source: &str,
+    symbol_line: u32,
+    symbol_col: u32,
+    file_path: &str,
+) -> PluginResult<EditPlan> {
+    let analysis = analyze_symbol_delete(source, symbol_line, symbol_col, file_path)?;
+    ast_symbol_delete_ts_js(source, &analysis, file_path)
+}
+
 fn ast_extract_function_ts_js(
     source: &str,
     range: &CodeRange,
@@ -1727,6 +1750,213 @@ fn compute_relative_import(source_file: &str, destination: &str) -> PluginResult
             None => Ok(format!("./{}", dest_stem)),
         }
     }
+}
+
+// ============================================================================
+// Symbol Delete Analysis
+// ============================================================================
+
+/// Analysis results for a symbol delete operation
+#[derive(Debug)]
+struct SymbolDeleteAnalysis {
+    /// Name of the symbol being deleted
+    symbol_name: String,
+    /// Full text of the symbol definition
+    symbol_text: String,
+    /// Range of the symbol definition in source
+    symbol_range: CodeRange,
+    /// Whether the symbol is exported
+    is_exported: bool,
+    /// Symbol kind (function, class, variable, etc.)
+    symbol_kind: SymbolKind,
+}
+
+/// Analyze source code to find symbol at the given position for deletion
+fn analyze_symbol_delete(
+    source: &str,
+    symbol_line: u32,
+    _symbol_col: u32,
+    file_path: &str,
+) -> PluginResult<SymbolDeleteAnalysis> {
+    let (module, cm) = parse_module_with_source_map(source, file_path)?;
+    let mut analyzer = SymbolDeleteAnalyzer::new(source, symbol_line, cm);
+    module.visit_with(&mut analyzer);
+    analyzer.finalize()
+}
+
+/// AST visitor for finding symbols to delete
+struct SymbolDeleteAnalyzer {
+    source: String,
+    source_map: Lrc<SourceMap>,
+    target_line: u32,
+    // Found symbol info
+    symbol_name: Option<String>,
+    symbol_range: Option<CodeRange>,
+    symbol_text: Option<String>,
+    is_exported: bool,
+    symbol_kind: Option<SymbolKind>,
+}
+
+impl SymbolDeleteAnalyzer {
+    fn new(source: &str, line: u32, source_map: Lrc<SourceMap>) -> Self {
+        Self {
+            source: source.to_string(),
+            source_map,
+            target_line: line,
+            symbol_name: None,
+            symbol_range: None,
+            symbol_text: None,
+            is_exported: false,
+            symbol_kind: None,
+        }
+    }
+
+    fn span_to_code_range(&self, span: swc_common::Span) -> CodeRange {
+        let lo = self.source_map.lookup_char_pos(span.lo);
+        let hi = self.source_map.lookup_char_pos(span.hi);
+        CodeRange {
+            start_line: lo.line.saturating_sub(1) as u32,
+            start_col: lo.col_display as u32,
+            end_line: hi.line.saturating_sub(1) as u32,
+            end_col: hi.col_display as u32,
+        }
+    }
+
+    fn extract_source_text(&self, span: swc_common::Span) -> String {
+        self.source_map
+            .span_to_snippet(span)
+            .unwrap_or_else(|_| String::new())
+    }
+
+    fn finalize(self) -> PluginResult<SymbolDeleteAnalysis> {
+        match (
+            self.symbol_name,
+            self.symbol_range,
+            self.symbol_text,
+            self.symbol_kind,
+        ) {
+            (Some(name), Some(range), Some(text), Some(kind)) => Ok(SymbolDeleteAnalysis {
+                symbol_name: name,
+                symbol_text: text,
+                symbol_range: range,
+                is_exported: self.is_exported,
+                symbol_kind: kind,
+            }),
+            _ => Err(PluginApiError::internal(
+                "Could not find symbol definition at specified location",
+            )),
+        }
+    }
+}
+
+impl Visit for SymbolDeleteAnalyzer {
+    fn visit_fn_decl(&mut self, node: &FnDecl) {
+        let range = self.span_to_code_range(node.function.span);
+        if range.start_line == self.target_line && self.symbol_name.is_none() {
+            self.symbol_name = Some(node.ident.sym.to_string());
+            self.symbol_range = Some(range);
+            self.symbol_text = Some(self.extract_source_text(node.function.span));
+            self.symbol_kind = Some(SymbolKind::Function);
+        }
+    }
+
+    fn visit_var_decl(&mut self, node: &VarDecl) {
+        let range = self.span_to_code_range(node.span);
+        if range.start_line == self.target_line && self.symbol_name.is_none() {
+            if let Some(decl) = node.decls.first() {
+                if let Pat::Ident(binding) = &decl.name {
+                    self.symbol_name = Some(binding.id.sym.to_string());
+                    self.symbol_range = Some(range);
+                    self.symbol_text = Some(self.extract_source_text(node.span));
+                    self.symbol_kind = Some(SymbolKind::Variable);
+                }
+            }
+        }
+        node.visit_children_with(self);
+    }
+
+    fn visit_class_decl(&mut self, node: &ClassDecl) {
+        let range = self.span_to_code_range(node.class.span);
+        if range.start_line == self.target_line && self.symbol_name.is_none() {
+            self.symbol_name = Some(node.ident.sym.to_string());
+            self.symbol_range = Some(range);
+            self.symbol_text = Some(self.extract_source_text(node.class.span));
+            self.symbol_kind = Some(SymbolKind::Class);
+        }
+    }
+
+    fn visit_ts_type_alias_decl(&mut self, node: &TsTypeAliasDecl) {
+        let range = self.span_to_code_range(node.span);
+        if range.start_line == self.target_line && self.symbol_name.is_none() {
+            self.symbol_name = Some(node.id.sym.to_string());
+            self.symbol_range = Some(range);
+            self.symbol_text = Some(self.extract_source_text(node.span));
+            self.symbol_kind = Some(SymbolKind::TypeAlias);
+        }
+    }
+
+    fn visit_ts_interface_decl(&mut self, node: &TsInterfaceDecl) {
+        let range = self.span_to_code_range(node.span);
+        if range.start_line == self.target_line && self.symbol_name.is_none() {
+            self.symbol_name = Some(node.id.sym.to_string());
+            self.symbol_range = Some(range);
+            self.symbol_text = Some(self.extract_source_text(node.span));
+            self.symbol_kind = Some(SymbolKind::Interface);
+        }
+    }
+
+    fn visit_ts_enum_decl(&mut self, node: &TsEnumDecl) {
+        let range = self.span_to_code_range(node.span);
+        if range.start_line == self.target_line && self.symbol_name.is_none() {
+            self.symbol_name = Some(node.id.sym.to_string());
+            self.symbol_range = Some(range);
+            self.symbol_text = Some(self.extract_source_text(node.span));
+            self.symbol_kind = Some(SymbolKind::Enum);
+        }
+    }
+
+    fn visit_export_decl(&mut self, node: &ExportDecl) {
+        // Check if this export is on our target line
+        let range = self.span_to_code_range(node.span);
+        if range.start_line == self.target_line {
+            self.is_exported = true;
+            // The full export including the 'export' keyword
+            self.symbol_range = Some(range);
+            self.symbol_text = Some(self.extract_source_text(node.span));
+        }
+        // Continue visiting to capture the declaration
+        node.visit_children_with(self);
+    }
+}
+
+/// Generate edit plan for deleting a symbol
+fn ast_symbol_delete_ts_js(
+    _source: &str,
+    analysis: &SymbolDeleteAnalysis,
+    file_path: &str,
+) -> PluginResult<EditPlan> {
+    let mut edits = Vec::new();
+
+    // Edit: Remove symbol from source file
+    edits.push(TextEdit {
+        file_path: None,
+        edit_type: EditType::Delete,
+        location: analysis.symbol_range.into(),
+        original_text: analysis.symbol_text.clone(),
+        new_text: String::new(),
+        priority: 100,
+        description: format!("Delete symbol '{}'", analysis.symbol_name),
+    });
+
+    Ok(EditPlanBuilder::new(file_path, "delete_symbol")
+        .with_edits(edits)
+        .with_syntax_validation("Verify syntax is valid after deletion")
+        .with_intent_args(serde_json::json!({
+            "symbol": analysis.symbol_name,
+        }))
+        .with_complexity(2)
+        .with_impact_area("symbol_deletion")
+        .build())
 }
 
 #[cfg(test)]

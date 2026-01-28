@@ -28,7 +28,7 @@
 //! - `symbol_move` - LSP-based symbol moves
 //! - `validation` - Checksum calculation and conflict detection
 
-mod converter;
+pub(crate) mod converter;
 mod directory_move;
 mod file_move;
 mod symbol_move;

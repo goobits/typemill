@@ -44,7 +44,7 @@ All refactoring tools support **`options.dryRun`** for safe preview (default: tr
 - `extract` - Extract functions, variables, constants, modules
 - `inline` - Inline variables, functions, constants
 - `move` - Move symbols, files, directories, modules
-- `delete` - Delete symbols, files, directories, dead code
+- `delete` - Delete symbols, files, directories
 
 ### Workspace (3 tools)
 - `workspace.create_package` - Create new packages (Rust, TypeScript, Python)

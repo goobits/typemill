@@ -100,7 +100,7 @@ graph TB
 - `extract` - Extract function, variable, constant (options.dryRun: true/false)
 - `inline` - Inline variable, function, constant (options.dryRun: true/false)
 - `move` - Move symbols, files, directories (options.dryRun: true/false)
-- `delete` - Delete files, directories, dead code (options.dryRun: true/false)
+- `delete` - Delete symbols, files, directories (options.dryRun: true/false)
 
 #### Workspace (3) - Workspace Operations
 - `workspace.create_package`

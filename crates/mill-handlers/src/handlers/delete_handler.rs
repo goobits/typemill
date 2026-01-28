@@ -4,7 +4,6 @@
 //! - Symbol deletion (AST-based - placeholder)
 //! - File deletion (via FileService)
 //! - Directory deletion (via FileService)
-//! - Dead code deletion (batch operation - placeholder)
 
 use crate::handlers::common::calculate_checksum;
 use crate::handlers::tools::ToolHandler;
@@ -45,7 +44,7 @@ struct DeletePlanParams {
 
 #[derive(Debug, Deserialize)]
 struct DeleteTarget {
-    kind: String, // "symbol" | "file" | "directory" | "dead_code"
+    kind: String, // "symbol" | "file" | "directory"
     path: String,
     #[serde(default)]
     selector: Option<DeleteSelector>,
@@ -124,10 +123,9 @@ impl ToolHandler for DeleteHandler {
             "symbol" => self.plan_symbol_delete(&params, context).await?,
             "file" => self.plan_file_delete(&params, context).await?,
             "directory" => self.plan_directory_delete(&params, context).await?,
-            "dead_code" => self.plan_dead_code_delete(&params, context).await?,
             kind => {
                 return Err(ServerError::invalid_request(format!(
-                    "Unsupported delete kind: {}. Must be one of: symbol, file, directory, dead_code",
+                    "Unsupported delete kind: {}. Must be one of: symbol, file, directory",
                     kind
                 )));
             }
@@ -218,17 +216,12 @@ impl DeleteHandler {
         }
     }
 
-    /// Generate plan for symbol deletion using text edits
+    /// Generate plan for symbol deletion using AST-based analysis
     async fn plan_symbol_delete(
         &self,
         params: &DeletePlanParams,
         context: &mill_handler_api::ToolHandlerContext,
     ) -> ServerResult<DeletePlan> {
-        use lsp_types::{
-            DocumentChangeOperation, DocumentChanges, OptionalVersionedTextDocumentIdentifier,
-            Position, Range, TextDocumentEdit, TextEdit, Uri, WorkspaceEdit,
-        };
-
         debug!(path = %params.target.path, "Planning symbol delete");
 
         let file_path = Path::new(&params.target.path);
@@ -238,7 +231,57 @@ impl DeleteHandler {
             ServerError::invalid_request("Symbol delete requires selector with line/character")
         })?;
 
-        // Read file content for checksum
+        // Get file extension to find the right language plugin
+        let extension = file_path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .ok_or_else(|| {
+                error!(
+                    path = %params.target.path,
+                    "File has no extension for plugin lookup"
+                );
+                ServerError::invalid_request(format!("File has no extension: {}", params.target.path))
+            })?;
+
+        debug!(
+            extension = %extension,
+            "Looking up language plugin for extension"
+        );
+
+        // Get the language plugin for this file extension
+        let plugin = context
+            .app_state
+            .language_plugins
+            .get_plugin(extension)
+            .ok_or_else(|| {
+                error!(
+                    extension = %extension,
+                    "No language plugin found for extension"
+                );
+                ServerError::not_supported(format!(
+                    "No language plugin available for .{} files",
+                    extension
+                ))
+            })?;
+
+        debug!(
+            plugin = %plugin.metadata().name,
+            "Found language plugin, getting refactoring provider capability"
+        );
+
+        // Get the refactoring provider capability from the plugin
+        let refactoring_provider = plugin.refactoring_provider().ok_or_else(|| {
+            error!(
+                plugin = %plugin.metadata().name,
+                "Plugin does not support refactoring operations"
+            );
+            ServerError::not_supported(format!(
+                "{} plugin does not support symbol deletion refactoring",
+                plugin.metadata().name
+            ))
+        })?;
+
+        // Read file content
         let content = context
             .app_state
             .file_service
@@ -246,91 +289,38 @@ impl DeleteHandler {
             .await
             .map_err(|e| {
                 error!(error = %e, file_path = %params.target.path, "Failed to read file");
-                ServerError::internal(format!("Failed to read file for checksum: {}", e))
+                ServerError::internal(format!("Failed to read file: {}", e))
             })?;
 
-        // Calculate checksum
+        debug!("File read successfully, calling plan_symbol_delete on RefactoringProvider");
+
+        // Call the plugin's symbol delete planning
+        // Note: This is a new method that needs to be added to the RefactoringProvider trait
+        let edit_plan = refactoring_provider
+            .plan_symbol_delete(
+                &content,
+                selector.line,
+                selector.character,
+                &params.target.path,
+            )
+            .await
+            .map_err(|e| {
+                error!(
+                    error = %e,
+                    "Plugin symbol delete failed"
+                );
+                ServerError::internal(format!("Symbol delete failed: {}", e))
+            })?;
+
+        // Convert EditPlan to WorkspaceEdit using the converter utility from move module
+        let workspace_edit = crate::handlers::r#move::converter::convert_edit_plan_to_workspace_edit(&edit_plan)?;
+
+        // Calculate file checksums
         let mut file_checksums = HashMap::new();
         file_checksums.insert(
             file_path.to_string_lossy().to_string(),
             calculate_checksum(&content),
         );
-
-        // Find the line to delete
-        let lines: Vec<&str> = content.lines().collect();
-        let line_index = selector.line as usize;
-
-        if line_index >= lines.len() {
-            return Err(ServerError::invalid_request(format!(
-                "Line {} is out of bounds (file has {} lines)",
-                selector.line,
-                lines.len()
-            )));
-        }
-
-        let current_line = lines[line_index];
-        let symbol_name = selector.symbol_name.as_deref().unwrap_or("");
-
-        // Determine the edit based on the line content
-        let (start_pos, end_pos, new_text) =
-            if let Some(new_line) = self.remove_import_identifier(current_line, symbol_name) {
-                // Partial import removal - replace the line
-                (
-                    Position {
-                        line: selector.line,
-                        character: 0,
-                    },
-                    Position {
-                        line: selector.line,
-                        character: current_line.len() as u32,
-                    },
-                    new_line,
-                )
-            } else {
-                // Full line deletion
-                (
-                    Position {
-                        line: selector.line,
-                        character: 0,
-                    },
-                    Position {
-                        line: selector.line + 1,
-                        character: 0,
-                    },
-                    String::new(),
-                )
-            };
-
-        // Convert file path to file:// URI
-        // Ensure non-blocking canonicalization as per performance requirements
-        let canonical_path = tokio::fs::canonicalize(file_path)
-            .await
-            .map_err(|e| ServerError::internal(format!("Failed to canonicalize path: {}", e)))?;
-        let uri_string = format!("file://{}", canonical_path.display());
-        let uri: Uri = uri_string
-            .parse()
-            .map_err(|e| ServerError::internal(format!("Invalid URI: {}", e)))?;
-
-        let text_edit = TextEdit {
-            range: Range {
-                start: start_pos,
-                end: end_pos,
-            },
-            new_text,
-        };
-
-        let text_document_edit = TextDocumentEdit {
-            text_document: OptionalVersionedTextDocumentIdentifier { uri, version: None },
-            edits: vec![lsp_types::OneOf::Left(text_edit)],
-        };
-
-        let workspace_edit = WorkspaceEdit {
-            changes: None,
-            document_changes: Some(DocumentChanges::Operations(vec![
-                DocumentChangeOperation::Edit(text_document_edit),
-            ])),
-            change_annotations: None,
-        };
 
         // Build summary
         let summary = PlanSummary {
@@ -339,8 +329,8 @@ impl DeleteHandler {
             deleted_files: 0,
         };
 
-        // Determine language from extension
-        let language = crate::handlers::common::detect_language(&params.target.path).to_string();
+        // Determine language from extension via plugin registry
+        let language = plugin.metadata().name.to_string();
 
         // Build metadata
         let metadata = PlanMetadata {
@@ -354,7 +344,7 @@ impl DeleteHandler {
         info!(
             file_path = %params.target.path,
             line = selector.line,
-            "Created delete plan for symbol"
+            "Created AST-based delete plan for symbol"
         );
 
         Ok(DeletePlan {
@@ -602,50 +592,4 @@ impl DeleteHandler {
         })
     }
 
-    /// Generate plan for dead code deletion (placeholder)
-    async fn plan_dead_code_delete(
-        &self,
-        params: &DeletePlanParams,
-        _context: &mill_handler_api::ToolHandlerContext,
-    ) -> ServerResult<DeletePlan> {
-        debug!(
-            path = %params.target.path,
-            "Planning dead code delete (placeholder)"
-        );
-
-        // Create empty deletions list (placeholder - dead code analysis not yet integrated)
-        let deletions = Vec::new();
-
-        // Build summary
-        let summary = PlanSummary {
-            affected_files: 0,
-            created_files: 0,
-            deleted_files: 0,
-        };
-
-        // Add placeholder warning
-        let warnings = vec![PlanWarning {
-            code: "DEAD_CODE_DELETE_NOT_IMPLEMENTED".to_string(),
-            message: "Dead code deletion requires integration with dead code analysis (not yet available)".to_string(),
-            candidates: None,
-        }];
-
-        // Build metadata
-        let metadata = PlanMetadata {
-            plan_version: "1.0".to_string(),
-            kind: "delete".to_string(),
-            language: "unknown".to_string(),
-            estimated_impact: "high".to_string(),
-            created_at: chrono::Utc::now().to_rfc3339(),
-        };
-
-        Ok(DeletePlan {
-            deletions,
-            edits: None, // Symbol deletion will use this field
-            summary,
-            warnings,
-            metadata,
-            file_checksums: HashMap::new(),
-        })
-    }
 }

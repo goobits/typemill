@@ -177,12 +177,81 @@ impl DirectLspAdapter {
                     // For TypeScript, warm up the server by opening a file first
                     // TypeScript LSP needs project context before workspace/symbol works
                     if extension == "ts" || extension == "tsx" || extension == "js" || extension == "jsx" {
-                        // Try to warm up by ensuring the server has project context
-                        // The didOpen notification will be sent automatically when we make a file-specific request
                         debug!(
                             extension = %extension,
-                            "TypeScript LSP may need warmup - workspace/symbol might return 'No Project' on cold start"
+                            "TypeScript LSP requires warmup - opening a file to establish project context"
                         );
+
+                        // Try to find and open a representative file to establish project context
+                        if let Some(root_dir) = client.config().root_dir.as_ref() {
+                            let mut warmup_file = None;
+
+                            // First, try to find tsconfig.json (best choice as it defines the project)
+                            let tsconfig = root_dir.join("tsconfig.json");
+                            if tsconfig.exists() && tsconfig.is_file() {
+                                warmup_file = Some(tsconfig);
+                            } else {
+                                // Fall back to finding any TypeScript file
+                                let extensions_to_try = ["ts", "tsx", "js", "jsx"];
+                                for ext in &extensions_to_try {
+                                    // Try to find any file with this extension in the workspace
+                                    if let Ok(entries) = std::fs::read_dir(root_dir) {
+                                        for entry in entries.flatten() {
+                                            let path = entry.path();
+                                            if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some(ext) {
+                                                warmup_file = Some(path);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if warmup_file.is_some() {
+                                        break;
+                                    }
+                                }
+
+                                // If still not found, try src directory
+                                if warmup_file.is_none() {
+                                    let src_dir = root_dir.join("src");
+                                    if src_dir.exists() && src_dir.is_dir() {
+                                        if let Ok(entries) = std::fs::read_dir(&src_dir) {
+                                            for entry in entries.flatten() {
+                                                let path = entry.path();
+                                                if path.is_file() {
+                                                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                                                        if extensions_to_try.contains(&ext) {
+                                                            warmup_file = Some(path);
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Open the warmup file if found
+                            if let Some(path) = warmup_file {
+                                debug!(
+                                    extension = %extension,
+                                    warmup_file = %path.display(),
+                                    "Opening file to warm up TypeScript LSP"
+                                );
+                                if let Err(e) = client.notify_file_opened(&path).await {
+                                    warn!(
+                                        extension = %extension,
+                                        warmup_file = %path.display(),
+                                        error = %e,
+                                        "Failed to open warmup file for TypeScript LSP"
+                                    );
+                                }
+                            } else {
+                                debug!(
+                                    extension = %extension,
+                                    "No suitable warmup file found for TypeScript LSP"
+                                );
+                            }
+                        }
                     }
 
                     // Send workspace/symbol request to this server

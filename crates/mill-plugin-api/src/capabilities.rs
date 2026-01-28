@@ -279,6 +279,32 @@ pub trait RefactoringProvider: Send + Sync {
         Err(crate::PluginApiError::not_supported("plan_symbol_move"))
     }
 
+    /// Check if symbol delete refactoring is supported
+    fn supports_symbol_delete(&self) -> bool {
+        false
+    }
+
+    /// Plan symbol delete refactoring
+    ///
+    /// Analyzes the code and generates an edit plan for deleting a symbol (function, class,
+    /// variable, etc.) at the specified position.
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - Source code content
+    /// * `symbol_line` - Line number where symbol is defined (0-based)
+    /// * `symbol_col` - Column number where symbol is defined (0-based)
+    /// * `file_path` - Path to the source file
+    async fn plan_symbol_delete(
+        &self,
+        _source: &str,
+        _symbol_line: u32,
+        _symbol_col: u32,
+        _file_path: &str,
+    ) -> PluginResult<mill_foundation::protocol::EditPlan> {
+        Err(crate::PluginApiError::not_supported("plan_symbol_delete"))
+    }
+
     // ============================================================================
     // Legacy sync methods - DEPRECATED
     // These exist for backwards compatibility but should not be used in new code

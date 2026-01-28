@@ -711,7 +711,7 @@ fn parse_transform_flags(flags: HashMap<String, String>) -> Result<Value, FlagPa
 ///
 /// ```json
 /// {
-///   "kind": "unused_imports|dead_code",
+///   "kind": "unused_imports",
 ///   "target": {
 ///     "scope": "file|workspace",
 ///     "path": "..."
@@ -989,11 +989,11 @@ fn validate_transform_kind(kind: &str) -> Result<(), FlagParseError> {
 
 fn validate_delete_kind(kind: &str) -> Result<(), FlagParseError> {
     match kind {
-        "unused_imports" | "dead_code" => Ok(()),
+        "unused_imports" => Ok(()),
         _ => Err(FlagParseError::InvalidValue {
             flag: "kind".to_string(),
             value: kind.to_string(),
-            reason: "must be 'unused_imports' or 'dead_code'".to_string(),
+            reason: "must be 'unused_imports'".to_string(),
         }),
     }
 }
@@ -1415,17 +1415,6 @@ mod tests {
         assert_eq!(json["target"]["scope"], "file");
     }
 
-    #[test]
-    fn test_delete_dead_code() {
-        let result = parse_flags_to_json(
-            "delete",
-            flags(&[("kind", "dead_code"), ("target", "workspace:.")]),
-        );
-        assert!(result.is_ok());
-        let json = result.unwrap();
-        assert_eq!(json["kind"], "dead_code");
-        assert_eq!(json["target"]["scope"], "workspace");
-    }
 
     #[test]
     fn test_delete_with_scope_and_path() {
