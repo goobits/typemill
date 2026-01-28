@@ -468,12 +468,85 @@ async fn ast_symbol_move_fallback(
         "Attempting AST-based symbol move"
     );
 
+    // Get file extension to find the right language plugin
+    let path = Path::new(target_path);
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .ok_or_else(|| {
+            error!(
+                operation_id = %operation_id,
+                path = %target_path,
+                "File has no extension for plugin lookup"
+            );
+            ServerError::invalid_request(format!("File has no extension: {}", target_path))
+        })?;
+
+    debug!(
+        operation_id = %operation_id,
+        extension = %extension,
+        "Looking up language plugin for extension"
+    );
+
+    // Get the language plugin for this file extension
+    let plugin = context
+        .app_state
+        .language_plugins
+        .get_plugin(extension)
+        .ok_or_else(|| {
+            error!(
+                operation_id = %operation_id,
+                extension = %extension,
+                "No language plugin found for extension"
+            );
+            ServerError::not_supported(format!(
+                "No language plugin available for .{} files",
+                extension
+            ))
+        })?;
+
+    debug!(
+        operation_id = %operation_id,
+        plugin = %plugin.metadata().name,
+        "Found language plugin, getting refactoring provider capability"
+    );
+
+    // Get the refactoring provider capability from the plugin
+    let refactoring_provider = plugin.refactoring_provider().ok_or_else(|| {
+        error!(
+            operation_id = %operation_id,
+            plugin = %plugin.metadata().name,
+            "Plugin does not support refactoring operations"
+        );
+        ServerError::not_supported(format!(
+            "{} plugin does not support symbol move refactoring",
+            plugin.metadata().name
+        ))
+    })?;
+
+    // Check if symbol move is supported
+    if !refactoring_provider.supports_symbol_move() {
+        error!(
+            operation_id = %operation_id,
+            plugin = %plugin.metadata().name,
+            "Plugin does not support symbol move operation"
+        );
+        return Err(ServerError::not_supported(format!(
+            "{} plugin does not support symbol move refactoring",
+            plugin.metadata().name
+        )));
+    }
+
+    debug!(
+        operation_id = %operation_id,
+        "RefactoringProvider supports symbol move, reading source file"
+    );
+
     // Read source file content
-    let source_path = Path::new(target_path);
     let source_content = context
         .app_state
         .file_service
-        .read_file(source_path)
+        .read_file(path)
         .await
         .map_err(|e| {
             error!(
@@ -485,38 +558,29 @@ async fn ast_symbol_move_fallback(
             ServerError::internal(format!("Failed to read source file: {}", e))
         })?;
 
-    // Get PluginDiscovery from language_plugins
-    let plugin_discovery = context
-        .app_state
-        .language_plugins
-        .inner()
-        .downcast_ref::<mill_plugin_api::PluginDiscovery>()
-        .ok_or_else(|| {
+    debug!(
+        operation_id = %operation_id,
+        "Source file read successfully, calling plan_symbol_move on RefactoringProvider"
+    );
+
+    // Call the plugin's symbol move planning directly
+    let edit_plan = refactoring_provider
+        .plan_symbol_move(
+            &source_content,
+            position.line,
+            position.character,
+            target_path,
+            destination,
+        )
+        .await
+        .map_err(|e| {
             error!(
                 operation_id = %operation_id,
-                "Failed to downcast to PluginDiscovery"
+                error = %e,
+                "Plugin symbol move failed"
             );
-            ServerError::internal("Failed to downcast to PluginDiscovery")
+            ServerError::internal(format!("Symbol move failed: {}", e))
         })?;
-
-    // Call AST-based symbol move through mill-ast
-    let edit_plan = mill_ast::refactoring::move_symbol::plan_symbol_move(
-        &source_content,
-        position.line,
-        position.character,
-        target_path,
-        destination,
-        Some(plugin_discovery),
-    )
-    .await
-    .map_err(|e| {
-        error!(
-            operation_id = %operation_id,
-            error = %e,
-            "AST-based symbol move failed"
-        );
-        ServerError::internal(format!("AST-based symbol move failed: {}", e))
-    })?;
 
     // Convert EditPlan to MovePlan
     let workspace_edit = super::converter::convert_edit_plan_to_workspace_edit(&edit_plan)?;

@@ -3,12 +3,42 @@
 //! This module provides shared functionality used by rename, move, and other
 //! refactoring operations to avoid code duplication.
 
+use crate::handlers::tools::extensions::get_concrete_app_state;
+use mill_foundation::errors::MillResult as ServerResult;
+use mill_foundation::protocol::RefactorPlan;
+use mill_handler_api::ToolHandlerContext;
+use mill_services::services::{ExecutionOptions, ExecutionResult, PlanExecutor};
+
 pub mod checksums;
 
 pub use checksums::calculate_checksum;
 pub(crate) use checksums::{
     calculate_checksums_for_directory_rename, calculate_checksums_for_edits,
 };
+
+/// Execute a refactoring plan using the file service from the app state
+///
+/// This is a shared helper function used by refactoring handlers (inline, extract,
+/// delete, rename, move) to avoid code duplication. It handles getting the concrete
+/// app state, creating the executor, and executing the plan with default options.
+///
+/// # Arguments
+/// * `context` - The tool handler context containing the app state
+/// * `plan` - The refactoring plan to execute
+///
+/// # Returns
+/// The execution result containing applied files, warnings, and validation results
+pub async fn execute_refactor_plan(
+    context: &ToolHandlerContext,
+    plan: RefactorPlan,
+) -> ServerResult<ExecutionResult> {
+    // Get concrete AppState to access concrete FileService
+    let concrete_state = get_concrete_app_state(&context.app_state)?;
+    let executor = PlanExecutor::new(concrete_state.file_service.clone());
+    executor
+        .execute_plan(plan, ExecutionOptions::default())
+        .await
+}
 
 /// Estimate impact based on number of affected files
 pub fn estimate_impact(affected_files: usize) -> String {

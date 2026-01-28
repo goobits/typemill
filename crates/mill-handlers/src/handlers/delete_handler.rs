@@ -158,15 +158,7 @@ impl ToolHandler for DeleteHandler {
                 "Executing delete plan"
             );
 
-            use crate::handlers::tools::extensions::get_concrete_app_state;
-            use mill_services::services::{ExecutionOptions, PlanExecutor};
-
-            // Get concrete AppState to access concrete FileService
-            let concrete_state = get_concrete_app_state(&context.app_state)?;
-            let executor = PlanExecutor::new(concrete_state.file_service.clone());
-            let result = executor
-                .execute_plan(refactor_plan, ExecutionOptions::default())
-                .await?;
+            let result = crate::handlers::common::execute_refactor_plan(context, refactor_plan).await?;
 
             let result_json = serde_json::to_value(&result).map_err(|e| {
                 ServerError::internal(format!("Failed to serialize execution result: {}", e))

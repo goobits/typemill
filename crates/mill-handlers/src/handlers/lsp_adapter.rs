@@ -343,11 +343,47 @@ impl LspService for DirectLspAdapter {
         // Check capabilities before sending requests that may not be supported
         if method == "textDocument/diagnostic" {
             if !client.supports_diagnostic_pull().await {
-                return Err(format!(
-                    "LSP server for '{}' does not support pull-model diagnostics (textDocument/diagnostic). \
-                     This server uses push-model diagnostics (textDocument/publishDiagnostics) instead.",
-                    extension
-                ));
+                // Fall back to cached diagnostics from publishDiagnostics notifications
+                debug!(
+                    extension = %extension,
+                    "LSP server doesn't support pull-model diagnostics, using cached diagnostics"
+                );
+
+                // Extract URI from params
+                let uri = params
+                    .get("textDocument")
+                    .and_then(|td| td.get("uri"))
+                    .and_then(|u| u.as_str())
+                    .ok_or_else(|| {
+                        format!(
+                            "Missing textDocument.uri in textDocument/diagnostic params"
+                        )
+                    })?;
+
+                // Parse URI string into lsp_types::Uri
+                let uri_parsed = uri.parse::<lsp_types::Uri>().map_err(|e| {
+                    format!("Failed to parse URI '{}': {}", uri, e)
+                })?;
+
+                // Get cached diagnostics for this file
+                if let Some(diagnostics) = client.get_cached_diagnostics(&uri_parsed).await {
+                    debug!(
+                        uri = %uri,
+                        diagnostic_count = diagnostics.len(),
+                        "Returning cached diagnostics"
+                    );
+
+                    // Return diagnostics in LSP pull-model format
+                    return Ok(json!({
+                        "items": diagnostics
+                    }));
+                } else {
+                    // No cached diagnostics - return error
+                    return Err(format!(
+                        "LSP server for '{}' does not support pull-model diagnostics and no cached diagnostics available for '{}'",
+                        extension, uri
+                    ));
+                }
             }
         }
 
