@@ -32,7 +32,9 @@
 //! - TypeScript language server: `npm install -g typescript-language-server`
 //! - Rust analyzer: `rustup component add rust-analyzer`
 
+#[cfg(feature = "lsp-tests")]
 use mill_test_support::harness::{TestClient, TestWorkspace};
+#[cfg(feature = "lsp-tests")]
 use serde_json::json;
 
 /// Test LSP protocol connectivity and basic routing
