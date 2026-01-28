@@ -38,7 +38,12 @@ pub(crate) fn find_generic_affected_files(
     );
 
     for file in project_files {
-        if file == old_path || file == new_path {
+        // Do not skip old_path - we want to scan the file being moved for self-references
+        // (e.g. string literals containing its own name) so we can update them.
+        // The MoveService handles remapping edits from old_path to new_path to prevent
+        // file resurrection during execution.
+
+        if file == new_path {
             continue;
         }
         if let Ok(content) = std::fs::read_to_string(file) {

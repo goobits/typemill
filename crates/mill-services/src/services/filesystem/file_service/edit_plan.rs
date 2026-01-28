@@ -86,6 +86,16 @@ impl FileService {
         // Helper closure to map NEW paths (inside renamed directories) back to OLD paths
         // This is needed because text edits reference NEW paths, but files exist at OLD paths
         let map_new_to_old = |new_path: &PathBuf| -> PathBuf {
+            // Check if this is a direct file rename
+            if let Some(old_path) = path_renames.get(new_path) {
+                debug!(
+                    new_path = %new_path.display(),
+                    old_path = %old_path.display(),
+                    "Mapped NEW file path to OLD file path for snapshot creation"
+                );
+                return old_path.clone();
+            }
+
             // Check if this NEW path is inside any renamed directory
             for (old_dir, new_dir) in &directory_renames {
                 if new_path.starts_with(new_dir) {

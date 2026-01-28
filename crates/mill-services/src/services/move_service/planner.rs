@@ -26,7 +26,7 @@ pub async fn plan_file_move(
 
     // Call reference updater to find all affected imports
     // dry_run = true means we're just planning, not executing
-    let edit_plan = reference_updater
+    let mut edit_plan = reference_updater
         .update_references(
             old_abs,
             new_abs,
@@ -37,6 +37,22 @@ pub async fn plan_file_move(
             rename_scope,
         )
         .await?;
+
+    // Fix: Remap edits targeting the old file path to the new file path
+    // This ensures that updates to the moved file itself are applied to the NEW location,
+    // preventing the resurrection of the old file during execution.
+    for edit in &mut edit_plan.edits {
+        if let Some(ref path) = edit.file_path {
+            if Path::new(path) == old_abs {
+                info!(
+                    old_path = %path,
+                    new_path = %new_abs.display(),
+                    "Remapping edit from old file path to new file path"
+                );
+                edit.file_path = Some(new_abs.to_string_lossy().to_string());
+            }
+        }
+    }
 
     // Log what we found
     info!(
@@ -136,6 +152,25 @@ pub async fn plan_directory_move(
             rename_scope,
         )
         .await?;
+
+    // Fix: Remap edits targeting files inside the old directory to the new directory
+    // This ensures that updates to moved files are applied to their NEW locations.
+    for edit in &mut edit_plan.edits {
+        if let Some(ref path_str) = edit.file_path {
+            let path = Path::new(path_str);
+            if path.starts_with(old_abs) {
+                if let Ok(relative) = path.strip_prefix(old_abs) {
+                    let new_file_path = new_abs.join(relative);
+                    info!(
+                        old_path = %path.display(),
+                        new_path = %new_file_path.display(),
+                        "Remapping edit from old directory to new directory"
+                    );
+                    edit.file_path = Some(new_file_path.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
 
     // Add language-specific manifest edits if this is a package
     if is_package {
