@@ -107,6 +107,7 @@ test_mill_*
 
 # Debug and development tools
 .debug/
+.debug.removed/
 
 # Dogfooding - ignore cloned repos, keep structure
 .dogfood/*/repo/
