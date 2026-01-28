@@ -72,7 +72,7 @@ pub(crate) struct SymbolSelector {
     position: Position,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)] // Reserved for future configuration
 pub(crate) struct RenameOptions {
@@ -100,6 +100,20 @@ pub(crate) struct RenameOptions {
     /// When None, auto-detects based on path patterns (moving crate into another crate's src/).
     #[serde(default)]
     pub consolidate: Option<bool>,
+}
+
+impl Default for RenameOptions {
+    fn default() -> Self {
+        Self {
+            dry_run: true, // CRITICAL: Safe default - preview mode
+            strict: None,
+            validate_scope: None,
+            update_imports: None,
+            scope: None,
+            custom_scope: None,
+            consolidate: None,
+        }
+    }
 }
 
 impl RenameOptions {

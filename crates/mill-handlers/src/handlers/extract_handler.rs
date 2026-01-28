@@ -515,6 +515,7 @@ struct ExtractPlanParams {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SourceRange {
+    #[serde(alias = "file_path")]
     file_path: String,
     range: Range, // lsp_types::Range
     name: String,
@@ -522,7 +523,7 @@ struct SourceRange {
     destination: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ExtractOptions {
     /// Preview mode - don't actually apply changes (default: true for safety)
@@ -532,4 +533,14 @@ struct ExtractOptions {
     visibility: Option<String>, // "public" | "private"
     #[serde(default)]
     destination_path: Option<String>,
+}
+
+impl Default for ExtractOptions {
+    fn default() -> Self {
+        Self {
+            dry_run: true, // CRITICAL: Safe default - preview mode
+            visibility: None,
+            destination_path: None,
+        }
+    }
 }
