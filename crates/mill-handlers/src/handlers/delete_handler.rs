@@ -310,8 +310,8 @@ impl DeleteHandler {
             };
 
         // Convert file path to file:// URI
-        let canonical_path = file_path
-            .canonicalize()
+        let canonical_path = tokio::fs::canonicalize(file_path)
+            .await
             .map_err(|e| ServerError::internal(format!("Failed to canonicalize path: {}", e)))?;
         let uri_string = format!("file://{}", canonical_path.display());
         let uri: Uri = uri_string
