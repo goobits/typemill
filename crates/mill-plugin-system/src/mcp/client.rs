@@ -172,6 +172,7 @@ impl Drop for ExternalMcpClient {
             // After SIGKILL, the process should exit very quickly.
             let start = std::time::Instant::now();
             let timeout = std::time::Duration::from_millis(500);
+            let spin_timeout = std::time::Duration::from_millis(2);
 
             loop {
                 match child.try_wait() {
@@ -181,12 +182,20 @@ impl Drop for ExternalMcpClient {
                         return;
                     }
                     Ok(None) => {
-                        if start.elapsed() >= timeout {
+                        let elapsed = start.elapsed();
+                        if elapsed >= timeout {
                             break;
                         }
                         // Process still running, wait a bit and retry.
-                        // We use a short sleep (1ms) to keep latency low while avoiding busy-waiting.
-                        std::thread::sleep(std::time::Duration::from_millis(1));
+                        // If we are within the first few milliseconds, yield instead of sleeping
+                        // to catch fast exits without the minimum sleep granularity penalty.
+                        if elapsed < spin_timeout {
+                            std::thread::yield_now();
+                        } else {
+                            // We use a short sleep (1ms) to keep latency low while avoiding busy-waiting
+                            // if the process is taking longer to exit.
+                            std::thread::sleep(std::time::Duration::from_millis(1));
+                        }
                     }
                     Err(e) => {
                         error!(
