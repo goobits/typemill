@@ -494,23 +494,20 @@ impl DeleteHandler {
 
         let dir_path = Path::new(&params.target.path);
 
-        // Verify it's a directory
-        let is_dir = tokio::fs::metadata(dir_path)
-            .await
-            .map(|m| m.is_dir())
-            .unwrap_or(false);
-
-        if !is_dir {
-            return Err(ServerError::invalid_request(format!(
-                "Path is not a directory: {}",
-                params.target.path
-            )));
-        }
-
         // Walk directory to collect files and checksums
-        // Move directory walking to a blocking task to avoid blocking the async runtime
+        // Move directory walking and checking to a blocking task to avoid blocking the async runtime
         let dir_path_buf = dir_path.to_path_buf();
+        let target_path_str = params.target.path.clone();
+
         let (files, abs_dir): (Vec<PathBuf>, PathBuf) = tokio::task::spawn_blocking(move || {
+            // Verify it's a directory inside the blocking task using synchronous fs
+            if !dir_path_buf.is_dir() {
+                return Err(ServerError::invalid_request(format!(
+                    "Path is not a directory: {}",
+                    target_path_str
+                )));
+            }
+
             let abs_dir = std::fs::canonicalize(&dir_path_buf).unwrap_or(dir_path_buf);
             let walker = ignore::WalkBuilder::new(&abs_dir).hidden(false).build();
             let files = walker
@@ -518,10 +515,10 @@ impl DeleteHandler {
                 .filter(|entry| entry.path().is_file())
                 .map(|entry| entry.path().to_path_buf())
                 .collect();
-            (files, abs_dir)
+            Ok((files, abs_dir))
         })
         .await
-        .map_err(|e| ServerError::internal(format!("Task failed: {}", e)))?;
+        .map_err(|e| ServerError::internal(format!("Task failed: {}", e)))??;
 
         let mut file_checksums = HashMap::new();
         let mut file_count = 0;
