@@ -40,8 +40,11 @@ pub async fn editplan_to_moveplan(
     );
 
     // Resolve absolute paths
-    let abs_old = std::fs::canonicalize(old_path).unwrap_or_else(|_| old_path.to_path_buf());
-    let abs_new = std::fs::canonicalize(new_path.parent().unwrap_or(Path::new(".")))
+    let abs_old = tokio::fs::canonicalize(old_path)
+        .await
+        .unwrap_or_else(|_| old_path.to_path_buf());
+    let abs_new = tokio::fs::canonicalize(new_path.parent().unwrap_or(Path::new(".")))
+        .await
         .unwrap_or_else(|_| new_path.parent().unwrap_or(Path::new(".")).to_path_buf())
         .join(new_path.file_name().unwrap_or(new_path.as_os_str()));
 
