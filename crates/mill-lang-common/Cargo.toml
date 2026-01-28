@@ -20,7 +20,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 # TOML and JSON parsing for manifests
-toml_edit = "0.23"
+toml_edit = "0.24"
 
 # Error handling
 thiserror = { workspace = true }
@@ -44,7 +44,7 @@ which = "8.0"
 
 [dev-dependencies]
 proptest = "1.0"
-criterion = "0.5"
+criterion = "0.8"
 [[bench]]
 name = "import_helpers_bench"
 harness = false

@@ -15,7 +15,7 @@ mill-lang-common = { path = "../../crates/mill-lang-common" }
 # For markdown link parsing
 regex = "1.10"
 # fancy-regex for prose updates (supports lookahead/lookbehind)
-fancy-regex = "0.13"
+fancy-regex = "0.17"
 tracing = { workspace = true }
 
 # Serialization

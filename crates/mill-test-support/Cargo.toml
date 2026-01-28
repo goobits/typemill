@@ -23,7 +23,7 @@ mill-services = { path = "../mill-services", default-features = false }
 
 # Benchmark dependencies (merged from cb-bench)
 mill-server = { path = "../mill-server", default-features = false }
-simd-json = "0.16"
+simd-json = "0.17"
 mill-plugin-system = { path = "../mill-plugin-system", default-features = false, features = ["runtime"] }
 mill-config = { path = "../mill-config" }
 mill-ast = { path = "../mill-ast", default-features = false }
@@ -33,7 +33,7 @@ mill-handlers = { path = "../mill-handlers", default-features = false, features 
 mill-plugin-bundle = { path = "../mill-plugin-bundle", features = ["lang-gitignore", "lang-markdown", "lang-python", "lang-rust", "lang-toml", "lang-typescript", "lang-yaml"] }
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+criterion = { version = "0.8", features = ["html_reports", "async_tokio"] }
 
 # Individual language plugins as dev-dependencies for extern crate declarations
 # These must match the features enabled in mill-plugin-bundle above
