@@ -37,14 +37,14 @@ criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
 
 # Individual language plugins as dev-dependencies for extern crate declarations
 # These must match the features enabled in mill-plugin-bundle above
-mill-lang-c = { path = "../../languages/mill-lang-c" }
-mill-lang-go = { path = "../../languages/mill-lang-go" }
-mill-lang-java = { path = "../../languages/mill-lang-java" }
+mill-lang-c = { path = "../../languages-extra/mill-lang-c" }
+mill-lang-go = { path = "../../languages-extra/mill-lang-go" }
+mill-lang-java = { path = "../../languages-extra/mill-lang-java" }
 mill-lang-python = { path = "../../languages/mill-lang-python" }
 mill-lang-rust = { path = "../../languages/mill-lang-rust" }
-mill-lang-swift = { path = "../../languages/mill-lang-swift" }
+mill-lang-swift = { path = "../../languages-extra/mill-lang-swift" }
 mill-lang-typescript = { path = "../../languages/mill-lang-typescript" }
-mill-lang-cpp = { path = "../../languages/mill-lang-cpp" }
+mill-lang-cpp = { path = "../../languages-extra/mill-lang-cpp" }
 
 # Benchmarks
 [[bench]]

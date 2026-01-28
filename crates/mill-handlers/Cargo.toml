@@ -64,7 +64,7 @@ mill-config = { path = "../mill-config" }
 mill-workspaces = { path = "../mill-workspaces" }
 mill-ast = { path = "../mill-ast", default-features = false }
 mill-lang-rust = { path = "../../languages/mill-lang-rust", optional = true }
-mill-lang-java = { path = "../../languages/mill-lang-java", optional = true }
+mill-lang-java = { path = "../../languages-extra/mill-lang-java", optional = true }
 
 [dev-dependencies]
 mill-test-support = { path = "../mill-test-support" }
