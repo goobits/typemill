@@ -209,6 +209,7 @@ impl TomlWorkspace {
             .map_err(|e| MillError::parse(format!("Failed to parse source TOML: {}", e)))?;
 
         // Merge [dependencies] section (Cargo-style)
+        // Optimization: Consume source document to move values instead of cloning
         if let Some(item) = source_doc.remove("dependencies") {
             if let Item::Table(source_table) = item {
                 let base_deps = base_doc
@@ -226,6 +227,7 @@ impl TomlWorkspace {
         }
 
         // Merge dev-dependencies
+        // Optimization: Consume source document to move values instead of cloning
         if let Some(item) = source_doc.remove("dev-dependencies") {
             if let Item::Table(source_table) = item {
                 let base_deps = base_doc
