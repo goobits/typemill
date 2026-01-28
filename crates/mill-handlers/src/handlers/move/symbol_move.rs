@@ -131,7 +131,9 @@ async fn try_lsp_symbol_move(
 
     // Convert source path to absolute and create file URI
     let path = Path::new(target_path);
-    let abs_path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let abs_path = tokio::fs::canonicalize(path)
+        .await
+        .unwrap_or_else(|_| path.to_path_buf());
     let file_uri = url::Url::from_file_path(&abs_path)
         .map_err(|_| {
             error!(
@@ -152,8 +154,9 @@ async fn try_lsp_symbol_move(
 
     // Convert destination path to absolute and create destination URI
     let dest_path = Path::new(destination);
-    let abs_dest_path =
-        std::fs::canonicalize(dest_path).unwrap_or_else(|_| dest_path.to_path_buf());
+    let abs_dest_path = tokio::fs::canonicalize(dest_path)
+        .await
+        .unwrap_or_else(|_| dest_path.to_path_buf());
     let destination_uri = url::Url::from_file_path(&abs_dest_path)
         .map_err(|_| {
             error!(
