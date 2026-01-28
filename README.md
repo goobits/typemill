@@ -77,26 +77,24 @@ mill tool extract --kind function --source src/app.rs:10:5 --name handleLogin
 mill tool workspace.find_replace '{"pattern": "oldName", "replacement": "newName", "scope": "workspace"}'
 ```
 **Key Distinction:**
-- Use `rename` for file/directory operations
-- Use `move` for code symbol operations (requires source position)
+- Use `rename_all` for file/directory/symbol rename operations
+- Use `relocate` for moving code symbols, files, or directories
 
 ## 📚 Available Tools
 
-**Navigation & Intelligence (8 tools)**
-- `find_definition`, `find_references`, `search_symbols`
-- `find_implementations`, `find_type_definition`, `get_symbol_info`
-- `get_diagnostics`, `get_call_hierarchy`
+**Code Intelligence (2 tools)**
+- `inspect_code` - Aggregate code intelligence (definition, references, types, diagnostics)
+- `search_code` - Search workspace symbols
 
-**Editing & Refactoring (7 tools with dryRun API)**
-- `rename`, `extract`, `inline`, `move`, `reorder`, `transform`, `delete`
+**Refactoring & Editing (4 tools with dryRun API)**
+- `rename_all` - Rename symbols, files, directories (updates all references)
+- `relocate` - Move symbols, files, directories
+- `prune` - Delete symbols, files, directories with cleanup
+- `refactor` - Extract, inline, reorder, transform code
 - Each tool supports `options.dryRun` (default: true for safety, false to execute)
 
-**Workspace (4 tools)**
-- `workspace.create_package`, `workspace.extract_dependencies`
-- `workspace.update_members`, `workspace.find_replace`
-
-**System (1 tool)**
-- `health_check`
+**Workspace Management (1 tool)**
+- `workspace` - Package management, find/replace, dependency extraction, project verification
 
 ## 🌐 Language Support
 

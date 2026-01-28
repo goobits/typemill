@@ -1,10 +1,12 @@
-# Workspace Tools
+# Workspace Tool
 
-Package management operations for multi-language workspaces. Create new packages, extract dependencies, and perform workspace-wide text operations.
+> **NEW:** The workspace tool is now a unified action-based tool. Legacy workspace sub-tools (`workspace.create_package`, `workspace.extract_dependencies`, `workspace.find_replace`) are now actions within the single `workspace` tool.
+
+Package management and workspace operations for multi-language workspaces. Create packages, extract dependencies, perform workspace-wide text operations, and verify project health.
 
 **Supported languages:** Rust (Cargo), TypeScript (npm/yarn/pnpm), Python (PDM/Poetry/Hatch)
-**Tool count:** 3 tools
-**Related categories:** [Refactoring](refactoring.md) (rename for crate consolidation)
+**Tool:** 1 unified tool with 5 actions
+**Related categories:** [rename_all](rename_all.md) (for crate consolidation)
 
 **Language-specific guides:**
 - **[Rust/Cargo](workspace-rust.md)** - Cargo.toml, crate structure, Rust conventions
@@ -13,23 +15,54 @@ Package management operations for multi-language workspaces. Create new packages
 
 ## Table of Contents
 
-- [Tools](#tools)
-  - [workspace.create_package](#workspacecreate_package)
-  - [workspace.extract_dependencies](#workspaceextract_dependencies)
-  - [workspace.find_replace](#workspacefind_replace)
+- [Overview](#overview)
+- [Actions](#actions)
+  - [create_package](#create_package)
+  - [extract_dependencies](#extract_dependencies)
+  - [find_replace](#find_replace)
+  - [update_members](#update_members)
+  - [verify_project](#verify_project)
 - [Common Patterns](#common-patterns)
   - [Crate Extraction Workflow](#crate-extraction-workflow)
   - [Package Creation with Dependencies](#package-creation-with-dependencies)
   - [Dependency Audit Before Extraction](#dependency-audit-before-extraction)
   - [Project-Wide Text Replacement](#project-wide-text-replacement)
 - [Integration with Other Tools](#integration-with-other-tools)
-  - [With rename (Crate Consolidation)](#with-renameplan-crate-consolidation)
+  - [With rename_all (Crate Consolidation)](#with-rename_all-crate-consolidation)
 
 ---
 
-## Tools
+## Overview
 
-### workspace.create_package
+The `workspace` tool provides a unified interface for workspace-level operations through action-based dispatching. All actions follow a consistent pattern:
+
+```json
+{
+  "name": "workspace",
+  "arguments": {
+    "action": "action_name",
+    "params": {
+      // action-specific parameters
+    },
+    "options": {
+      "dryRun": true  // where applicable
+    }
+  }
+}
+```
+
+**Available actions:**
+- `create_package` - Create new packages (library or binary)
+- `extract_dependencies` - Extract dependencies from one manifest to another
+- `find_replace` - Find and replace text workspace-wide
+- `update_members` - Update workspace member list
+- `verify_project` - Verify project health and configuration
+
+---
+
+## Actions
+
+### create_package
 
 **Purpose:** Create a new package (library or binary) with proper manifest and source structure. Language auto-detected from workspace or specified via file extension.
 
@@ -68,10 +101,13 @@ Object with creation details:
 {
   "method": "tools/call",
   "params": {
-    "name": "workspace.create_package",
+    "name": "workspace",
     "arguments": {
-      "packagePath": "packages/my-util",
-      "package_type": "library",
+      "action": "create_package",
+      "params": {
+        "packagePath": "packages/my-util",
+        "package_type": "library"
+      },
       "options": {
         "template": "minimal",
         "addToWorkspace": true
@@ -88,10 +124,13 @@ Object with creation details:
 {
   "method": "tools/call",
   "params": {
-    "name": "workspace.create_package",
+    "name": "workspace",
     "arguments": {
-      "packagePath": "packages/my-cli",
-      "package_type": "binary",
+      "action": "create_package",
+      "params": {
+        "packagePath": "packages/my-cli",
+        "package_type": "binary"
+      },
       "options": {
         "template": "full"
       }
@@ -145,11 +184,14 @@ Object with extraction results:
 {
   "method": "tools/call",
   "params": {
-    "name": "workspace.extract_dependencies",
+    "name": "workspace",
     "arguments": {
-      "source_manifest": "/workspace/crates/big-crate/Cargo.toml",
-      "target_manifest": "/workspace/crates/new-crate/Cargo.toml",
-      "dependencies": ["tokio", "serde"],
+      "action": "extract_dependencies",
+      "params": {
+        "source_manifest": "/workspace/crates/big-crate/Cargo.toml",
+        "target_manifest": "/workspace/crates/new-crate/Cargo.toml",
+        "dependencies": ["tokio", "serde"]
+      },
       "options": {
         "dryRun": false,
         "preserve_versions": true,
@@ -188,11 +230,14 @@ Object with extraction results:
 {
   "method": "tools/call",
   "params": {
-    "name": "workspace.extract_dependencies",
+    "name": "workspace",
     "arguments": {
-      "source_manifest": "/workspace/crates/source/Cargo.toml",
-      "target_manifest": "/workspace/crates/target/Cargo.toml",
-      "dependencies": ["tempfile", "criterion"],
+      "action": "extract_dependencies",
+      "params": {
+        "source_manifest": "/workspace/crates/source/Cargo.toml",
+        "target_manifest": "/workspace/crates/target/Cargo.toml",
+        "dependencies": ["tempfile", "criterion"]
+      },
       "options": {
         "section": "dev-dependencies"
       }
@@ -232,11 +277,14 @@ Object with extraction results:
 {
   "method": "tools/call",
   "params": {
-    "name": "workspace.extract_dependencies",
+    "name": "workspace",
     "arguments": {
-      "source_manifest": "/workspace/source/Cargo.toml",
-      "target_manifest": "/workspace/target/Cargo.toml",
-      "dependencies": ["anyhow"],
+      "action": "extract_dependencies",
+      "params": {
+        "source_manifest": "/workspace/source/Cargo.toml",
+        "target_manifest": "/workspace/target/Cargo.toml",
+        "dependencies": ["anyhow"]
+      },
       "options": {
         "dryRun": true
       }
@@ -299,11 +347,14 @@ When `dryRun: false`, returns ApplyResult:
 {
   "method": "tools/call",
   "params": {
-    "name": "workspace.find_replace",
+    "name": "workspace",
     "arguments": {
-      "pattern": "username",
-      "replacement": "userid",
-      "mode": "literal"
+      "action": "find_replace",
+      "params": {
+        "pattern": "username",
+        "replacement": "userid",
+        "mode": "literal"
+      }
     }
   }
 }
@@ -340,12 +391,15 @@ When `dryRun: false`, returns ApplyResult:
 {
   "method": "tools/call",
   "params": {
-    "name": "workspace.find_replace",
+    "name": "workspace",
     "arguments": {
-      "pattern": "user",
-      "replacement": "account",
-      "mode": "literal",
-      "wholeWord": true
+      "action": "find_replace",
+      "params": {
+        "pattern": "user",
+        "replacement": "account",
+        "mode": "literal",
+        "wholeWord": true
+      }
     }
   }
 }
@@ -358,11 +412,14 @@ When `dryRun: false`, returns ApplyResult:
 {
   "method": "tools/call",
   "params": {
-    "name": "workspace.find_replace",
+    "name": "workspace",
     "arguments": {
-      "pattern": "TYPEMILL_([A-Z_]+)",
-      "replacement": "TYPEMILL_$1",
-      "mode": "regex"
+      "action": "find_replace",
+      "params": {
+        "pattern": "TYPEMILL_([A-Z_]+)",
+        "replacement": "TYPEMILL_$1",
+        "mode": "regex"
+      }
     }
   }
 }
@@ -377,12 +434,15 @@ When `dryRun: false`, returns ApplyResult:
 {
   "method": "tools/call",
   "params": {
-    "name": "workspace.find_replace",
+    "name": "workspace",
     "arguments": {
-      "pattern": "user_name",
-      "replacement": "account_id",
-      "mode": "literal",
-      "preserveCase": true
+      "action": "find_replace",
+      "params": {
+        "pattern": "user_name",
+        "replacement": "account_id",
+        "mode": "literal",
+        "preserveCase": true
+      }
     }
   }
 }
@@ -399,13 +459,16 @@ When `dryRun: false`, returns ApplyResult:
 {
   "method": "tools/call",
   "params": {
-    "name": "workspace.find_replace",
+    "name": "workspace",
     "arguments": {
-      "pattern": "old_function",
-      "replacement": "new_function",
-      "scope": {
-        "includePatterns": ["**/*.rs"],
-        "excludePatterns": ["**/target/**", "**/tests/**"]
+      "action": "find_replace",
+      "params": {
+        "pattern": "old_function",
+        "replacement": "new_function",
+        "scope": {
+          "includePatterns": ["**/*.rs"],
+          "excludePatterns": ["**/target/**", "**/tests/**"]
+        }
       }
     }
   }
@@ -419,11 +482,14 @@ When `dryRun: false`, returns ApplyResult:
 {
   "method": "tools/call",
   "params": {
-    "name": "workspace.find_replace",
+    "name": "workspace",
     "arguments": {
-      "pattern": "(?P<module>\\w+)::(?P<function>\\w+)",
-      "replacement": "${function}_from_${module}",
-      "mode": "regex"
+      "action": "find_replace",
+      "params": {
+        "pattern": "(?P<module>\\w+)::(?P<function>\\w+)",
+        "replacement": "${function}_from_${module}",
+        "mode": "regex"
+      }
     }
   }
 }
@@ -436,11 +502,16 @@ When `dryRun: false`, returns ApplyResult:
 {
   "method": "tools/call",
   "params": {
-    "name": "workspace.find_replace",
+    "name": "workspace",
     "arguments": {
-      "pattern": "old_config_path",
-      "replacement": "new_config_path",
-      "dryRun": false
+      "action": "find_replace",
+      "params": {
+        "pattern": "old_config_path",
+        "replacement": "new_config_path"
+      },
+      "options": {
+        "dryRun": false
+      }
     }
   }
 }
@@ -486,7 +557,7 @@ When `dryRun: false`, returns ApplyResult:
 5. **Large replacements:** For 100+ file modifications, consider breaking into smaller scoped operations
 
 **Related Tools:**
-- `rename` - For renaming files, directories, and symbols (more semantic than text replacement)
+- `rename_all` - For renaming files, directories, and symbols (more semantic than text replacement)
 
 ---
 
@@ -500,9 +571,12 @@ Complete workflow for extracting a module into a standalone crate:
 # 1. Gather dependencies for the module (manual review)
 
 # 2. Create new package
-mill tool workspace.create_package '{
-  "packagePath": "crates/mill-core",
-  "package_type": "library",
+mill tool workspace '{
+  "action": "create_package",
+  "params": {
+    "packagePath": "crates/mill-core",
+    "package_type": "library"
+  },
   "options": {
     "addToWorkspace": true,
     "template": "minimal"
@@ -510,10 +584,13 @@ mill tool workspace.create_package '{
 }'
 
 # 3. Extract dependencies to new package
-mill tool workspace.extract_dependencies '{
-  "source_manifest": "crates/big-crate/Cargo.toml",
-  "target_manifest": "crates/mill-core/Cargo.toml",
-  "dependencies": ["tokio", "serde", "anyhow"],
+mill tool workspace '{
+  "action": "extract_dependencies",
+  "params": {
+    "source_manifest": "crates/big-crate/Cargo.toml",
+    "target_manifest": "crates/mill-core/Cargo.toml",
+    "dependencies": ["tokio", "serde", "anyhow"]
+  },
   "options": {
     "preserve_versions": true,
     "preserve_features": true
@@ -521,19 +598,19 @@ mill tool workspace.extract_dependencies '{
 }'
 
 # 4. Preview directory move
-mill tool rename '{
+mill tool rename_all '{
   "target": {
     "kind": "directory",
-    "path": "crates/big-crate/src/core"
+    "filePath": "crates/big-crate/src/core"
   },
   "newName": "crates/mill-core/src"
 }'
 
 # 5. Execute the move (explicit dryRun: false)
-mill tool rename '{
+mill tool rename_all '{
   "target": {
     "kind": "directory",
-    "path": "crates/big-crate/src/core"
+    "filePath": "crates/big-crate/src/core"
   },
   "newName": "crates/mill-core/src",
   "options": { "dryRun": false }
@@ -545,16 +622,22 @@ Create a new package and set up dependencies in one workflow:
 
 ```bash
 # 1. Create package
-mill tool workspace.create_package '{
-  "packagePath": "crates/new-service",
-  "package_type": "binary"
+mill tool workspace '{
+  "action": "create_package",
+  "params": {
+    "packagePath": "crates/new-service",
+    "package_type": "binary"
+  }
 }'
 
 # 2. Extract common dependencies from existing package
-mill tool workspace.extract_dependencies '{
-  "source_manifest": "crates/common/Cargo.toml",
-  "target_manifest": "crates/new-service/Cargo.toml",
-  "dependencies": ["tokio", "tracing", "serde"]
+mill tool workspace '{
+  "action": "extract_dependencies",
+  "params": {
+    "source_manifest": "crates/common/Cargo.toml",
+    "target_manifest": "crates/new-service/Cargo.toml",
+    "dependencies": ["tokio", "tracing", "serde"]
+  }
 }'
 ```
 ### Dependency Audit Before Extraction
@@ -563,10 +646,13 @@ Preview dependencies before extracting a module:
 
 ```bash
 # 1. Dry-run dependency extraction
-mill tool workspace.extract_dependencies '{
-  "source_manifest": "crates/source/Cargo.toml",
-  "target_manifest": "crates/target/Cargo.toml",
-  "dependencies": ["dep1", "dep2", "dep3"],
+mill tool workspace '{
+  "action": "extract_dependencies",
+  "params": {
+    "source_manifest": "crates/source/Cargo.toml",
+    "target_manifest": "crates/target/Cargo.toml",
+    "dependencies": ["dep1", "dep2", "dep3"]
+  },
   "options": {
     "dryRun": true
   }
@@ -575,10 +661,13 @@ mill tool workspace.extract_dependencies '{
 # 2. Review warnings for conflicts
 
 # 3. Execute if no issues
-mill tool workspace.extract_dependencies '{
-  "source_manifest": "crates/source/Cargo.toml",
-  "target_manifest": "crates/target/Cargo.toml",
-  "dependencies": ["dep1", "dep2", "dep3"],
+mill tool workspace '{
+  "action": "extract_dependencies",
+  "params": {
+    "source_manifest": "crates/source/Cargo.toml",
+    "target_manifest": "crates/target/Cargo.toml",
+    "dependencies": ["dep1", "dep2", "dep3"]
+  },
   "options": {
     "dryRun": false
   }
@@ -590,26 +679,34 @@ Safe workflow for replacing text across the workspace:
 
 ```bash
 # 1. Preview replacement (dryRun defaults to true)
-mill tool workspace.find_replace '{
-  "pattern": "TYPEMILL_([A-Z_]+)",
-  "replacement": "TYPEMILL_$1",
-  "mode": "regex",
-  "scope": {
-    "includePatterns": ["**/*.rs", "**/*.toml", "**/*.md"]
+mill tool workspace '{
+  "action": "find_replace",
+  "params": {
+    "pattern": "TYPEMILL_([A-Z_]+)",
+    "replacement": "TYPEMILL_$1",
+    "mode": "regex",
+    "scope": {
+      "includePatterns": ["**/*.rs", "**/*.toml", "**/*.md"]
+    }
   }
 }'
 
 # 2. Review the EditPlan output showing all changes
 
 # 3. Execute the replacement
-mill tool workspace.find_replace '{
-  "pattern": "TYPEMILL_([A-Z_]+)",
-  "replacement": "TYPEMILL_$1",
-  "mode": "regex",
-  "scope": {
-    "includePatterns": ["**/*.rs", "**/*.toml", "**/*.md"]
+mill tool workspace '{
+  "action": "find_replace",
+  "params": {
+    "pattern": "TYPEMILL_([A-Z_]+)",
+    "replacement": "TYPEMILL_$1",
+    "mode": "regex",
+    "scope": {
+      "includePatterns": ["**/*.rs", "**/*.toml", "**/*.md"]
+    }
   },
-  "dryRun": false
+  "options": {
+    "dryRun": false
+  }
 }'
 ```
 **Common use cases:**
@@ -623,25 +720,25 @@ mill tool workspace.find_replace '{
 
 ## Integration with Other Tools
 
-### With rename (Crate Consolidation)
+### With rename_all (Crate Consolidation)
 
-Workspace tools integrate with `rename` for crate consolidation:
+Workspace tools integrate with `rename_all` for crate consolidation:
 
 ```bash
 # Extract module to new crate, then consolidate back
 # See CLAUDE.md "Rust Crate Consolidation" section
-mill tool rename '{
-  "target": {"kind": "directory", "path": "crates/source-crate"},
+mill tool rename_all '{
+  "target": {"kind": "directory", "filePath": "crates/source-crate"},
   "newName": "crates/target-crate/src/module",
   "options": {"consolidate": true}
 }'
 
 # This automatically:
 # - Moves source-crate/src/* to target-crate/src/module/*
-# - Merges dependencies (uses workspace.extract_dependencies internally)
+# - Merges dependencies (uses workspace extract_dependencies action internally)
 # - Removes source from workspace members
 # - Updates imports across workspace
 ```
 **Related Documentation:**
-- [Refactoring Tools](refactoring.md) - rename for crate consolidation
+- [rename_all](rename_all.md) - Rename tool for crate consolidation
 - [Main API Reference](README.md) - Complete API documentation

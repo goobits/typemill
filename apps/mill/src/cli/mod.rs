@@ -94,10 +94,16 @@ pub enum Commands {
     /// Call an MCP tool directly (without WebSocket server)
     ///
     /// Common tools:
-    ///   rename  - Move/rename files and directories
-    ///   move    - Move code symbols (functions/classes) between files
-    ///   extract - Extract code into functions/variables
-    ///   inline  - Inline variables/functions
+    ///   rename_all   - Rename files, directories, and symbols (updates all references)
+    ///   relocate     - Move code symbols (functions/classes) between files
+    ///   refactor     - Extract/inline functions, variables, constants
+    ///   prune        - Delete unused code (imports, dead code)
+    ///   inspect_code - Navigate code (definitions, references, diagnostics)
+    ///   search_code  - Search for symbols across workspace
+    ///   workspace    - Workspace operations (create packages, find/replace)
+    ///
+    /// Legacy tools (still supported):
+    ///   rename, move, extract, inline, delete
     ///
     /// Scope examples (for rename operations):
     ///   --scope code        : Code only (minimal)
@@ -107,10 +113,9 @@ pub enum Commands {
     ///
     /// Use 'mill tools' to list all available tools.
     Tool {
-        /// Tool name (e.g., "rename", "move", "find_definition")
+        /// Tool name (e.g., "rename_all", "relocate", "inspect_code")
         ///
-        /// Important: 'move' is for moving CODE SYMBOLS (functions, classes).
-        ///           For moving/renaming FILES, use 'rename' instead.
+        /// Note: Legacy tool names (rename, move, extract, etc.) are still supported
         tool_name: String,
 
         /// Tool arguments as JSON string (use "-" for stdin, required if not using flags)

@@ -28,12 +28,17 @@ async fn test_literal_basic_replace() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "username",
-                "replacement": "userid",
-                "mode": "literal",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": "username",
+                    "replacement": "userid",
+                    "mode": "literal"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -72,13 +77,18 @@ async fn test_literal_whole_word() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "user",
-                "replacement": "account",
-                "mode": "literal",
-                "wholeWord": true,
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": "user",
+                    "replacement": "account",
+                    "mode": "literal",
+                    "wholeWord": true
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -107,12 +117,17 @@ async fn test_literal_case_sensitive() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "user",
-                "replacement": "account",
-                "mode": "literal",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": "user",
+                    "replacement": "account",
+                    "mode": "literal"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -149,12 +164,17 @@ let user = "Bob";
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": r"user_[a-z]+",
-                "replacement": "account_info",
-                "mode": "regex",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": r"user_[a-z]+",
+                    "replacement": "account_info",
+                    "mode": "regex"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -189,12 +209,17 @@ TYPEMILL_MAX_WORKERS = 10
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": r"TYPEMILL_([A-Z_]+)",
-                "replacement": "TYPEMILL_$1",
-                "mode": "regex",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": r"TYPEMILL_([A-Z_]+)",
+                    "replacement": "TYPEMILL_$1",
+                    "mode": "regex"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -227,12 +252,17 @@ item_count = 42
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": r"(?P<first>\w+)_(?P<second>\w+)",
-                "replacement": "${second}_${first}",
-                "mode": "regex",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": r"(?P<first>\w+)_(?P<second>\w+)",
+                    "replacement": "${second}_${first}",
+                    "mode": "regex"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -259,12 +289,17 @@ async fn test_regex_invalid_pattern() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "[unclosed",
-                "replacement": "replacement",
-                "mode": "regex",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": "[unclosed",
+                    "replacement": "replacement",
+                    "mode": "regex"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await;
@@ -292,13 +327,18 @@ let USER_NAME = "screaming";
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "user_name",
-                "replacement": "account_id",
-                "mode": "literal",
-                "preserveCase": true,
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": "user_name",
+                    "replacement": "account_id",
+                    "mode": "literal",
+                    "preserveCase": true
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -328,13 +368,18 @@ async fn test_preserve_case_disabled() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "userName",
-                "replacement": "accountId",
-                "mode": "literal",
-                "preserveCase": false,
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": "userName",
+                    "replacement": "accountId",
+                    "mode": "literal",
+                    "preserveCase": false
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -367,15 +412,20 @@ async fn test_scope_include_patterns() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "user",
-                "replacement": "account",
-                "mode": "literal",
-                "scope": {
-                    "includePatterns": ["**/*.rs", "**/*.toml"]
+                "action": "find_replace",
+                "params": {
+                    "pattern": "user",
+                    "replacement": "account",
+                    "mode": "literal",
+                    "scope": {
+                        "includePatterns": ["**/*.rs", "**/*.toml"]
+                    }
                 },
-                "dryRun": false
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -411,15 +461,20 @@ async fn test_scope_exclude_patterns() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "user",
-                "replacement": "account",
-                "mode": "literal",
-                "scope": {
-                    "excludePatterns": ["**/target/**"]
+                "action": "find_replace",
+                "params": {
+                    "pattern": "user",
+                    "replacement": "account",
+                    "mode": "literal",
+                    "scope": {
+                        "excludePatterns": ["**/target/**"]
+                    }
                 },
-                "dryRun": false
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -454,12 +509,17 @@ async fn test_scope_default_excludes() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "user",
-                "replacement": "account",
-                "mode": "literal",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": "user",
+                    "replacement": "account",
+                    "mode": "literal"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -500,12 +560,17 @@ async fn test_multi_file_replace() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "user",
-                "replacement": "account",
-                "mode": "literal",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": "user",
+                    "replacement": "account",
+                    "mode": "literal"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -544,11 +609,14 @@ async fn test_dry_run_defaults_true() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "user",
-                "replacement": "account",
-                "mode": "literal"
+                "action": "find_replace",
+                "params": {
+                    "pattern": "user",
+                    "replacement": "account",
+                    "mode": "literal"
+                }
             }),
         )
         .await
@@ -571,12 +639,17 @@ async fn test_dry_run_preview() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "user",
-                "replacement": "account",
-                "mode": "literal",
-                "dryRun": true
+                "action": "find_replace",
+                "params": {
+                    "pattern": "user",
+                    "replacement": "account",
+                    "mode": "literal"
+                },
+                "options": {
+                    "dryRun": true
+                }
             }),
         )
         .await
@@ -610,12 +683,17 @@ async fn test_execute_mode() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "user",
-                "replacement": "account",
-                "mode": "literal",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": "user",
+                    "replacement": "account",
+                    "mode": "literal"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -641,12 +719,17 @@ async fn test_empty_pattern() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "",
-                "replacement": "replacement",
-                "mode": "literal",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": "",
+                    "replacement": "replacement",
+                    "mode": "literal"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await;
@@ -663,12 +746,17 @@ async fn test_pattern_not_found() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "nonexistent",
-                "replacement": "replacement",
-                "mode": "literal",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": "nonexistent",
+                    "replacement": "replacement",
+                    "mode": "literal"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -696,12 +784,17 @@ async fn test_utf8_content() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "user",
-                "replacement": "account",
-                "mode": "literal",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": "user",
+                    "replacement": "account",
+                    "mode": "literal"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -735,12 +828,17 @@ async fn test_large_file() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "user",
-                "replacement": "account",
-                "mode": "literal",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": "user",
+                    "replacement": "account",
+                    "mode": "literal"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -778,12 +876,17 @@ function user_logout() {
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": r"user_(\w+)",
-                "replacement": "account_$1",
-                "mode": "regex",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": r"user_(\w+)",
+                    "replacement": "account_$1",
+                    "mode": "regex"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await
@@ -816,12 +919,17 @@ let z = user*2;
 
     let result = client
         .call_tool(
-            "workspace.find_replace",
+            "workspace",
             json!({
-                "pattern": "user",
-                "replacement": "account",
-                "mode": "literal",
-                "dryRun": false
+                "action": "find_replace",
+                "params": {
+                    "pattern": "user",
+                    "replacement": "account",
+                    "mode": "literal"
+                },
+                "options": {
+                    "dryRun": false
+                }
             }),
         )
         .await

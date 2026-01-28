@@ -208,7 +208,7 @@ mod tests {
                     },
                     "steps": [
                         {
-                            "tool": "rename",
+                            "tool": "rename_all",
                             "params": {
                                 "target": {
                                     "kind": "symbol",
@@ -236,8 +236,9 @@ mod tests {
                     },
                     "steps": [
                         {
-                            "tool": "extract",
+                            "tool": "refactor",
                             "params": {
+                                "action": "extract",
                                 "kind": "function",
                                 "source": {
                                     "filePath": "{file_path}",
@@ -265,19 +266,21 @@ mod tests {
                     },
                     "steps": [
                         {
-                            "tool": "get_document_symbols",
+                            "tool": "search_code",
                             "params": {
+                                "query": "{symbol_name}",
                                 "filePath": "{filePath}"
                             },
                             "description": "Find the location of symbol '{symbol_name}'",
                             "requires_confirmation": null
                         },
                         {
-                            "tool": "get_hover",
+                            "tool": "inspect_code",
                             "params": {
                                 "filePath": "{filePath}",
                                 "line": "$steps.0.symbols.0.range.start.line",
-                                "character": "$steps.0.symbols.0.range.start.character"
+                                "character": "$steps.0.symbols.0.range.start.character",
+                                "include": ["typeInfo"]
                             },
                             "description": "Get signature information for '{symbol_name}'",
                             "requires_confirmation": null
@@ -343,7 +346,7 @@ mod tests {
         assert_eq!(workflow.metadata.complexity, 2);
 
         // Check rename step (unified API with dryRun: false)
-        assert_eq!(workflow.steps[0].tool, "rename");
+        assert_eq!(workflow.steps[0].tool, "rename_all");
         assert!(workflow.steps[0].params.get("target").is_some());
         assert_eq!(
             workflow.steps[0]
@@ -380,7 +383,8 @@ mod tests {
 
         // Check extract step (unified API with dryRun: false)
         let step = &workflow.steps[0];
-        assert_eq!(step.tool, "extract");
+        assert_eq!(step.tool, "refactor");
+        assert_eq!(step.params.get("action").unwrap().as_str().unwrap(), "extract");
         assert!(step.params.get("kind").is_some());
         assert!(step.params.get("source").is_some());
         assert_eq!(step.requires_confirmation, Some(true));
@@ -405,20 +409,20 @@ mod tests {
         assert_eq!(workflow.steps.len(), 3);
         assert_eq!(workflow.metadata.complexity, 3);
 
-        // Check step 1: get_document_symbols
-        assert_eq!(workflow.steps[0].tool, "get_document_symbols");
+        // Check step 1: search_code
+        assert_eq!(workflow.steps[0].tool, "search_code");
         assert_eq!(
             workflow.steps[0]
                 .params
-                .get("filePath")
+                .get("query")
                 .unwrap()
                 .as_str()
                 .unwrap(),
-            "src/utils.ts"
+            "myFunction"
         );
 
-        // Check step 2: get_hover
-        assert_eq!(workflow.steps[1].tool, "get_hover");
+        // Check step 2: inspect_code
+        assert_eq!(workflow.steps[1].tool, "inspect_code");
         assert_eq!(
             workflow.steps[1]
                 .params

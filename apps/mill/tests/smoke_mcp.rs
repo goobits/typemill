@@ -36,11 +36,11 @@ async fn test_mcp_protocol_layer() {
     println!("   ✓ MCP server connection established");
     println!();
 
-    println!("🔧 Test 2: Tool Routing (health_check)");
+    println!("🔧 Test 2: Tool Routing (workspace.verify_project)");
     let response = client
-        .call_tool("health_check", json!({}))
+        .call_tool("workspace", json!({"action": "verify_project"}))
         .await
-        .expect("health_check should succeed via MCP");
+        .expect("workspace.verify_project should succeed via MCP");
 
     assert!(
         response.get("result").is_some(),
@@ -65,7 +65,7 @@ async fn test_mcp_protocol_layer() {
     // Test that server can handle multiple calls in sequence
     for i in 1..=3 {
         let response = client
-            .call_tool("health_check", json!({}))
+            .call_tool("workspace", json!({"action": "verify_project"}))
             .await
             .expect("Multiple calls should succeed");
 

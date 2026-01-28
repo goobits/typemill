@@ -27,32 +27,20 @@ TypeMill is a Pure Rust MCP server that bridges Language Server Protocol (LSP) f
 
 ## Tool Quick Reference
 
-### Navigation & Intelligence (8 tools)
-- `find_definition` - Jump to symbol definition
-- `find_references` - Find all usages
-- `find_implementations` - Find interface implementations
-- `find_type_definition` - Jump to type definition
-- `search_symbols` - Search workspace symbols
-- `get_symbol_info` - Get symbol documentation
-- `get_diagnostics` - Fetch errors/warnings
-- `get_call_hierarchy` - Show call graph
+### Code Intelligence (2 tools)
+- `inspect_code` - Aggregate code intelligence (definition, references, types, diagnostics)
+- `search_code` - Search workspace symbols
 
-### Editing & Refactoring (5 tools)
+### Refactoring & Editing (4 tools)
 All refactoring tools support **`options.dryRun`** for safe preview (default: true).
 
-- `rename` - Rename symbols, files, directories (updates all references)
-- `extract` - Extract functions, variables, constants, modules
-- `inline` - Inline variables, functions, constants
-- `move` - Move symbols, files, directories, modules
-- `delete` - Delete symbols, files, directories
+- `rename_all` - Rename symbols, files, directories (updates all references)
+- `relocate` - Move symbols, files, directories
+- `prune` - Delete symbols, files, directories with cleanup
+- `refactor` - Extract, inline, reorder, transform code
 
-### Workspace (3 tools)
-- `workspace.create_package` - Create new packages (Rust, TypeScript, Python)
-- `workspace.extract_dependencies` - Extract module dependencies
-- `workspace.find_replace` - Find and replace across workspace
-
-### System (1 tool)
-- `health_check` - Server health status
+### Workspace Management (1 tool)
+- `workspace` - Package management, find/replace, dependency extraction, project verification
 
 **Details**: [docs/tools/README.md](docs/tools/README.md)
 
@@ -99,11 +87,12 @@ All refactoring tools support **`options.dryRun`** for safe preview (default: tr
 {
   "method": "tools/call",
   "params": {
-    "name": "find_definition",
+    "name": "inspect_code",
     "arguments": {
-      "file_path": "src/app.ts",
+      "filePath": "src/app.ts",
       "line": 10,
-      "character": 5
+      "character": 5,
+      "include": ["definition", "references", "diagnostics"]
     }
   }
 }
@@ -112,9 +101,9 @@ All refactoring tools support **`options.dryRun`** for safe preview (default: tr
 ### File Rename (Updates Imports Automatically)
 ```json
 {
-  "name": "rename",
+  "name": "rename_all",
   "arguments": {
-    "target": {"kind": "file", "path": "src/utils.rs"},
+    "target": {"kind": "file", "filePath": "src/utils.rs"},
     "newName": "src/helpers.rs",
     "options": {"dryRun": false}
   }
@@ -125,10 +114,10 @@ All refactoring tools support **`options.dryRun`** for safe preview (default: tr
 ### Code Symbol Move
 ```json
 {
-  "name": "move",
+  "name": "relocate",
   "arguments": {
-    "source": {"file": "src/app.rs", "line": 10, "character": 5},
-    "destination": "src/utils.rs",
+    "target": {"kind": "symbol", "filePath": "src/app.rs", "line": 10, "character": 5},
+    "destination": {"filePath": "src/utils.rs"},
     "options": {"dryRun": false}
   }
 }
@@ -137,11 +126,14 @@ All refactoring tools support **`options.dryRun`** for safe preview (default: tr
 ### Extract Function
 ```json
 {
-  "name": "extract",
+  "name": "refactor",
   "arguments": {
-    "kind": "function",
-    "source": {"file": "src/app.rs", "line": 15, "character": 8},
-    "name": "handleLogin",
+    "action": "extract",
+    "params": {
+      "kind": "function",
+      "source": {"filePath": "src/app.rs", "line": 15, "character": 8},
+      "name": "handleLogin"
+    },
     "options": {"dryRun": false}
   }
 }
@@ -150,12 +142,15 @@ All refactoring tools support **`options.dryRun`** for safe preview (default: tr
 ### Workspace Find & Replace
 ```json
 {
-  "name": "workspace.find_replace",
+  "name": "workspace",
   "arguments": {
-    "pattern": "oldName",
-    "replacement": "newName",
-    "mode": "literal",
-    "dryRun": false
+    "action": "find_replace",
+    "params": {
+      "pattern": "oldName",
+      "replacement": "newName",
+      "mode": "literal"
+    },
+    "options": {"dryRun": false}
   }
 }
 ```
@@ -173,9 +168,9 @@ Control what gets updated during renames:
 
 ```json
 {
-  "name": "rename",
+  "name": "rename_all",
   "arguments": {
-    "target": {"kind": "directory", "path": "old-dir"},
+    "target": {"kind": "directory", "filePath": "old-dir"},
     "newName": "new-dir",
     "options": {"scope": "standard"}
   }
@@ -190,9 +185,9 @@ TypeMill detects when moving a crate into another crate's src/ directory and aut
 
 ```json
 {
-  "name": "rename",
+  "name": "rename_all",
   "arguments": {
-    "target": {"kind": "directory", "path": "crates/source-crate"},
+    "target": {"kind": "directory", "filePath": "crates/source-crate"},
     "newName": "crates/target-crate/src/module",
     "options": {"dryRun": false}
   }
@@ -237,9 +232,13 @@ cargo fmt && cargo clippy
 
 **Tool Documentation:**
 - [tools/README.md](docs/tools/README.md) - Complete catalog
-- [tools/navigation.md](docs/tools/navigation.md) - Navigation tools (8)
-- [tools/refactoring.md](docs/tools/refactoring.md) - Refactoring tools (5)
-- [tools/workspace.md](docs/tools/workspace.md) - Workspace tools (3)
+- [tools/inspect_code.md](docs/tools/inspect_code.md) - Code intelligence tool
+- [tools/search_code.md](docs/tools/search_code.md) - Symbol search tool
+- [tools/rename_all.md](docs/tools/rename_all.md) - Rename tool
+- [tools/relocate.md](docs/tools/relocate.md) - Move tool
+- [tools/prune.md](docs/tools/prune.md) - Delete tool
+- [tools/refactor.md](docs/tools/refactor.md) - Extract/inline/transform tool
+- [tools/workspace.md](docs/tools/workspace.md) - Workspace management tool
 
 **Architecture:**
 - [architecture/core-concepts.md](docs/architecture/core-concepts.md) - System design, data flow
@@ -264,7 +263,7 @@ TypeScript, Rust, Python (full parity), Markdown, YAML, TOML (config files)
 
 **Import updates not applied?**
 - Use `options.scope: "standard"` (default) for comprehensive updates
-- Check [tools/refactoring.md#rename](docs/tools/refactoring.md#rename) for scope options
+- Check [tools/rename_all.md](docs/tools/rename_all.md) for scope options
 
 **Unexpected changes?**
 - Always use `dryRun: true` first to preview

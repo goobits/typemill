@@ -65,11 +65,14 @@ anyhow = "1.0"
 
     let result = client
         .call_tool(
-            "workspace.extract_dependencies",
+            "workspace",
             json!({
-                "sourceManifest": source_path.to_string_lossy(),
-                "targetManifest": target_path.to_string_lossy(),
-                "dependencies": ["tokio", "serde"],
+                "action": "extract_dependencies",
+                "params": {
+                    "sourceManifest": source_path.to_string_lossy(),
+                    "targetManifest": target_path.to_string_lossy(),
+                    "dependencies": ["tokio", "serde"]
+                },
                 "options": {
                     "dryRun": false,
                     "preserveVersions": true,
@@ -124,11 +127,14 @@ criterion = "0.5"
 
     let result = client
         .call_tool(
-            "workspace.extract_dependencies",
+            "workspace",
             json!({
-                "sourceManifest": source_path.to_string_lossy(),
-                "targetManifest": target_path.to_string_lossy(),
-                "dependencies": ["tempfile"],
+                "action": "extract_dependencies",
+                "params": {
+                    "sourceManifest": source_path.to_string_lossy(),
+                    "targetManifest": target_path.to_string_lossy(),
+                    "dependencies": ["tempfile"]
+                },
                 "options": {
                     "dryRun": false,
                     "section": "dev-dependencies"
@@ -169,11 +175,14 @@ serde = "0.9"
 
     let result = client
         .call_tool(
-            "workspace.extract_dependencies",
+            "workspace",
             json!({
-                "sourceManifest": source_path.to_string_lossy(),
-                "targetManifest": target_path.to_string_lossy(),
-                "dependencies": ["tokio", "serde"],
+                "action": "extract_dependencies",
+                "params": {
+                    "sourceManifest": source_path.to_string_lossy(),
+                    "targetManifest": target_path.to_string_lossy(),
+                    "dependencies": ["tokio", "serde"]
+                },
                 "options": {
                     "dryRun": false
                 }
@@ -229,11 +238,14 @@ tokio = "1.0"
 
     let result = client
         .call_tool(
-            "workspace.extract_dependencies",
+            "workspace",
             json!({
-                "sourceManifest": source_path.to_string_lossy(),
-                "targetManifest": target_path.to_string_lossy(),
-                "dependencies": ["my-common"],
+                "action": "extract_dependencies",
+                "params": {
+                    "sourceManifest": source_path.to_string_lossy(),
+                    "targetManifest": target_path.to_string_lossy(),
+                    "dependencies": ["my-common"]
+                },
                 "options": {
                     "dryRun": false
                 }
@@ -270,11 +282,14 @@ my-local = { path = "../my-local" }
 
     let result = client
         .call_tool(
-            "workspace.extract_dependencies",
+            "workspace",
             json!({
-                "sourceManifest": source_path.to_string_lossy(),
-                "targetManifest": target_path.to_string_lossy(),
-                "dependencies": ["my-local"],
+                "action": "extract_dependencies",
+                "params": {
+                    "sourceManifest": source_path.to_string_lossy(),
+                    "targetManifest": target_path.to_string_lossy(),
+                    "dependencies": ["my-local"]
+                },
                 "options": {
                     "dryRun": false
                 }
@@ -311,11 +326,14 @@ tokio = "1.0"
 
     let result = client
         .call_tool(
-            "workspace.extract_dependencies",
+            "workspace",
             json!({
-                "sourceManifest": source_path.to_string_lossy(),
-                "targetManifest": target_path.to_string_lossy(),
-                "dependencies": ["nonexistent"],
+                "action": "extract_dependencies",
+                "params": {
+                    "sourceManifest": source_path.to_string_lossy(),
+                    "targetManifest": target_path.to_string_lossy(),
+                    "dependencies": ["nonexistent"]
+                },
                 "options": {
                     "dryRun": false
                 }
@@ -357,11 +375,14 @@ tokio = "1.0"
 
     let result = client
         .call_tool(
-            "workspace.extract_dependencies",
+            "workspace",
             json!({
-                "sourceManifest": source_path.to_string_lossy(),
-                "targetManifest": target_path.to_string_lossy(),
-                "dependencies": ["tokio"],
+                "action": "extract_dependencies",
+                "params": {
+                    "sourceManifest": source_path.to_string_lossy(),
+                    "targetManifest": target_path.to_string_lossy(),
+                    "dependencies": ["tokio"]
+                },
                 "options": {
                     "dryRun": true
                 }
@@ -406,11 +427,14 @@ feature-dep = { version = "1.0", optional = true }
 
     let result = client
         .call_tool(
-            "workspace.extract_dependencies",
+            "workspace",
             json!({
-                "sourceManifest": source_path.to_string_lossy(),
-                "targetManifest": target_path.to_string_lossy(),
-                "dependencies": ["feature-dep"],
+                "action": "extract_dependencies",
+                "params": {
+                    "sourceManifest": source_path.to_string_lossy(),
+                    "targetManifest": target_path.to_string_lossy(),
+                    "dependencies": ["feature-dep"]
+                },
                 "options": {
                     "dryRun": false
                 }
@@ -457,11 +481,14 @@ cc = "1.0"
 
     let result = client
         .call_tool(
-            "workspace.extract_dependencies",
+            "workspace",
             json!({
-                "sourceManifest": source_path.to_string_lossy(),
-                "targetManifest": target_path.to_string_lossy(),
-                "dependencies": ["cc"],
+                "action": "extract_dependencies",
+                "params": {
+                    "sourceManifest": source_path.to_string_lossy(),
+                    "targetManifest": target_path.to_string_lossy(),
+                    "dependencies": ["cc"]
+                },
                 "options": {
                     "dryRun": false,
                     "section": "build-dependencies"

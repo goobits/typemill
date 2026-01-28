@@ -119,8 +119,9 @@ impl fmt::Display for FlagParseError {
                     f,
                     "Unknown tool: '{}'\n\n\
                     Common tools:\n\
-                    - Refactoring: rename, extract, inline, move, delete\n\
-                    - Navigation: find_definition, find_references, search_symbols\n\n\
+                    - Refactoring: rename_all, relocate, prune, refactor\n\
+                    - Navigation: inspect_code, search_code\n\
+                    - Workspace: workspace\n\n\
                     List all tools: mill tools\n\
                     Tool help: mill docs tools/[category]",
                     name
@@ -173,23 +174,24 @@ pub fn parse_flags_to_json(
         "transform" => parse_transform_flags(flags),
         "delete" => parse_delete_flags(flags),
 
-        // Navigation tools - require JSON
-        "find_definition"
-        | "find_references"
-        | "find_implementations"
-        | "find_type_definition"
-        | "get_symbol_info" => Err(FlagParseError::JsonOnly {
+        // New navigation tools - require JSON
+        "inspect_code" | "search_code" => Err(FlagParseError::JsonOnly {
             tool: tool_name.to_string(),
             example: get_example_for_tool(tool_name),
         }),
 
-        // Navigation tools - require JSON
-        "search_symbols" | "get_diagnostics" | "get_call_hierarchy" => {
-            Err(FlagParseError::JsonOnly {
-                tool: tool_name.to_string(),
-                example: get_example_for_tool(tool_name),
-            })
-        }
+        // Legacy navigation tools (deprecated, redirected to new names)
+        "find_definition"
+        | "find_references"
+        | "find_implementations"
+        | "find_type_definition"
+        | "get_symbol_info"
+        | "search_symbols"
+        | "get_diagnostics"
+        | "get_call_hierarchy" => Err(FlagParseError::JsonOnly {
+            tool: tool_name.to_string(),
+            example: get_example_for_tool(tool_name),
+        }),
 
         // Health check - takes empty object
         "health_check" => {
@@ -830,22 +832,29 @@ fn parse_delete_target_convention(s: &str) -> Result<Value, FlagParseError> {
 /// Get example usage for a tool that requires JSON
 fn get_example_for_tool(tool: &str) -> String {
     match tool {
+        // New tool names
+        "inspect_code" =>
+            "mill tool inspect_code '{\"operation\":\"definition\",\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
+        "search_code" =>
+            "mill tool search_code '{\"query\":\"MyClass\",\"limit\":10}'".to_string(),
+
+        // Legacy tool names (for backwards compatibility)
         "find_definition" =>
-            "mill tool find_definition '{\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
+            "mill tool inspect_code '{\"operation\":\"definition\",\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
         "find_references" =>
-            "mill tool find_references '{\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
+            "mill tool inspect_code '{\"operation\":\"references\",\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
         "find_implementations" =>
-            "mill tool find_implementations '{\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
+            "mill tool inspect_code '{\"operation\":\"implementations\",\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
         "find_type_definition" =>
-            "mill tool find_type_definition '{\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
+            "mill tool inspect_code '{\"operation\":\"type_definition\",\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
         "get_symbol_info" =>
-            "mill tool get_symbol_info '{\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
+            "mill tool inspect_code '{\"operation\":\"hover\",\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
         "search_symbols" =>
-            "mill tool search_symbols '{\"query\":\"MyClass\",\"limit\":10}'".to_string(),
+            "mill tool search_code '{\"query\":\"MyClass\",\"limit\":10}'".to_string(),
         "get_diagnostics" =>
-            "mill tool get_diagnostics '{\"file_path\":\"src/app.rs\"}'".to_string(),
+            "mill tool inspect_code '{\"operation\":\"diagnostics\",\"file_path\":\"src/app.rs\"}'".to_string(),
         "get_call_hierarchy" =>
-            "mill tool get_call_hierarchy '{\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
+            "mill tool inspect_code '{\"operation\":\"call_hierarchy\",\"file_path\":\"src/app.rs\",\"line\":10,\"character\":5}'".to_string(),
         _ => format!("mill tool {} '<JSON arguments>'", tool),
     }
 }

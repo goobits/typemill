@@ -12,52 +12,49 @@ This directory contains focused documentation for each tool category. Each categ
 
 | Tool | Category | Description | Documentation |
 |------|----------|-------------|---------------|
-| **Navigation & Intelligence (8 tools)** ||||
-| `find_definition` | Navigation | Find symbol definition location | [navigation.md](navigation.md#find_definition) |
-| `find_references` | Navigation | Find all symbol references | [navigation.md](navigation.md#find_references) |
-| `search_symbols` | Navigation | Search workspace symbols | [navigation.md](navigation.md#search_symbols) |
-| `find_implementations` | Navigation | Find interface implementations | [navigation.md](navigation.md#find_implementations) |
-| `find_type_definition` | Navigation | Find underlying type definition | [navigation.md](navigation.md#find_type_definition) |
-| `get_symbol_info` | Navigation | Get detailed symbol information | [navigation.md](navigation.md#get_symbol_info) |
-| `get_diagnostics` | Navigation | Get errors/warnings/hints | [navigation.md](navigation.md#get_diagnostics) |
-| `get_call_hierarchy` | Navigation | Get call hierarchy (callers/callees) | [navigation.md](navigation.md#get_call_hierarchy) |
-| **Editing & Refactoring (5 tools)** ||||
-| `rename` | Refactoring | Rename symbols/files/directories (dryRun option) | [refactoring.md](refactoring.md#rename) |
-| `extract` | Refactoring | Extract functions/variables (dryRun option) | [refactoring.md](refactoring.md#extract) |
-| `inline` | Refactoring | Inline variables/functions (dryRun option) | [refactoring.md](refactoring.md#inline) |
-| `move` | Refactoring | Move symbols/files (dryRun option) | [refactoring.md](refactoring.md#move) |
-| `delete` | Refactoring | Delete symbols/files/directories (dryRun option) | [refactoring.md](refactoring.md#delete) |
-| **Workspace (3 tools)** ||||
-| `workspace.create_package` | Workspace | Create new package | [workspace.md](workspace.md#workspacecreate_package) |
-| `workspace.extract_dependencies` | Workspace | Extract module dependencies | [workspace.md](workspace.md#workspaceextract_dependencies) |
-| `workspace.find_replace` | Workspace | Find and replace text workspace-wide | [workspace.md](workspace.md#workspacefind_replace) |
-| **System (1 tool)** ||||
-| `health_check` | System | Server health & statistics | [system.md](system.md#health_check) |
+| **Code Intelligence (2 tools)** ||||
+| `inspect_code` | Intelligence | Aggregate code intelligence (definition, references, types, diagnostics) | [inspect_code.md](inspect_code.md) |
+| `search_code` | Intelligence | Search workspace symbols | [search_code.md](search_code.md) |
+| **Refactoring & Editing (4 tools)** ||||
+| `rename_all` | Refactoring | Rename symbols/files/directories (dryRun option) | [rename_all.md](rename_all.md) |
+| `relocate` | Refactoring | Move symbols/files/directories (dryRun option) | [relocate.md](relocate.md) |
+| `prune` | Refactoring | Delete symbols/files/directories with cleanup (dryRun option) | [prune.md](prune.md) |
+| `refactor` | Refactoring | Extract, inline, reorder, transform code (dryRun option) | [refactor.md](refactor.md) |
+| **Workspace Management (1 tool)** ||||
+| `workspace` | Workspace | Package management, find/replace, dependency extraction, project verification | [workspace.md](workspace.md) |
+
+**Note:** Legacy tools (find_definition, find_references, rename, extract, inline, move, delete, etc.) are now internal-only and not exposed via the public API. Use the new tools above instead.
 
 ---
 
 ## Categories
 
-### [Navigation & Intelligence](navigation.md)
-**8 LSP-based tools** for code navigation and symbol information.
+### Code Intelligence
+**2 tools** for code navigation and symbol information.
 
-Navigate codebases with precision using language server protocol integration. Find definitions, references, implementations, and get rich symbol information with full IDE-quality intelligence.
+- **[inspect_code](inspect_code.md)** - Aggregate code intelligence: definition, references, type info, implementations, call hierarchy, and diagnostics in a single request
+- **[search_code](search_code.md)** - Search workspace symbols with fuzzy matching
 
-### [Editing & Refactoring](refactoring.md)
-**5 tools** with unified dryRun API for safe, reviewable refactoring.
+Navigate codebases with precision using language server protocol integration. Get rich symbol information with full IDE-quality intelligence.
 
-All refactoring operations use a single tool with `options.dryRun` parameter: default `true` generates a preview plan without modifying files, explicit `false` applies changes immediately with validation and rollback support.
+### Refactoring & Editing
+**4 tools** with unified dryRun API for safe, reviewable refactoring.
 
-### [Workspace](workspace.md)
-**3 workspace management tools** for package and text operations.
+- **[rename_all](rename_all.md)** - Rename symbols, files, directories (updates all references)
+- **[relocate](relocate.md)** - Move symbols, files, directories
+- **[prune](prune.md)** - Delete symbols, files, directories with cleanup
+- **[refactor](refactor.md)** - Extract, inline, reorder, transform code
+
+All refactoring operations support `options.dryRun` parameter: default `true` generates a preview plan without modifying files, explicit `false` applies changes immediately with validation and rollback support.
+
+### Workspace Management
+**1 comprehensive tool** for package and text operations.
+
+- **[workspace](workspace.md)** - Package creation, dependency extraction, find/replace, project verification
+
 **Language-specific guides:** [Rust](workspace-rust.md) | [TypeScript](workspace-typescript.md) | [Python](workspace-python.md)
 
-Create packages, extract dependencies, manage workspace member lists, and perform workspace-wide find/replace operations. Supports Rust (Cargo), TypeScript (npm/yarn/pnpm), and Python (PDM/Poetry/Hatch) workspaces.
-
-### [System](system.md)
-**1 health monitoring tool** for server diagnostics.
-
-Check server status, LSP server health, memory usage, and active connections. Essential for production monitoring and debugging.
+Supports Rust (Cargo), TypeScript (npm/yarn/pnpm), and Python (PDM/Poetry/Hatch) workspaces.
 
 ---
 
@@ -250,16 +247,19 @@ Common error codes:
 
 ### Tool Categories
 
-- **[Navigation Tools](navigation.md)** - Code navigation and intelligence
-- **[Refactoring Tools](refactoring.md)** - Editing and refactoring operations
-- **[Workspace Tools](workspace.md)** - Workspace operations
-- **[System Tools](system.md)** - Health checks and server status
+- **[inspect_code](inspect_code.md)** - Aggregate code intelligence
+- **[search_code](search_code.md)** - Symbol search
+- **[rename_all](rename_all.md)** - Rename operations
+- **[relocate](relocate.md)** - Move operations
+- **[prune](prune.md)** - Delete operations
+- **[refactor](refactor.md)** - Extract/inline/transform operations
+- **[workspace](workspace.md)** - Workspace management
 
-### Language-Specific Workspace Tools
+### Language-Specific Workspace Guides
 
-- **[TypeScript Workspace Tools](workspace-typescript.md)** - TypeScript project operations
-- **[Rust Workspace Tools](workspace-rust.md)** - Rust/Cargo workspace operations
-- **[Python Workspace Tools](workspace-python.md)** - Python project operations
+- **[TypeScript Workspace](workspace-typescript.md)** - TypeScript project operations
+- **[Rust Workspace](workspace-rust.md)** - Rust/Cargo workspace operations
+- **[Python Workspace](workspace-python.md)** - Python project operations
 
 ---
 

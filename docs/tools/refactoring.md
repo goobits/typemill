@@ -1,6 +1,20 @@
-# Editing & Refactoring Tools
+# Editing & Refactoring Tools (Legacy Internal Tools)
 
-**5 tools with unified dryRun API for safe, reviewable refactoring operations**
+> **DEPRECATED:** These tools are now internal-only and not exposed via the public API.
+>
+> **Use instead:**
+> - `rename_all` - Rename symbols, files, directories
+> - `relocate` - Move symbols, files, directories
+> - `prune` - Delete symbols, files, directories with cleanup
+> - `refactor` - Extract, inline, reorder, transform code
+>
+> See [rename_all.md](rename_all.md), [relocate.md](relocate.md), [prune.md](prune.md), and [refactor.md](refactor.md) for the new public API.
+
+---
+
+**This document is retained for internal reference only.**
+
+**5 internal tools with unified dryRun API for safe, reviewable refactoring operations**
 
 The Unified Refactoring API provides a single tool per refactoring operation with an `options.dryRun` parameter:
 
@@ -9,7 +23,7 @@ The Unified Refactoring API provides a single tool per refactoring operation wit
 
 All refactoring operations support checksum validation, rollback on error, and post-apply validation.
 
-**Tool count:** 5 tools
+**Tool count:** 5 internal tools
 **Related categories:** [Navigation](navigation.md), [Workspace](workspace.md)
 
 ## Table of Contents

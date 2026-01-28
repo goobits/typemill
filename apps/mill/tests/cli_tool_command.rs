@@ -32,20 +32,19 @@ fn mill_cmd() -> Command {
 }
 
 #[test]
-fn test_tool_health_check_success() {
+fn test_tool_workspace_verify_project_success() {
     let mut cmd = mill_cmd();
-    cmd.args(["tool", "health_check", "{}"]);
+    cmd.args(["tool", "workspace", r#"{"action":"verify_project"}"#]);
 
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("status"))
-        .stdout(predicate::str::contains("healthy"));
+        .stdout(predicate::str::contains("status"));
 }
 
 #[test]
-fn test_tool_health_check_pretty_format() {
+fn test_tool_workspace_verify_project_pretty_format() {
     let mut cmd = mill_cmd();
-    cmd.args(["tool", "health_check", "{}", "--format", "pretty"]);
+    cmd.args(["tool", "workspace", r#"{"action":"verify_project"}"#, "--format", "pretty"]);
 
     cmd.assert()
         .success()
@@ -54,9 +53,9 @@ fn test_tool_health_check_pretty_format() {
 }
 
 #[test]
-fn test_tool_health_check_compact_format() {
+fn test_tool_workspace_verify_project_compact_format() {
     let mut cmd = mill_cmd();
-    cmd.args(["tool", "health_check", "{}", "--format", "compact"]);
+    cmd.args(["tool", "workspace", r#"{"action":"verify_project"}"#, "--format", "compact"]);
 
     let output = cmd.assert().success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
@@ -69,7 +68,7 @@ fn test_tool_health_check_compact_format() {
 #[test]
 fn test_tool_invalid_json_arguments() {
     let mut cmd = mill_cmd();
-    cmd.args(["tool", "health_check", "not-valid-json"]);
+    cmd.args(["tool", "workspace", "not-valid-json"]);
 
     cmd.assert()
         .failure()
@@ -90,7 +89,7 @@ fn test_tool_unknown_tool_name() {
 #[test]
 fn test_tool_output_is_valid_json() {
     let mut cmd = mill_cmd();
-    cmd.args(["tool", "health_check", "{}", "--format", "compact"]);
+    cmd.args(["tool", "workspace", r#"{"action":"verify_project"}"#, "--format", "compact"]);
 
     let output = cmd.assert().success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);

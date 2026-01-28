@@ -47,11 +47,14 @@ async fn test_add_members_basic() {
 
     let result = client
         .call_tool(
-            "workspace.update_members",
+            "workspace",
             json!({
-                "workspaceManifest": manifest_path.to_string_lossy(),
-                "action": "add",
-                "members": ["crates/new-crate1", "crates/new-crate2"],
+                "action": "update_members",
+                "params": {
+                    "action": "add",
+                    "workspaceManifest": manifest_path.to_string_lossy(),
+                    "members": ["crates/new-crate1", "crates/new-crate2"],
+                },
                 "options": {
                     "dryRun": false,
                     "createIfMissing": false
@@ -99,11 +102,14 @@ async fn test_remove_members_basic() {
 
     let result = client
         .call_tool(
-            "workspace.update_members",
+            "workspace",
             json!({
-                "workspaceManifest": manifest_path.to_string_lossy(),
-                "action": "remove",
-                "members": ["crates/crate2"],
+                "action": "update_members",
+                "params": {
+                    "action": "remove",
+                    "workspaceManifest": manifest_path.to_string_lossy(),
+                    "members": ["crates/crate2"],
+                },
                 "options": {
                     "dryRun": false
                 }
@@ -148,10 +154,13 @@ async fn test_list_members() {
 
     let result = client
         .call_tool(
-            "workspace.update_members",
+            "workspace",
             json!({
-                "workspaceManifest": manifest_path.to_string_lossy(),
-                "action": "list"
+                "action": "update_members",
+                "params": {
+                    "action": "list",
+                    "workspaceManifest": manifest_path.to_string_lossy()
+                }
             }),
         )
         .await
@@ -196,11 +205,14 @@ async fn test_add_duplicate_member() {
 
     let result = client
         .call_tool(
-            "workspace.update_members",
+            "workspace",
             json!({
-                "workspaceManifest": manifest_path.to_string_lossy(),
-                "action": "add",
-                "members": ["crates/existing-crate"],
+                "action": "update_members",
+                "params": {
+                    "action": "add",
+                    "workspaceManifest": manifest_path.to_string_lossy(),
+                    "members": ["crates/existing-crate"],
+                },
                 "options": {
                     "dryRun": false
                 }
@@ -234,11 +246,14 @@ async fn test_dry_run_mode() {
 
     let result = client
         .call_tool(
-            "workspace.update_members",
+            "workspace",
             json!({
-                "workspaceManifest": manifest_path.to_string_lossy(),
-                "action": "add",
-                "members": ["crates/new-crate"],
+                "action": "update_members",
+                "params": {
+                    "action": "add",
+                    "workspaceManifest": manifest_path.to_string_lossy(),
+                    "members": ["crates/new-crate"],
+                },
                 "options": {
                     "dryRun": true
                 }
@@ -287,11 +302,14 @@ edition = "2021"
 
     let result = client
         .call_tool(
-            "workspace.update_members",
+            "workspace",
             json!({
-                "workspaceManifest": manifest_path.to_string_lossy(),
-                "action": "add",
-                "members": ["crates/new-crate"],
+                "action": "update_members",
+                "params": {
+                    "action": "add",
+                    "workspaceManifest": manifest_path.to_string_lossy(),
+                    "members": ["crates/new-crate"],
+                },
                 "options": {
                     "dryRun": false,
                     "createIfMissing": true
@@ -332,11 +350,14 @@ edition = "2021"
 
     let error = client
         .call_tool(
-            "workspace.update_members",
+            "workspace",
             json!({
-                "workspaceManifest": manifest_path.to_string_lossy(),
-                "action": "add",
-                "members": ["crates/new-crate"],
+                "action": "update_members",
+                "params": {
+                    "action": "add",
+                    "workspaceManifest": manifest_path.to_string_lossy(),
+                    "members": ["crates/new-crate"],
+                },
                 "options": {
                     "dryRun": false,
                     "createIfMissing": false
@@ -363,10 +384,13 @@ async fn test_error_on_nonexistent_manifest() {
 
     let error = client
         .call_tool(
-            "workspace.update_members",
+            "workspace",
             json!({
-                "workspaceManifest": manifest_path.to_string_lossy(),
-                "action": "list"
+                "action": "update_members",
+                "params": {
+                    "action": "list",
+                    "workspaceManifest": manifest_path.to_string_lossy()
+                }
             }),
         )
         .await
@@ -389,11 +413,14 @@ async fn test_remove_nonexistent_member() {
 
     let result = client
         .call_tool(
-            "workspace.update_members",
+            "workspace",
             json!({
-                "workspaceManifest": manifest_path.to_string_lossy(),
-                "action": "remove",
-                "members": ["crates/nonexistent"],
+                "action": "update_members",
+                "params": {
+                    "action": "remove",
+                    "workspaceManifest": manifest_path.to_string_lossy(),
+                    "members": ["crates/nonexistent"],
+                },
                 "options": {
                     "dryRun": false
                 }
@@ -420,11 +447,14 @@ async fn test_path_normalization() {
 
     let result = client
         .call_tool(
-            "workspace.update_members",
+            "workspace",
             json!({
-                "workspaceManifest": manifest_path.to_string_lossy(),
-                "action": "add",
-                "members": ["crates\\my-crate"],
+                "action": "update_members",
+                "params": {
+                    "action": "add",
+                    "workspaceManifest": manifest_path.to_string_lossy(),
+                    "members": ["crates\\my-crate"],
+                },
                 "options": {
                     "dryRun": false
                 }

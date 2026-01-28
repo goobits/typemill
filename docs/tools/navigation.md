@@ -1,8 +1,20 @@
-# Navigation & Intelligence Tools
+# Navigation & Intelligence Tools (Legacy Internal Tools)
+
+> **DEPRECATED:** These tools are now internal-only and not exposed via the public API.
+>
+> **Use instead:**
+> - `inspect_code` - Aggregates definition, references, type info, implementations, call hierarchy, and diagnostics
+> - `search_code` - Workspace symbol search
+>
+> See [inspect_code.md](inspect_code.md) and [search_code.md](search_code.md) for the new public API.
+
+---
+
+**This document is retained for internal reference only.**
 
 LSP-powered code navigation with IDE-quality intelligence. Jump to definitions, find references, search symbols workspace-wide, explore implementations, get diagnostics, and traverse call hierarchies. All tools leverage language server protocol for accurate, project-aware results.
 
-**Tool count:** 8 tools
+**Tool count:** 8 internal tools
 **Related categories:** [Refactoring](refactoring.md) for code transformations
 
 ---

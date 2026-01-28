@@ -76,8 +76,9 @@ impl ToolHandler for WorkspaceHandler {
             "extract_dependencies" => self.handle_extract_dependencies(context, args).await,
             "find_replace" => self.handle_find_replace(context, args).await,
             "verify_project" => self.handle_verify_project(context).await,
+            "update_members" => self.handle_update_members(context, args).await,
             _ => Err(ServerError::invalid_request(format!(
-                "Unknown workspace action: {}",
+                "Unknown workspace action: {}. Valid actions: create_package, extract_dependencies, find_replace, verify_project, update_members",
                 action
             ))),
         }
@@ -525,6 +526,212 @@ impl WorkspaceHandler {
 
             Ok(serde_json::to_value(response)?)
         }
+    }
+
+    /// Handle update_members action - add/remove/list workspace members
+    async fn handle_update_members(
+        &self,
+        context: &mill_handler_api::ToolHandlerContext,
+        args: &Value,
+    ) -> ServerResult<Value> {
+        use std::fs;
+        use std::path::Path;
+        use toml_edit::{DocumentMut, Item};
+
+        debug!("Handling workspace update_members action");
+
+        // Extract params from nested structure
+        let params = args
+            .get("params")
+            .ok_or_else(|| ServerError::invalid_request("Missing 'params' for update_members"))?;
+
+        let options = args
+            .get("options")
+            .and_then(|v| v.as_object())
+            .cloned()
+            .unwrap_or_default();
+
+        let dry_run = options
+            .get("dryRun")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+
+        // Get the sub-action (add, remove, list)
+        let sub_action = params
+            .get("action")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ServerError::invalid_request("Missing 'action' in params (add/remove/list)"))?;
+
+        // Get workspace manifest path
+        let manifest_path = params
+            .get("workspaceManifest")
+            .and_then(|v| v.as_str())
+            .map(|path_str| {
+                if Path::new(path_str).is_absolute() {
+                    path_str.to_string()
+                } else {
+                    let concrete_state = get_concrete_app_state(&context.app_state).ok();
+                    concrete_state
+                        .map(|state| state.project_root.join(path_str).display().to_string())
+                        .unwrap_or_else(|| path_str.to_string())
+                }
+            })
+            .ok_or_else(|| ServerError::invalid_request("Missing 'workspaceManifest' path"))?;
+
+        // Read and parse Cargo.toml
+        let cargo_content = fs::read_to_string(&manifest_path).map_err(|e| {
+            ServerError::invalid_request(format!(
+                "Failed to read workspace manifest '{}': {}",
+                manifest_path, e
+            ))
+        })?;
+
+        let mut doc = cargo_content.parse::<DocumentMut>().map_err(|e| {
+            ServerError::invalid_request(format!(
+                "Failed to parse workspace manifest: {}",
+                e
+            ))
+        })?;
+
+        // Get current members
+        let members_before: Vec<String> = doc
+            .get("workspace")
+            .and_then(|w| w.get("members"))
+            .and_then(|m| m.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let (members_after, changes_made, workspace_updated) = match sub_action {
+            "add" => {
+                let new_members: Vec<String> = params
+                    .get("members")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+
+                let mut members_after = members_before.clone();
+                let mut added = 0;
+                for member in &new_members {
+                    if !members_after.contains(member) {
+                        members_after.push(member.clone());
+                        added += 1;
+                    }
+                }
+
+                if added > 0 && !dry_run {
+                    // Update the document
+                    let members_array = members_after
+                        .iter()
+                        .map(|s| toml_edit::Value::from(s.as_str()))
+                        .collect::<toml_edit::Array>();
+
+                    if let Some(workspace) = doc.get_mut("workspace") {
+                        workspace["members"] = Item::Value(toml_edit::Value::Array(members_array));
+                    }
+
+                    fs::write(&manifest_path, doc.to_string()).map_err(|e| {
+                        ServerError::invalid_request(format!(
+                            "Failed to write workspace manifest: {}",
+                            e
+                        ))
+                    })?;
+                }
+
+                (members_after, added, added > 0)
+            }
+            "remove" => {
+                let remove_members: Vec<String> = params
+                    .get("members")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+
+                let members_after: Vec<String> = members_before
+                    .iter()
+                    .filter(|m| !remove_members.contains(m))
+                    .cloned()
+                    .collect();
+
+                let removed = members_before.len() - members_after.len();
+
+                if removed > 0 && !dry_run {
+                    // Update the document
+                    let members_array = members_after
+                        .iter()
+                        .map(|s| toml_edit::Value::from(s.as_str()))
+                        .collect::<toml_edit::Array>();
+
+                    if let Some(workspace) = doc.get_mut("workspace") {
+                        workspace["members"] = Item::Value(toml_edit::Value::Array(members_array));
+                    }
+
+                    fs::write(&manifest_path, doc.to_string()).map_err(|e| {
+                        ServerError::invalid_request(format!(
+                            "Failed to write workspace manifest: {}",
+                            e
+                        ))
+                    })?;
+                }
+
+                (members_after, removed, removed > 0)
+            }
+            "list" => {
+                (members_before.clone(), 0, false)
+            }
+            _ => {
+                return Err(ServerError::invalid_request(format!(
+                    "Invalid update_members action: {}. Valid: add, remove, list",
+                    sub_action
+                )));
+            }
+        };
+
+        let summary = match sub_action {
+            "add" => {
+                if dry_run {
+                    format!("Preview: Would add {} members", changes_made)
+                } else {
+                    format!("Added {} members to workspace", changes_made)
+                }
+            }
+            "remove" => {
+                if dry_run {
+                    format!("Preview: Would remove {} members", changes_made)
+                } else {
+                    format!("Removed {} members from workspace", changes_made)
+                }
+            }
+            "list" => format!("Workspace has {} members", members_before.len()),
+            _ => "Unknown operation".to_string(),
+        };
+
+        let response = json!({
+            "status": if dry_run { "preview" } else { "success" },
+            "summary": summary,
+            "filesChanged": if workspace_updated && !dry_run { vec![manifest_path] } else { vec![] as Vec<String> },
+            "diagnostics": [],
+            "result": {
+                "action": sub_action,
+                "membersBefore": members_before,
+                "membersAfter": members_after,
+                "changesMade": changes_made,
+                "workspaceUpdated": workspace_updated && !dry_run
+            }
+        });
+
+        Ok(response)
     }
 }
 

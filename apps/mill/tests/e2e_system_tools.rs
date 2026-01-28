@@ -1,10 +1,15 @@
 use mill_test_support::harness::{TestClient, TestWorkspace};
 use serde_json::json;
+
+/// Test workspace.verify_project action (replaces health_check in public API)
 #[tokio::test]
-async fn test_health_check_basic() {
+async fn test_workspace_verify_project_basic() {
     let workspace = TestWorkspace::new();
     let mut client = TestClient::new(workspace.path());
-    let response = client.call_tool("health_check", json!({})).await.unwrap();
+    let response = client
+        .call_tool("workspace", json!({"action": "verify_project"}))
+        .await
+        .unwrap();
     let result = response["result"]
         .as_object()
         .expect("Should have result field");
@@ -19,8 +24,9 @@ async fn test_health_check_basic() {
         }
     }
 }
+/// Test workspace.verify_project with active LSP server
 #[tokio::test]
-async fn test_health_check_with_active_lsp() {
+async fn test_workspace_verify_project_with_active_lsp() {
     let workspace = TestWorkspace::new();
     let mut client = TestClient::new(workspace.path());
     let ts_file = workspace.path().join("trigger.ts");
@@ -35,14 +41,20 @@ const test: Test = { id: 1 };
 "#,
     )
     .unwrap();
+
+    // Trigger LSP initialization by calling search_code (replaces get_document_symbols)
     let _response = client
         .call_tool(
-            "get_document_symbols",
-            json!({ "filePath" : ts_file.to_string_lossy() }),
+            "search_code",
+            json!({ "query": "Test", "filePath": ts_file.to_string_lossy() }),
         )
         .await;
     tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
-    let response = client.call_tool("health_check", json!({})).await.unwrap();
+
+    let response = client
+        .call_tool("workspace", json!({"action": "verify_project"}))
+        .await
+        .unwrap();
     let result = response["result"]
         .as_object()
         .expect("Should have result field");
@@ -57,12 +69,16 @@ const test: Test = { id: 1 };
         // Server may or may not be running depending on LSP initialization
     }
 }
+/// Test workspace.verify_project with detailed information
 #[tokio::test]
-async fn test_health_check_detailed() {
+async fn test_workspace_verify_project_detailed() {
     let workspace = TestWorkspace::new();
     let mut client = TestClient::new(workspace.path());
     let response = client
-        .call_tool("health_check", json!({ "include_details" : true }))
+        .call_tool(
+            "workspace",
+            json!({ "action": "verify_project", "params": { "include_details": true } }),
+        )
         .await
         .unwrap();
     let result = response["result"]
@@ -85,8 +101,9 @@ async fn test_health_check_detailed() {
         }
     }
 }
+/// Test rename_all for directory rename in Rust workspace (Magnificent Seven API)
 #[tokio::test]
-async fn test_rename_directory_in_rust_workspace() {
+async fn test_rename_all_directory_in_rust_workspace() {
     let workspace = TestWorkspace::new();
     workspace.create_file(
         "Cargo.toml",
@@ -145,14 +162,14 @@ edition = "2021"
     }
     let mut client = TestClient::new(workspace.path());
 
-    // Execute rename with unified API (dryRun: false)
+    // Execute rename_all with new Magnificent Seven API (dryRun: false)
     let apply_result = client
         .call_tool(
-            "rename",
+            "rename_all",
             json!({
                 "target": {
                     "kind": "directory",
-                    "path": "crates/crate_b"
+                    "filePath": "crates/crate_b"
                 },
                 "newName": "crates/crate_renamed",
                 "options": {
@@ -161,11 +178,11 @@ edition = "2021"
             }),
         )
         .await;
-    assert!(apply_result.is_ok(), "Rename should succeed");
+    assert!(apply_result.is_ok(), "rename_all should succeed");
     let apply_response = apply_result.unwrap();
     assert_eq!(
-        apply_response["result"]["content"]["success"], true,
-        "Rename should be applied successfully"
+        apply_response["result"]["content"]["status"], "success",
+        "rename_all should be applied successfully"
     );
     let ws_manifest = workspace.read_file("Cargo.toml");
     assert!(

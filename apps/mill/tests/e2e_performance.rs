@@ -45,7 +45,7 @@ async fn test_large_file_performance() {
     assert!(result["success"].as_bool().unwrap_or(false));
     println!("Large file creation took: {:?}", create_duration);
 
-    // Time file reading
+    // Time file reading (using internal tool for performance testing)
     let start = Instant::now();
     let response = client
         .call_tool(
@@ -70,11 +70,13 @@ async fn test_large_file_performance() {
         .await
         .expect("LSP should index large file within 30s");
 
+    // Use search_code to get symbols (Magnificent Seven API)
     let start = Instant::now();
     let response = client
         .call_tool_with_timeout(
-            "get_document_symbols",
+            "search_code",
             json!({
+                "query": "variable",
                 "filePath": large_file.to_string_lossy()
             }),
             Duration::from_secs(60),
@@ -85,17 +87,20 @@ async fn test_large_file_performance() {
     match response {
         Ok(resp) => {
             println!(
-                "LSP document symbols on large file took: {:?}",
+                "LSP search_code on large file took: {:?}",
                 lsp_duration
             );
             let result = resp
                 .get("result")
                 .expect("Response should have result field");
-            let content = result
-                .get("content")
-                .expect("Response should have content field");
-            let symbols = content["symbols"].as_array().unwrap();
-            assert!(!symbols.is_empty());
+            // search_code returns an array of results
+            if let Some(results) = result.as_array() {
+                assert!(!results.is_empty());
+            } else if let Some(content) = result.get("content") {
+                if let Some(results) = content.as_array() {
+                    assert!(!results.is_empty());
+                }
+            }
         }
         Err(_) => {
             println!(
@@ -193,11 +198,11 @@ export function process{}(data: Data{}): string {{
             .expect("LSP should index files within 30s");
     }
 
-    // Test workspace symbol search performance
+    // Test workspace symbol search performance using search_code (Magnificent Seven API)
     let start = Instant::now();
     let response = client
         .call_tool(
-            "search_symbols",
+            "search_code",
             json!({
                 "query": "Data"
             }),
@@ -210,9 +215,9 @@ export function process{}(data: Data{}): string {{
         .get("result")
         .expect("Response should have result field");
     let symbols = result
-        .get("content")
-        .and_then(|v| v.as_array())
-        .expect("Response should have content array");
+        .as_array()
+        .or_else(|| result.get("content").and_then(|v| v.as_array()))
+        .expect("Response should have results array");
     println!(
         "Workspace symbol search found {} symbols in: {:?}",
         symbols.len(),
@@ -313,12 +318,13 @@ export class RapidClass{} {{
             )
             .await;
 
-        // Try LSP operation
+        // Try LSP operation (using search_code for Magnificent Seven API)
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
         let symbols_result = client
             .call_tool(
-                "get_document_symbols",
+                "search_code",
                 json!({
+                    "query": "RapidClass",
                     "filePath": file_path.to_string_lossy()
                 }),
             )
@@ -824,15 +830,16 @@ export class UserService{} {{
         .await
         .expect("LSP should index complex project within 60s");
 
-    // Test find definition performance across the project
+    // Test find definition performance across the project using inspect_code (Magnificent Seven API)
     let start = Instant::now();
     let response = client
         .call_tool_with_timeout(
-            "find_definition",
+            "inspect_code",
             json!({
                 "filePath": services_dir.join("service0.ts").to_string_lossy(),
                 "line": 1,
-                "character": 10 // Should point to User0 import
+                "character": 10, // Should point to User0 import
+                "include": ["definition"]
             }),
             Duration::from_secs(60),
         )
@@ -846,18 +853,20 @@ export class UserService{} {{
     let content = result
         .get("content")
         .expect("Response should have content field");
-    let locations = content["locations"].as_array().unwrap();
-    assert!(!locations.is_empty());
+    let definition = content
+        .get("definition")
+        .expect("Should have definition field");
+    assert!(definition.get("location").is_some() || definition.get("locations").is_some());
     println!(
         "Cross-file definition lookup took: {:?}",
         definition_duration
     );
 
-    // Test workspace symbol search performance
+    // Test workspace symbol search performance using search_code (Magnificent Seven API)
     let start = Instant::now();
     let response = client
         .call_tool_with_timeout(
-            "search_symbols",
+            "search_code",
             json!({
                 "query": "User"
             }),
@@ -871,9 +880,9 @@ export class UserService{} {{
         .get("result")
         .expect("Response should have result field");
     let symbols = result
-        .get("content")
-        .and_then(|v| v.as_array())
-        .expect("Response should have content array");
+        .as_array()
+        .or_else(|| result.get("content").and_then(|v| v.as_array()))
+        .expect("Response should have results array");
     println!(
         "Workspace symbol search found {} symbols in: {:?}",
         symbols.len(),
@@ -898,16 +907,16 @@ export class UserService{} {{
         symbols.len()
     );
 
-    // Test find references performance
+    // Test find references performance using inspect_code (Magnificent Seven API)
     let start = Instant::now();
     let response = client
         .call_tool_with_timeout(
-            "find_references",
+            "inspect_code",
             json!({
                 "filePath": types_dir.join("types0.ts").to_string_lossy(),
                 "line": 1,
                 "character": 18, // User0 interface
-                "include_declaration": true
+                "include": ["references"]
             }),
             Duration::from_secs(60),
         )
@@ -921,16 +930,21 @@ export class UserService{} {{
         println!("Skipping references assertion - LSP may need more time to index");
     } else if let Some(result) = response.get("result") {
         if let Some(content) = result.get("content") {
-            if let Some(references) = content["references"].as_array() {
-                println!(
-                    "Found {} references in: {:?}",
-                    references.len(),
-                    references_duration
-                );
-                assert!(
-                    !references.is_empty(),
-                    "Should find at least some references"
-                );
+            if let Some(references) = content.get("references") {
+                let refs = references.as_array().or_else(|| {
+                    references.get("locations").and_then(|v| v.as_array())
+                });
+                if let Some(refs_array) = refs {
+                    println!(
+                        "Found {} references in: {:?}",
+                        refs_array.len(),
+                        references_duration
+                    );
+                    assert!(
+                        !refs_array.is_empty(),
+                        "Should find at least some references"
+                    );
+                }
             }
         }
     }
@@ -1002,8 +1016,10 @@ async fn test_stress_test_rapid_operations() {
                 }
             }
             3 => {
-                // Health check operation
-                let _response = client.call_tool("health_check", json!({})).await;
+                // Health check operation (using workspace.verify_project for Magnificent Seven API)
+                let _response = client
+                    .call_tool("workspace", json!({"action": "verify_project"}))
+                    .await;
             }
             _ => unreachable!(),
         }

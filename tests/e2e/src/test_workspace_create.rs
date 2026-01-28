@@ -30,10 +30,13 @@ edition = "2021"
 
     let result = client
         .call_tool(
-            "workspace.create_package",
+            "workspace",
             json!({
-                "packagePath": package_path.to_string_lossy(),
-                "packageType": "library",
+                "action": "create_package",
+                "params": {
+                    "packagePath": package_path.to_string_lossy(),
+                    "packageType": "library"
+                },
                 "options": {
                     "dryRun": false,
                     "addToWorkspace": true,
@@ -87,10 +90,13 @@ edition = "2021"
 
     let result = client
         .call_tool(
-            "workspace.create_package",
+            "workspace",
             json!({
-                "packagePath": package_path.to_string_lossy(),
-                "packageType": "binary",
+                "action": "create_package",
+                "params": {
+                    "packagePath": package_path.to_string_lossy(),
+                    "packageType": "binary"
+                },
                 "options": {
                     "dryRun": false,
                     "addToWorkspace": true,
@@ -136,10 +142,13 @@ edition = "2021"
 
     let result = client
         .call_tool(
-            "workspace.create_package",
+            "workspace",
             json!({
-                "packagePath": package_path.to_string_lossy(),
-                "packageType": "library",
+                "action": "create_package",
+                "params": {
+                    "packagePath": package_path.to_string_lossy(),
+                    "packageType": "library"
+                },
                 "options": {
                     "dryRun": false,
                     "addToWorkspace": false,
@@ -172,10 +181,13 @@ async fn test_create_package_dry_run() {
 
     let result = client
         .call_tool(
-            "workspace.create_package",
+            "workspace",
             json!({
-                "packagePath": package_path.to_string_lossy(),
-                "packageType": "library",
+                "action": "create_package",
+                "params": {
+                    "packagePath": package_path.to_string_lossy(),
+                    "packageType": "library"
+                },
                 "options": {
                     "dryRun": true,
                     "addToWorkspace": true,
@@ -219,10 +231,13 @@ edition = "2021"
 
     let result = client
         .call_tool(
-            "workspace.create_package",
+            "workspace",
             json!({
-                "packagePath": package_path.to_string_lossy(),
-                "packageType": "library",
+                "action": "create_package",
+                "params": {
+                    "packagePath": package_path.to_string_lossy(),
+                    "packageType": "library"
+                },
                 "options": {
                     "dryRun": false,
                     "addToWorkspace": true,
@@ -267,10 +282,13 @@ edition = "2021"
 
     let result = client
         .call_tool(
-            "workspace.create_package",
+            "workspace",
             json!({
-                "packagePath": package_path.to_string_lossy(),
-                "packageType": "library",
+                "action": "create_package",
+                "params": {
+                    "packagePath": package_path.to_string_lossy(),
+                    "packageType": "library"
+                },
                 "options": {
                     "dryRun": false,
                     "addToWorkspace": true,
