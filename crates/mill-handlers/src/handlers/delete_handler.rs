@@ -310,6 +310,7 @@ impl DeleteHandler {
             };
 
         // Convert file path to file:// URI
+        // Ensure non-blocking canonicalization as per performance requirements
         let canonical_path = tokio::fs::canonicalize(file_path)
             .await
             .map_err(|e| ServerError::internal(format!("Failed to canonicalize path: {}", e)))?;
