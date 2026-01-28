@@ -393,13 +393,13 @@ pub fn refactor_schema() -> Value {
 pub fn workspace_schema() -> Value {
     json!({
         "name": "workspace",
-        "description": "Workspace-level operations: create packages, extract dependencies, find/replace, or verify project health.",
+        "description": "Workspace-level operations: create packages, extract dependencies, find/replace, update members, or verify project health.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["create_package", "extract_dependencies", "find_replace", "verify_project"],
+                    "enum": ["create_package", "extract_dependencies", "find_replace", "update_members", "verify_project"],
                     "description": "The workspace action to perform"
                 },
                 "params": {
@@ -445,6 +445,20 @@ pub fn workspace_schema() -> Value {
                         "glob": {
                             "type": "string",
                             "description": "For find_replace: glob pattern to filter files"
+                        },
+                        "action": {
+                            "type": "string",
+                            "enum": ["add", "remove", "list"],
+                            "description": "For update_members: the operation to perform"
+                        },
+                        "workspaceManifest": {
+                            "type": "string",
+                            "description": "For update_members: path to workspace Cargo.toml"
+                        },
+                        "members": {
+                            "type": "array",
+                            "items": { "type": "string" },
+                            "description": "For update_members: member paths to add/remove"
                         }
                     }
                 },
