@@ -253,6 +253,7 @@ pub(crate) struct PythonVariable {
     pub line: u32,
     #[allow(dead_code)] // Future enhancement: Type-based refactoring
     pub value_type: PythonValueType,
+    #[allow(dead_code)]
     pub is_constant: bool,
 }
 #[derive(Debug, Clone, PartialEq)]
