@@ -23,6 +23,9 @@ mod string_literal_support;
 mod tsconfig;
 pub mod workspace_support;
 
+#[cfg(test)]
+mod repro_extends;
+
 use async_trait::async_trait;
 use mill_lang_common::{
     define_language_plugin, impl_capability_delegations, impl_language_plugin_basics, read_manifest,
