@@ -15,6 +15,7 @@ use mill_lang_common::{
     parse_import_alias, parse_with_fallback, run_ast_tool, ImportGraphBuilder, SubprocessAstTool,
 };
 use mill_plugin_api::{PluginApiError, PluginResult, Symbol, SymbolKind};
+use once_cell::sync::Lazy;
 use regex::Regex;
 use std::path::Path;
 use tracing::debug;
@@ -120,10 +121,12 @@ fn parse_import_names(imports_str: &str) -> Vec<NamedImport> {
 pub(crate) fn extract_python_functions(source: &str) -> PluginResult<Vec<PythonFunction>> {
     let mut functions = Vec::new();
     let lines: Vec<&str> = source.lines().collect();
-    let func_re = Regex::new(r"^(\s*)(async\s+)?def\s+(\w+)\s*\(([^)]*)\)\s*:")
-        .expect("Python function regex pattern should be valid");
+    static FUNC_RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"^(\s*)(async\s+)?def\s+(\w+)\s*\(([^)]*)\)\s*:")
+            .expect("Python function regex pattern should be valid")
+    });
     for (line_num, line) in lines.iter().enumerate() {
-        if let Some(captures) = func_re.captures(line) {
+        if let Some(captures) = FUNC_RE.captures(line) {
             let _indent = captures
                 .get(1)
                 .expect("Python function regex should always capture indent at index 1")
@@ -180,10 +183,12 @@ pub(crate) struct PythonFunction {
 /// Extract Python variable assignments
 pub(crate) fn extract_python_variables(source: &str) -> PluginResult<Vec<PythonVariable>> {
     let mut variables = Vec::new();
-    let assign_re = Regex::new(r"^(\s*)(\w+)\s*=\s*(.+)")
-        .expect("Python variable assignment regex pattern should be valid");
+    static ASSIGN_RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"^(\s*)(\w+)\s*=\s*(.+)")
+            .expect("Python variable assignment regex pattern should be valid")
+    });
     for (line_num, line) in source.lines().enumerate() {
-        if let Some(captures) = assign_re.captures(line) {
+        if let Some(captures) = ASSIGN_RE.captures(line) {
             let var_name = captures
                 .get(2)
                 .expect("Python assignment regex should always capture variable name at index 2")
@@ -308,11 +313,12 @@ pub(crate) fn extract_symbols(source: &str) -> PluginResult<Vec<Symbol>> {
             documentation: None,
         });
     }
-    let class_re =
-        Regex::new(r"^class\s+(\w+)").expect("Python class regex pattern should be valid");
+    static CLASS_RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"^class\s+(\w+)").expect("Python class regex pattern should be valid")
+    });
     let lines: Vec<&str> = source.lines().collect();
     for (line_num, line) in lines.iter().enumerate() {
-        if let Some(captures) = class_re.captures(line.trim()) {
+        if let Some(captures) = CLASS_RE.captures(line.trim()) {
             if let Some(name) = captures.get(1) {
                 let end_line =
                     find_python_function_end(&lines, line_num as u32).unwrap_or(line_num as u32);
@@ -658,4 +664,5 @@ variable = "value"
         assert!(has_class, "Should extract class");
         assert!(has_variable, "Should extract variable");
     }
+
 }
