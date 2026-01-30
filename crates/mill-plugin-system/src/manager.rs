@@ -223,6 +223,7 @@ impl PluginManager {
     /// Get metadata for all plugins
     pub async fn get_all_metadata(&self) -> HashMap<String, PluginMetadata> {
         let registry = self.registry.read().await;
+        // Use optimized bulk retrieval from registry to avoid N+1 queries
         registry.get_all_metadata()
     }
 
@@ -868,5 +869,58 @@ mod tests {
             2,
             "Both plugins should receive the hook"
         );
+    }
+
+    #[tokio::test]
+    async fn test_benchmark_metadata_retrieval() {
+        use std::collections::HashMap;
+        use std::time::Instant;
+
+        let manager = PluginManager::new();
+        // Register 1000 dummy plugins
+        let count = 1000;
+        for i in 0..count {
+            let name = format!("plugin-{}", i);
+            let plugin = Arc::new(TestPlugin {
+                name: name.clone(),
+                extensions: vec!["txt".to_string()],
+                capabilities: Capabilities::default(),
+                should_fail: false,
+            });
+            manager.register_plugin(&name, plugin).await.unwrap();
+        }
+
+        // Measure inefficient approach (simulating N+1 lookup)
+        // This simulates the pattern we want to avoid: iterating names and fetching metadata individually
+        let start = Instant::now();
+        let registry = manager.registry.read().await;
+        let mut inefficient_map = HashMap::new();
+
+        // Note: get_plugin_names() returns Vec<String>, so iterating over it is fine with the lock held
+        for name in registry.get_plugin_names() {
+            // This is the N+1 lookup part: for each name, we do a hash lookup
+            if let Some(meta) = registry.get_plugin_metadata(&name) {
+                inefficient_map.insert(name, meta.clone());
+            }
+        }
+        drop(registry);
+        let duration_inefficient = start.elapsed();
+
+        // Measure optimized approach (bulk retrieval)
+        // This uses the optimized implementation that clones the map in one go
+        let start = Instant::now();
+        let optimized_map = manager.get_all_metadata().await;
+        let duration_optimized = start.elapsed();
+
+        println!("Inefficient (N+1): {:?}", duration_inefficient);
+        println!("Optimized (Bulk): {:?}", duration_optimized);
+
+        assert_eq!(inefficient_map.len(), count);
+        assert_eq!(optimized_map.len(), count);
+
+        // Verification: The optimized approach should be performant.
+        // We don't assert strict "faster than" to avoid flakiness in CI environments,
+        // but typically cloning 1000 items once is faster than 1000 lookups + clones.
+        assert!(duration_optimized < std::time::Duration::from_secs(1));
     }
 }
