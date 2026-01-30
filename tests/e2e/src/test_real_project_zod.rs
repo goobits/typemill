@@ -1374,3 +1374,392 @@ async fn test_zod_rename_folder_execute() {
 
     println!("✅ Successfully renamed rename-folder-exec -> renamed-folder-exec");
 }
+
+// ============================================================================
+// Find/Replace Tests (Dry Run + Execute)
+// ============================================================================
+
+/// Test: Dry-run find/replace in Zod
+#[tokio::test]
+#[serial]
+async fn test_zod_find_replace_dry_run() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Create test files with content to replace
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/find-replace-dry/config.ts",
+        r#"export const OLD_CONFIG_NAME = 'old-value';
+export const anotherOLD_CONFIG_NAMEref = OLD_CONFIG_NAME;
+"#,
+    );
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/find-replace-dry/utils.ts",
+        r#"import { OLD_CONFIG_NAME } from './config';
+console.log(OLD_CONFIG_NAME);
+"#,
+    );
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "workspace",
+            json!({
+                "action": "find_replace",
+                "params": {
+                    "pattern": "OLD_CONFIG_NAME",
+                    "replacement": "NEW_CONFIG_NAME",
+                    "mode": "literal"
+                },
+                "options": {
+                    "dryRun": true
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("find_replace dry-run should succeed");
+
+    let inner_result = result.get("result").expect("Should have result field");
+
+    let status = inner_result.get("status").and_then(|s| s.as_str());
+    assert_eq!(
+        status,
+        Some("preview"),
+        "Should return preview status, got: {:?}",
+        status
+    );
+
+    // Verify files NOT actually modified (dry-run)
+    let config_content = ctx
+        .workspace
+        .read_file("packages/zod/src/v3/find-replace-dry/config.ts");
+    assert!(
+        config_content.contains("OLD_CONFIG_NAME"),
+        "Original text should still exist after dry-run"
+    );
+    assert!(
+        !config_content.contains("NEW_CONFIG_NAME"),
+        "Replacement text should NOT exist after dry-run"
+    );
+
+    println!("✅ Successfully dry-run find_replace");
+}
+
+/// Test: Execute find/replace in Zod
+#[tokio::test]
+#[serial]
+async fn test_zod_find_replace_execute() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Create test files with content to replace
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/find-replace-exec/config.ts",
+        r#"export const REPLACE_ME = 'value';
+export const useREPLACE_ME = REPLACE_ME;
+"#,
+    );
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/find-replace-exec/utils.ts",
+        r#"import { REPLACE_ME } from './config';
+console.log(REPLACE_ME);
+"#,
+    );
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "workspace",
+            json!({
+                "action": "find_replace",
+                "params": {
+                    "pattern": "REPLACE_ME",
+                    "replacement": "REPLACED_VALUE",
+                    "mode": "literal"
+                },
+                "options": {
+                    "dryRun": false
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("find_replace execute should succeed");
+
+    let inner_result = result.get("result").expect("Should have result field");
+
+    let status = inner_result.get("status").and_then(|s| s.as_str());
+    assert_eq!(
+        status,
+        Some("success"),
+        "Should return success status, got: {:?}",
+        status
+    );
+
+    // Verify files were actually modified
+    let config_content = ctx
+        .workspace
+        .read_file("packages/zod/src/v3/find-replace-exec/config.ts");
+    assert!(
+        config_content.contains("REPLACED_VALUE"),
+        "Replacement text should exist after execute. Content: {}",
+        config_content
+    );
+    assert!(
+        !config_content.contains("REPLACE_ME"),
+        "Original text should NOT exist after execute"
+    );
+
+    let utils_content = ctx
+        .workspace
+        .read_file("packages/zod/src/v3/find-replace-exec/utils.ts");
+    assert!(
+        utils_content.contains("REPLACED_VALUE"),
+        "Replacement in utils.ts should exist"
+    );
+
+    println!("✅ Successfully executed find_replace");
+}
+
+// ============================================================================
+// Prune (Delete) Tests (Dry Run + Execute)
+// ============================================================================
+
+/// Test: Dry-run prune file in Zod
+#[tokio::test]
+#[serial]
+async fn test_zod_prune_file_dry_run() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Create a test file to delete
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/prune-file-dry.ts",
+        "export const toBeDeleted = 'delete-me';",
+    );
+
+    let file_path = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/prune-file-dry.ts");
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "prune",
+            json!({
+                "target": {
+                    "kind": "file",
+                    "filePath": file_path.to_string_lossy()
+                },
+                "options": {
+                    "dryRun": true
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("prune dry-run should succeed");
+
+    let inner_result = result.get("result").expect("Should have result field");
+    let content = inner_result
+        .get("content")
+        .expect("Should have content field");
+
+    let status = content.get("status").and_then(|s| s.as_str());
+    assert!(
+        status == Some("preview") || status == Some("success"),
+        "Should return preview or success status, got: {:?}",
+        status
+    );
+
+    // Verify file NOT actually deleted (dry-run)
+    assert!(
+        file_path.exists(),
+        "prune-file-dry.ts should still exist after dry-run"
+    );
+
+    println!("✅ Successfully dry-run pruned prune-file-dry.ts");
+}
+
+/// Test: Execute prune file in Zod
+#[tokio::test]
+#[serial]
+async fn test_zod_prune_file_execute() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Create a test file to delete
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/prune-file-exec.ts",
+        "export const toBeDeleted = 'delete-me-for-real';",
+    );
+
+    let file_path = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/prune-file-exec.ts");
+
+    // Verify file exists before prune
+    assert!(file_path.exists(), "File should exist before prune");
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "prune",
+            json!({
+                "target": {
+                    "kind": "file",
+                    "filePath": file_path.to_string_lossy()
+                },
+                "options": {
+                    "dryRun": false
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("prune execute should succeed");
+
+    let inner_result = result.get("result").expect("Should have result field");
+    let content = inner_result
+        .get("content")
+        .expect("Should have content field");
+
+    let status = content.get("status").and_then(|s| s.as_str());
+    assert_eq!(
+        status,
+        Some("success"),
+        "Prune should succeed, got: {:?}",
+        status
+    );
+
+    // Verify file was actually deleted
+    assert!(
+        !file_path.exists(),
+        "prune-file-exec.ts should NOT exist after prune"
+    );
+
+    println!("✅ Successfully pruned prune-file-exec.ts");
+}
+
+/// Test: Dry-run prune folder in Zod
+#[tokio::test]
+#[serial]
+async fn test_zod_prune_folder_dry_run() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Create a test folder to delete
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/prune-folder-dry/index.ts",
+        "export * from './utils';",
+    );
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/prune-folder-dry/utils.ts",
+        "export const util = 'util-value';",
+    );
+
+    let folder_path = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/prune-folder-dry");
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "prune",
+            json!({
+                "target": {
+                    "kind": "directory",
+                    "filePath": folder_path.to_string_lossy()
+                },
+                "options": {
+                    "dryRun": true
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("prune folder dry-run should succeed");
+
+    let inner_result = result.get("result").expect("Should have result field");
+    let content = inner_result
+        .get("content")
+        .expect("Should have content field");
+
+    let status = content.get("status").and_then(|s| s.as_str());
+    assert!(
+        status == Some("preview") || status == Some("success"),
+        "Should return preview or success status, got: {:?}",
+        status
+    );
+
+    // Verify folder NOT actually deleted (dry-run)
+    assert!(
+        folder_path.exists(),
+        "prune-folder-dry should still exist after dry-run"
+    );
+    assert!(
+        folder_path.join("index.ts").exists(),
+        "index.ts should still exist after dry-run"
+    );
+
+    println!("✅ Successfully dry-run pruned prune-folder-dry");
+}
+
+/// Test: Execute prune folder in Zod
+#[tokio::test]
+#[serial]
+async fn test_zod_prune_folder_execute() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Create a test folder to delete
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/prune-folder-exec/index.ts",
+        "export * from './utils';",
+    );
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/prune-folder-exec/utils.ts",
+        "export const util = 'util-value';",
+    );
+
+    let folder_path = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/prune-folder-exec");
+
+    // Verify folder exists before prune
+    assert!(folder_path.exists(), "Folder should exist before prune");
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "prune",
+            json!({
+                "target": {
+                    "kind": "directory",
+                    "filePath": folder_path.to_string_lossy()
+                },
+                "options": {
+                    "dryRun": false
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("prune folder execute should succeed");
+
+    let inner_result = result.get("result").expect("Should have result field");
+    let content = inner_result
+        .get("content")
+        .expect("Should have content field");
+
+    let status = content.get("status").and_then(|s| s.as_str());
+    assert_eq!(
+        status,
+        Some("success"),
+        "Folder prune should succeed, got: {:?}",
+        status
+    );
+
+    // Verify folder was actually deleted
+    assert!(
+        !folder_path.exists(),
+        "prune-folder-exec should NOT exist after prune"
+    );
+
+    println!("✅ Successfully pruned prune-folder-exec");
+}
