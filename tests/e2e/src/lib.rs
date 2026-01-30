@@ -95,6 +95,10 @@ pub mod test_workspace_update_members;
 #[cfg(test)]
 pub mod test_workspace_find_replace;
 
+// Tool coverage tests
+#[cfg(test)]
+pub mod test_tools_coverage;
+
 // Cross-platform compatibility tests
 #[cfg(test)]
 pub mod test_cross_platform;
