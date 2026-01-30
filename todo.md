@@ -10,28 +10,23 @@ Last updated: 2026-01-30
 
 ### Extract Dependencies
 
-- [ ] **Python: Add pyproject.toml support to extract_dependencies**
+- [x] **Python: Add pyproject.toml support to extract_dependencies** ✅ DONE
   - Location: `crates/mill-handlers/src/handlers/tools/workspace_extract/`
-  - Create: `pyproject_manifest.rs` (similar to `cargo_manifest.rs` and `package_json.rs`)
-  - Update: `mod.rs` lines 251-259 to detect pyproject.toml
-  - Update: `mod.rs` lines 337-356 to handle `ManifestType::PyProject`
-  - Tests: Add integration tests in `tests/e2e/`
+  - Created: `pyproject_manifest.rs` with PEP 621 and Poetry support
+  - Updated: `mod.rs` to detect and handle `ManifestType::PyProject`
+  - Tests: 10 unit tests added
 
 ### Reference Detector (Cross-Package Reference Detection)
 
-- [ ] **TypeScript: Implement reference_detector**
-  - Location: `languages/mill-lang-typescript/src/`
-  - Create: `reference_detector.rs` (use Rust's as template: `languages/mill-lang-rust/src/reference_detector.rs`)
-  - Update: `lib.rs` to add `reference_detector` field to plugin definition
-  - Should detect: ES6 imports, CommonJS requires, dynamic imports, re-exports
-  - Tests: Add unit tests similar to Rust's (lines 515-662)
+- [x] **TypeScript: Implement reference_detector** ✅ DONE
+  - Location: `languages/mill-lang-typescript/src/reference_detector.rs`
+  - Detects: ES6 imports, CommonJS requires, dynamic imports, re-exports
+  - Tests: 6 unit tests added
 
-- [ ] **Python: Implement reference_detector**
-  - Location: `languages/mill-lang-python/src/`
-  - Create: `reference_detector.rs`
-  - Update: `lib.rs` to add `reference_detector` field to plugin definition
-  - Should detect: `import x`, `from x import y`, relative imports
-  - Tests: Add unit tests
+- [x] **Python: Implement reference_detector** ✅ DONE
+  - Location: `languages/mill-lang-python/src/reference_detector.rs`
+  - Detects: `import x`, `from x import y`, relative imports
+  - Tests: 6 unit tests added
 
 ### Consolidation (Package Merging)
 
@@ -130,8 +125,8 @@ Last updated: 2026-01-30
 
 | Category | Rust | TypeScript | Python |
 |----------|------|------------|--------|
-| extract_dependencies | ✅ | ✅ | ⬜ |
-| reference_detector | ✅ | ⬜ | ⬜ |
+| extract_dependencies | ✅ | ✅ | ✅ |
+| reference_detector | ✅ | ✅ | ✅ |
 | consolidation | ✅ | ⬜ | ⬜ |
 | workspace_support | ✅ | ✅ | ⚠️ (Hatch incomplete) |
 | test_fixtures | ⬜ | ⬜ | ✅ |
