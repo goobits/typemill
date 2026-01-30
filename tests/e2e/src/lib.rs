@@ -107,12 +107,9 @@ pub mod test_language_parity;
 pub mod test_cross_platform;
 
 // Real project integration tests (Zod)
+// NOTE: Tests share a single Zod workspace and LSP client to avoid redundant setup
 #[cfg(test)]
 pub mod test_real_project_zod;
-
-// Zod operations testing (move, extract workflows)
-#[cfg(test)]
-pub mod test_zod_operations;
 
 // User scenario tests (cloning real repos)
 #[cfg(test)]

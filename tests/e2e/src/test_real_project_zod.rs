@@ -3,70 +3,86 @@
 //! Tests mill operations against a real-world TypeScript project (Zod)
 //! to validate that refactoring tools work on production codebases.
 //!
-//! NOTE: These tests use extended timeouts (60-120s) because large projects
-//! require scanning many files for import reference updates.
+//! NOTE: These tests share a single Zod clone and TestClient to avoid
+//! redundant setup time. Tests run serially within the module.
 
 use crate::harness::{TestClient, TestWorkspace};
+use once_cell::sync::Lazy;
 use serde_json::json;
+use serial_test::serial;
 use std::process::Command;
+use std::sync::Mutex;
 use std::time::Duration;
 
 /// Extended timeout for operations that scan many files (e.g., rename with import updates)
 const LARGE_PROJECT_TIMEOUT: Duration = Duration::from_secs(120);
 
-/// Helper to clone Zod into a test workspace
-fn setup_zod_workspace() -> TestWorkspace {
-    let workspace = TestWorkspace::new();
-
-    // Clone zod into the workspace
-    let status = Command::new("git")
-        .args([
-            "clone",
-            "--depth",
-            "1",
-            "https://github.com/colinhacks/zod.git",
-            ".",
-        ])
-        .current_dir(workspace.path())
-        .status()
-        .expect("Failed to clone zod");
-
-    assert!(status.success(), "Failed to clone zod repository");
-
-    // Run mill setup
-    let mill_path = std::env::var("CARGO_MANIFEST_DIR")
-        .map(|dir| {
-            let mut path = std::path::PathBuf::from(dir);
-            path.pop(); // e2e
-            path.pop(); // tests
-            path.push("target/debug/mill");
-            path
-        })
-        .expect("CARGO_MANIFEST_DIR not set");
-
-    let setup_status = Command::new(&mill_path)
-        .args(["setup", "--update"])
-        .current_dir(workspace.path())
-        .status()
-        .expect("Failed to run mill setup");
-
-    assert!(setup_status.success(), "Failed to run mill setup");
-
-    workspace
+/// Shared test context that persists across all tests in this module.
+/// This avoids cloning Zod and booting up the LSP server for each test.
+struct ZodTestContext {
+    workspace: TestWorkspace,
+    client: TestClient,
 }
 
-/// Test: Search for symbols in Zod
-/// Note: Workspace symbol search depends on LSP indexing state, which may not complete
-/// within test timeouts for large projects. This test validates the API works correctly
-/// but doesn't require results to be found.
-#[tokio::test]
-async fn test_zod_search_symbols() {
-    let workspace = setup_zod_workspace();
-    let mut client = TestClient::new(workspace.path());
+impl ZodTestContext {
+    fn new() -> Self {
+        let workspace = TestWorkspace::new();
 
-    // Search for "ZodType" - a core type in Zod
-    // Use extended timeout since LSP needs to index the project first
-    let result = client
+        // Clone zod into the workspace
+        let status = Command::new("git")
+            .args([
+                "clone",
+                "--depth",
+                "1",
+                "https://github.com/colinhacks/zod.git",
+                ".",
+            ])
+            .current_dir(workspace.path())
+            .status()
+            .expect("Failed to clone zod");
+
+        assert!(status.success(), "Failed to clone zod repository");
+
+        // Run mill setup
+        let mill_path = std::env::var("CARGO_MANIFEST_DIR")
+            .map(|dir| {
+                let mut path = std::path::PathBuf::from(dir);
+                path.pop(); // e2e
+                path.pop(); // tests
+                path.push("target/debug/mill");
+                path
+            })
+            .expect("CARGO_MANIFEST_DIR not set");
+
+        let setup_status = Command::new(&mill_path)
+            .args(["setup", "--update"])
+            .current_dir(workspace.path())
+            .status()
+            .expect("Failed to run mill setup");
+
+        assert!(setup_status.success(), "Failed to run mill setup");
+
+        let client = TestClient::new(workspace.path());
+
+        Self { workspace, client }
+    }
+}
+
+/// Global shared context - initialized once, used by all tests
+static ZOD_CONTEXT: Lazy<Mutex<ZodTestContext>> = Lazy::new(|| Mutex::new(ZodTestContext::new()));
+
+// ============================================================================
+// Search & Inspect Tests
+// ============================================================================
+
+/// Test: Search for symbols in Zod
+#[tokio::test]
+#[serial]
+async fn test_zod_search_symbols() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    let result = ctx
+        .client
         .call_tool_with_timeout(
             "search_code",
             json!({ "query": "ZodType" }),
@@ -75,10 +91,7 @@ async fn test_zod_search_symbols() {
         .await
         .expect("search_code should succeed");
 
-    // Response format: { "result": { "results": [...] } }
     let inner_result = result.get("result").expect("Should have result field");
-
-    // The results field should exist (may be empty if LSP hasn't indexed yet)
     let symbols = inner_result.get("results").and_then(|s| s.as_array());
 
     match symbols {
@@ -86,12 +99,9 @@ async fn test_zod_search_symbols() {
             println!("✅ Found {} ZodType symbols", arr.len());
         }
         Some(_) => {
-            // Empty results - LSP workspace symbol search may not be indexed yet
-            // This is acceptable for a large project in a test environment
             println!("⚠️ search_code returned empty results (LSP may not be fully indexed)");
         }
         None => {
-            // No results array at all - check if there's an error
             if let Some(error) = inner_result.get("error") {
                 println!("⚠️ search_code returned error: {:?}", error);
             } else {
@@ -103,16 +113,17 @@ async fn test_zod_search_symbols() {
 
 /// Test: Inspect code at a specific location
 #[tokio::test]
+#[serial]
 async fn test_zod_inspect_code() {
-    let workspace = setup_zod_workspace();
-    let mut client = TestClient::new(workspace.path());
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
 
-    let types_file = workspace.path().join("packages/zod/src/v3/types.ts");
+    let types_file = ctx.workspace.path().join("packages/zod/src/v3/types.ts");
 
     // Wait for LSP to index
-    let _ = client.wait_for_lsp_ready(&types_file, 10000).await;
+    let _ = ctx.client.wait_for_lsp_ready(&types_file, 10000).await;
 
-    let result = client
+    let result = ctx
+        .client
         .call_tool(
             "inspect_code",
             json!({
@@ -125,10 +136,8 @@ async fn test_zod_inspect_code() {
         .await
         .expect("inspect_code should succeed");
 
-    // Response format: { "result": { ... } }
     let inner_result = result.get("result").expect("Should have result field");
 
-    // Should have some response (diagnostics may be empty)
     assert!(
         inner_result.is_object(),
         "Result should be an object, got: {:?}",
@@ -138,20 +147,31 @@ async fn test_zod_inspect_code() {
     println!("✅ Successfully inspected Zod types.ts");
 }
 
+// ============================================================================
+// File Rename Tests (Dry Run + Execute)
+// ============================================================================
+
 /// Test: Dry-run rename file in Zod (verify import updates planned)
 #[tokio::test]
+#[serial]
 async fn test_zod_rename_file_dry_run() {
-    let workspace = setup_zod_workspace();
-    let mut client = TestClient::new(workspace.path());
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
 
-    let old_path = workspace.path().join("packages/zod/src/v3/errors.ts");
-    let new_path = workspace.path().join("packages/zod/src/v3/error-utils.ts");
+    // Create a test file to avoid modifying the actual Zod codebase
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/test-rename-dry.ts",
+        "export const testValue = 'dry-run-test';",
+    );
 
-    // Verify source file exists
-    assert!(old_path.exists(), "errors.ts should exist");
+    let old_path = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/test-rename-dry.ts");
+    let new_path = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/test-renamed-dry.ts");
 
-    // Use extended timeout - Zod has many files to scan for import references
-    let result = client
+    let result = ctx
+        .client
         .call_tool_with_timeout(
             "rename_all",
             json!({
@@ -169,13 +189,11 @@ async fn test_zod_rename_file_dry_run() {
         .await
         .expect("rename_all dry-run should succeed");
 
-    // Response format: { "result": { "content": { "status": "...", "changes": {...} } } }
     let inner_result = result.get("result").expect("Should have result field");
     let content = inner_result
         .get("content")
         .expect("Should have content field");
 
-    // Verify dry-run returns a plan
     let status = content.get("status").and_then(|s| s.as_str());
     assert!(
         status == Some("preview") || status == Some("success"),
@@ -186,189 +204,40 @@ async fn test_zod_rename_file_dry_run() {
     // Verify file NOT actually renamed (dry-run)
     assert!(
         old_path.exists(),
-        "errors.ts should still exist after dry-run"
+        "test-rename-dry.ts should still exist after dry-run"
     );
     assert!(
         !new_path.exists(),
-        "error-utils.ts should NOT exist after dry-run"
+        "test-renamed-dry.ts should NOT exist after dry-run"
     );
 
-    // Check that changes are planned
-    if let Some(changes) = content.get("changes") {
-        println!(
-            "✅ Rename plan generated with changes: {:?}",
-            changes.get("filesChanged")
-        );
-    }
-
-    println!("✅ Successfully dry-run renamed errors.ts -> error-utils.ts");
+    println!("✅ Successfully dry-run renamed test-rename-dry.ts");
 }
 
-/// Test: Dry-run move file in Zod
+/// Test: Execute actual rename on Zod file
 #[tokio::test]
-async fn test_zod_move_file_dry_run() {
-    let workspace = setup_zod_workspace();
-    let mut client = TestClient::new(workspace.path());
-
-    let source = workspace.path().join("packages/zod/src/v3/external.ts");
-    let dest = workspace
-        .path()
-        .join("packages/zod/src/v3/utils/external.ts");
-
-    // Verify source file exists
-    assert!(source.exists(), "external.ts should exist");
-
-    // Create destination directory
-    std::fs::create_dir_all(dest.parent().unwrap()).ok();
-
-    // Use extended timeout - Zod has many files to scan for import references
-    let result = client
-        .call_tool_with_timeout(
-            "relocate",
-            json!({
-                "target": {
-                    "kind": "file",
-                    "filePath": source.to_string_lossy()
-                },
-                "destination": dest.to_string_lossy(),
-                "options": {
-                    "dryRun": true
-                }
-            }),
-            LARGE_PROJECT_TIMEOUT,
-        )
-        .await
-        .expect("relocate dry-run should succeed");
-
-    // Response format: { "result": { "content": { "status": "...", "changes": {...} } } }
-    let inner_result = result.get("result").expect("Should have result field");
-    let content = inner_result
-        .get("content")
-        .expect("Should have content field");
-
-    let status = content.get("status").and_then(|s| s.as_str());
-    assert!(
-        status == Some("preview") || status == Some("success"),
-        "Should return preview or success status, got: {:?}",
-        status
-    );
-
-    // Verify dry-run
-    assert!(
-        source.exists(),
-        "external.ts should still exist after dry-run"
-    );
-    assert!(
-        !dest.exists(),
-        "utils/external.ts should NOT exist after dry-run"
-    );
-
-    println!("✅ Successfully dry-run moved external.ts -> utils/external.ts");
-}
-
-/// Test: Dry-run rename symbol in Zod
-#[tokio::test]
-async fn test_zod_rename_symbol_dry_run() {
-    let workspace = setup_zod_workspace();
-    let mut client = TestClient::new(workspace.path());
-
-    let types_file = workspace.path().join("packages/zod/src/v3/types.ts");
-
-    // Wait for LSP to be ready
-    let _ = client.wait_for_lsp_ready(&types_file, 15000).await;
-
-    // First, search for a symbol to find its position
-    let search_result = client
-        .call_tool(
-            "search_code",
-            json!({
-                "query": "ZodParsedType",
-                "filePath": types_file.to_string_lossy()
-            }),
-        )
-        .await;
-
-    match search_result {
-        Ok(result) => {
-            let inner_result = result.get("result");
-            if let Some(symbols) = inner_result
-                .and_then(|r| r.get("results"))
-                .and_then(|s| s.as_array())
-            {
-                if let Some(first_symbol) = symbols.first() {
-                    let line = first_symbol
-                        .get("line")
-                        .and_then(|l| l.as_u64())
-                        .unwrap_or(0) as u32;
-                    let character = first_symbol
-                        .get("character")
-                        .and_then(|c| c.as_u64())
-                        .unwrap_or(0) as u32;
-
-                    // Try to rename the symbol
-                    let rename_result = client
-                        .call_tool(
-                            "rename_all",
-                            json!({
-                                "target": {
-                                    "kind": "symbol",
-                                    "filePath": types_file.to_string_lossy(),
-                                    "line": line,
-                                    "character": character
-                                },
-                                "newName": "ZodParsedTypeRenamed",
-                                "options": {
-                                    "dryRun": true
-                                }
-                            }),
-                        )
-                        .await;
-
-                    match rename_result {
-                        Ok(resp) => {
-                            let status = resp
-                                .get("result")
-                                .and_then(|r| r.get("content"))
-                                .and_then(|c| c.get("status"));
-                            println!("✅ Symbol rename dry-run succeeded: {:?}", status);
-                        }
-                        Err(e) => {
-                            println!("⚠️ Symbol rename dry-run failed (may need LSP): {}", e);
-                        }
-                    }
-                } else {
-                    println!("⚠️ No symbols found for ZodParsedType");
-                }
-            } else {
-                println!("⚠️ No results in search response");
-            }
-        }
-        Err(e) => {
-            println!(
-                "⚠️ Symbol search failed (may need LSP initialization): {}",
-                e
-            );
-        }
-    }
-}
-
-/// Test: Execute actual rename on Zod (with verification)
-#[tokio::test]
+#[serial]
 async fn test_zod_rename_file_execute() {
-    let workspace = setup_zod_workspace();
-    let mut client = TestClient::new(workspace.path());
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
 
-    let old_path = workspace.path().join("packages/zod/src/v3/errors.ts");
-    let new_path = workspace.path().join("packages/zod/src/v3/zod-errors.ts");
+    // Create a test file
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/test-rename-exec.ts",
+        "export const execValue = 'execute-test';",
+    );
 
-    // Verify source file exists
-    assert!(old_path.exists(), "errors.ts should exist");
+    let old_path = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/test-rename-exec.ts");
+    let new_path = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/test-renamed-exec.ts");
 
-    // Read original content for verification
-    let original_content = std::fs::read_to_string(&old_path).expect("Should read errors.ts");
+    let original_content =
+        std::fs::read_to_string(&old_path).expect("Should read test-rename-exec.ts");
 
-    // Use extended timeout - Zod has many files to scan for import references
-    let result = client
+    let result = ctx
+        .client
         .call_tool_with_timeout(
             "rename_all",
             json!({
@@ -386,7 +255,6 @@ async fn test_zod_rename_file_execute() {
         .await
         .expect("rename_all should succeed");
 
-    // Response format: { "result": { "content": { "status": "success", ... } } }
     let inner_result = result.get("result").expect("Should have result field");
     let content = inner_result
         .get("content")
@@ -403,54 +271,121 @@ async fn test_zod_rename_file_execute() {
     // Verify file was actually renamed
     assert!(
         !old_path.exists(),
-        "errors.ts should no longer exist after rename"
+        "test-rename-exec.ts should no longer exist after rename"
     );
-    assert!(new_path.exists(), "zod-errors.ts should exist after rename");
+    assert!(
+        new_path.exists(),
+        "test-renamed-exec.ts should exist after rename"
+    );
 
     // Verify content preserved
-    let new_content = std::fs::read_to_string(&new_path).expect("Should read zod-errors.ts");
+    let new_content = std::fs::read_to_string(&new_path).expect("Should read renamed file");
     assert_eq!(
         original_content, new_content,
         "Content should be preserved after rename"
     );
 
-    // Verify imports were updated in files that reference errors.ts
-    let types_file = workspace.path().join("packages/zod/src/v3/types.ts");
-    if types_file.exists() {
-        let types_content = std::fs::read_to_string(&types_file).expect("Should read types.ts");
-        // The import should now reference zod-errors instead of errors
-        if types_content.contains("./errors") {
-            println!("⚠️ Import not updated in types.ts (may need LSP for import updates)");
-        } else if types_content.contains("./zod-errors") {
-            println!("✅ Import correctly updated in types.ts");
-        }
-    }
-
-    println!("✅ Successfully renamed and verified errors.ts -> zod-errors.ts");
+    println!("✅ Successfully renamed test-rename-exec.ts -> test-renamed-exec.ts");
 }
 
-/// Test: Execute actual move on Zod
+// ============================================================================
+// File Move (Relocate) Tests (Dry Run + Execute)
+// ============================================================================
+
+/// Test: Dry-run move file in Zod
 #[tokio::test]
+#[serial]
+async fn test_zod_move_file_dry_run() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Create a test file
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/test-move-dry.ts",
+        "export const moveValue = 'move-dry-test';",
+    );
+
+    let source = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/test-move-dry.ts");
+    let dest = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/utils/test-move-dry.ts");
+
+    // Create destination directory
+    std::fs::create_dir_all(dest.parent().unwrap()).ok();
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "relocate",
+            json!({
+                "target": {
+                    "kind": "file",
+                    "filePath": source.to_string_lossy()
+                },
+                "destination": dest.to_string_lossy(),
+                "options": {
+                    "dryRun": true
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("relocate dry-run should succeed");
+
+    let inner_result = result.get("result").expect("Should have result field");
+    let content = inner_result
+        .get("content")
+        .expect("Should have content field");
+
+    let status = content.get("status").and_then(|s| s.as_str());
+    assert!(
+        status == Some("preview") || status == Some("success"),
+        "Should return preview or success status, got: {:?}",
+        status
+    );
+
+    // Verify dry-run
+    assert!(
+        source.exists(),
+        "test-move-dry.ts should still exist after dry-run"
+    );
+    assert!(
+        !dest.exists(),
+        "utils/test-move-dry.ts should NOT exist after dry-run"
+    );
+
+    println!("✅ Successfully dry-run moved test-move-dry.ts -> utils/test-move-dry.ts");
+}
+
+/// Test: Execute actual move on Zod file
+#[tokio::test]
+#[serial]
 async fn test_zod_move_file_execute() {
-    let workspace = setup_zod_workspace();
-    let mut client = TestClient::new(workspace.path());
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
 
-    let source = workspace.path().join("packages/zod/src/v3/external.ts");
-    let dest = workspace
-        .path()
-        .join("packages/zod/src/v3/helpers/external.ts");
+    // Create a test file
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/test-move-exec.ts",
+        r#"export const moveExecValue = 42;
+export function moveExecFunc() { return moveExecValue; }
+"#,
+    );
 
-    // Verify source file exists
-    assert!(source.exists(), "external.ts should exist");
+    let source = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/test-move-exec.ts");
+    let dest = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/helpers/test-move-exec.ts");
 
-    // Read original content
-    let original_content = std::fs::read_to_string(&source).expect("Should read external.ts");
+    let original_content = std::fs::read_to_string(&source).expect("Should read source file");
 
     // Create destination directory
     std::fs::create_dir_all(dest.parent().unwrap()).expect("Should create helpers dir");
 
-    // Use extended timeout - Zod has many files to scan for import references
-    let result = client
+    let result = ctx
+        .client
         .call_tool_with_timeout(
             "relocate",
             json!({
@@ -468,7 +403,6 @@ async fn test_zod_move_file_execute() {
         .await
         .expect("relocate should succeed");
 
-    // Response format: { "result": { "content": { "status": "success", ... } } }
     let inner_result = result.get("result").expect("Should have result field");
     let content = inner_result
         .get("content")
@@ -485,11 +419,11 @@ async fn test_zod_move_file_execute() {
     // Verify file was actually moved
     assert!(
         !source.exists(),
-        "external.ts should no longer exist at original location"
+        "test-move-exec.ts should no longer exist at original location"
     );
     assert!(
         dest.exists(),
-        "external.ts should exist at new location (helpers/external.ts)"
+        "test-move-exec.ts should exist at new location"
     );
 
     // Verify content preserved
@@ -499,5 +433,944 @@ async fn test_zod_move_file_execute() {
         "Content should be preserved after move"
     );
 
-    println!("✅ Successfully moved external.ts -> helpers/external.ts");
+    println!("✅ Successfully moved test-move-exec.ts -> helpers/test-move-exec.ts");
+}
+
+// ============================================================================
+// Folder/Directory Move Tests (Dry Run + Execute)
+// ============================================================================
+
+/// Test: Dry-run move folder in Zod
+#[tokio::test]
+#[serial]
+async fn test_zod_move_folder_dry_run() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Create a test folder with multiple files
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/test-folder-dry/index.ts",
+        "export * from './utils';",
+    );
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/test-folder-dry/utils.ts",
+        "export const folderUtil = 'folder-util';",
+    );
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/test-folder-dry/types.ts",
+        "export interface FolderType { value: string; }",
+    );
+
+    let source = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/test-folder-dry");
+    let dest = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/moved-folder-dry");
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "relocate",
+            json!({
+                "target": {
+                    "kind": "directory",
+                    "filePath": source.to_string_lossy()
+                },
+                "destination": dest.to_string_lossy(),
+                "options": {
+                    "dryRun": true
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("relocate folder dry-run should succeed");
+
+    let inner_result = result.get("result").expect("Should have result field");
+    let content = inner_result
+        .get("content")
+        .expect("Should have content field");
+
+    let status = content.get("status").and_then(|s| s.as_str());
+    assert!(
+        status == Some("preview") || status == Some("success"),
+        "Should return preview or success status, got: {:?}",
+        status
+    );
+
+    // Verify dry-run - source folder should still exist
+    assert!(
+        source.exists(),
+        "test-folder-dry should still exist after dry-run"
+    );
+    assert!(
+        source.join("index.ts").exists(),
+        "test-folder-dry/index.ts should still exist"
+    );
+    assert!(
+        !dest.exists(),
+        "moved-folder-dry should NOT exist after dry-run"
+    );
+
+    println!("✅ Successfully dry-run moved test-folder-dry -> moved-folder-dry");
+}
+
+/// Test: Execute actual folder move in Zod
+#[tokio::test]
+#[serial]
+async fn test_zod_move_folder_execute() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Create a test folder with multiple files
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/test-folder-exec/index.ts",
+        "export * from './utils';",
+    );
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/test-folder-exec/utils.ts",
+        "export const folderExecUtil = 'folder-exec-util';",
+    );
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/test-folder-exec/types.ts",
+        "export interface FolderExecType { value: string; }",
+    );
+
+    let source = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/test-folder-exec");
+    let dest = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/moved-folder-exec");
+
+    // Read original content
+    let original_index =
+        std::fs::read_to_string(source.join("index.ts")).expect("Should read index.ts");
+    let original_utils =
+        std::fs::read_to_string(source.join("utils.ts")).expect("Should read utils.ts");
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "relocate",
+            json!({
+                "target": {
+                    "kind": "directory",
+                    "filePath": source.to_string_lossy()
+                },
+                "destination": dest.to_string_lossy(),
+                "options": {
+                    "dryRun": false
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("relocate folder should succeed");
+
+    let inner_result = result.get("result").expect("Should have result field");
+    let content = inner_result
+        .get("content")
+        .expect("Should have content field");
+
+    let status = content.get("status").and_then(|s| s.as_str());
+    assert_eq!(
+        status,
+        Some("success"),
+        "Folder move should succeed, got: {:?}",
+        status
+    );
+
+    // Verify folder was actually moved
+    assert!(
+        !source.exists(),
+        "test-folder-exec should no longer exist at original location"
+    );
+    assert!(dest.exists(), "moved-folder-exec should exist");
+    assert!(
+        dest.join("index.ts").exists(),
+        "moved-folder-exec/index.ts should exist"
+    );
+    assert!(
+        dest.join("utils.ts").exists(),
+        "moved-folder-exec/utils.ts should exist"
+    );
+    assert!(
+        dest.join("types.ts").exists(),
+        "moved-folder-exec/types.ts should exist"
+    );
+
+    // Verify content preserved
+    let new_index =
+        std::fs::read_to_string(dest.join("index.ts")).expect("Should read moved index.ts");
+    let new_utils =
+        std::fs::read_to_string(dest.join("utils.ts")).expect("Should read moved utils.ts");
+
+    assert_eq!(
+        original_index, new_index,
+        "index.ts content should be preserved"
+    );
+    assert_eq!(
+        original_utils, new_utils,
+        "utils.ts content should be preserved"
+    );
+
+    println!("✅ Successfully moved test-folder-exec -> moved-folder-exec (3 files)");
+}
+
+// ============================================================================
+// Rename Symbol Tests (Dry Run + Execute)
+// ============================================================================
+
+/// Test: Dry-run rename symbol in Zod
+#[tokio::test]
+#[serial]
+async fn test_zod_rename_symbol_dry_run() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Create a test file with a symbol we can rename
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/test-symbol-dry.ts",
+        r#"export const myConstant = 42;
+export function useMyConstant() {
+    return myConstant * 2;
+}
+"#,
+    );
+
+    let file_path = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/test-symbol-dry.ts");
+
+    // Wait for LSP to index
+    let _ = ctx.client.wait_for_lsp_ready(&file_path, 15000).await;
+
+    // Try to rename the symbol at line 1, character 13 (myConstant)
+    let rename_result = ctx
+        .client
+        .call_tool_with_timeout(
+            "rename_all",
+            json!({
+                "target": {
+                    "kind": "symbol",
+                    "filePath": file_path.to_string_lossy(),
+                    "line": 1,
+                    "character": 13
+                },
+                "newName": "myRenamedConstant",
+                "options": {
+                    "dryRun": true
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await;
+
+    match rename_result {
+        Ok(resp) => {
+            let status = resp
+                .get("result")
+                .and_then(|r| r.get("content"))
+                .and_then(|c| c.get("status"));
+            println!("✅ Symbol rename dry-run succeeded: {:?}", status);
+
+            // Verify original file unchanged
+            let content =
+                std::fs::read_to_string(&file_path).expect("Should read test-symbol-dry.ts");
+            assert!(
+                content.contains("myConstant"),
+                "Original symbol should still exist after dry-run"
+            );
+            assert!(
+                !content.contains("myRenamedConstant"),
+                "Renamed symbol should NOT exist after dry-run"
+            );
+        }
+        Err(e) => {
+            println!("⚠️ Symbol rename dry-run failed (may need LSP): {}", e);
+        }
+    }
+}
+
+/// Test: Execute actual symbol rename in Zod
+#[tokio::test]
+#[serial]
+async fn test_zod_rename_symbol_execute() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Create a test file with a symbol we can rename
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/test-symbol-exec.ts",
+        r#"export const oldSymbol = 42;
+export function useOldSymbol() {
+    return oldSymbol * 2;
+}
+console.log(oldSymbol);
+"#,
+    );
+
+    let file_path = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/test-symbol-exec.ts");
+
+    // Wait for LSP to index
+    let _ = ctx.client.wait_for_lsp_ready(&file_path, 15000).await;
+
+    // Rename the symbol at line 1, character 13 (oldSymbol)
+    let rename_result = ctx
+        .client
+        .call_tool_with_timeout(
+            "rename_all",
+            json!({
+                "target": {
+                    "kind": "symbol",
+                    "filePath": file_path.to_string_lossy(),
+                    "line": 1,
+                    "character": 13
+                },
+                "newName": "newSymbol",
+                "options": {
+                    "dryRun": false
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await;
+
+    match rename_result {
+        Ok(resp) => {
+            let status = resp
+                .get("result")
+                .and_then(|r| r.get("content"))
+                .and_then(|c| c.get("status"));
+            println!("✅ Symbol rename execute succeeded: {:?}", status);
+
+            // Verify file was updated
+            let content =
+                std::fs::read_to_string(&file_path).expect("Should read test-symbol-exec.ts");
+
+            // All references should be renamed
+            assert!(
+                content.contains("newSymbol"),
+                "New symbol should exist after rename. Content: {}",
+                content
+            );
+        }
+        Err(e) => {
+            println!("⚠️ Symbol rename execute failed (may need LSP): {}", e);
+        }
+    }
+}
+
+// ============================================================================
+// Extract Dependencies Tests (Dry Run + Execute)
+// ============================================================================
+
+/// Test: Dry-run extract dependencies (npm)
+#[tokio::test]
+#[serial]
+async fn test_zod_extract_dependencies_dry_run() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    ctx.workspace.create_file(
+        "packages/src-pkg/package.json",
+        r#"{
+  "name": "src-pkg",
+  "version": "1.0.0",
+  "dependencies": {
+    "react": "^18.0.0",
+    "lodash": "^4.17.0"
+  }
+}"#,
+    );
+
+    ctx.workspace.create_file(
+        "packages/tgt-pkg/package.json",
+        r#"{
+  "name": "tgt-pkg",
+  "version": "1.0.0",
+  "dependencies": {}
+}"#,
+    );
+
+    let source_path = ctx.workspace.absolute_path("packages/src-pkg/package.json");
+    let target_path = ctx.workspace.absolute_path("packages/tgt-pkg/package.json");
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "workspace",
+            json!({
+                "action": "extract_dependencies",
+                "params": {
+                    "sourceManifest": source_path.to_string_lossy(),
+                    "targetManifest": target_path.to_string_lossy(),
+                    "dependencies": ["react"]
+                },
+                "options": {
+                    "dryRun": true,
+                    "section": "dependencies"
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("extract_dependencies dry-run should succeed");
+
+    assert!(
+        result.get("result").is_some(),
+        "Should have result: {:?}",
+        result
+    );
+
+    // Target should NOT be modified (dry run)
+    let target_content = ctx.workspace.read_file("packages/tgt-pkg/package.json");
+    assert!(
+        !target_content.contains("react"),
+        "Should not have react in dry run"
+    );
+
+    println!("✅ Successfully dry-run extract_dependencies");
+}
+
+/// Test: Execute extract dependencies (npm)
+#[tokio::test]
+#[serial]
+async fn test_zod_extract_dependencies_execute() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    ctx.workspace.create_file(
+        "packages/source-exec/package.json",
+        r#"{
+  "name": "source-exec",
+  "version": "1.0.0",
+  "dependencies": {
+    "lodash": "^4.17.0",
+    "axios": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}"#,
+    );
+
+    ctx.workspace.create_file(
+        "packages/target-exec/package.json",
+        r#"{
+  "name": "target-exec",
+  "version": "1.0.0",
+  "dependencies": {}
+}"#,
+    );
+
+    let source_path = ctx
+        .workspace
+        .absolute_path("packages/source-exec/package.json");
+    let target_path = ctx
+        .workspace
+        .absolute_path("packages/target-exec/package.json");
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "workspace",
+            json!({
+                "action": "extract_dependencies",
+                "params": {
+                    "sourceManifest": source_path.to_string_lossy(),
+                    "targetManifest": target_path.to_string_lossy(),
+                    "dependencies": ["lodash"]
+                },
+                "options": {
+                    "dryRun": false,
+                    "section": "dependencies"
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("extract_dependencies execute should succeed");
+
+    assert!(
+        result.get("result").is_some(),
+        "Should have result: {:?}",
+        result
+    );
+
+    // Verify target was updated
+    let target_content = ctx.workspace.read_file("packages/target-exec/package.json");
+    assert!(
+        target_content.contains("lodash"),
+        "Should have lodash: {}",
+        target_content
+    );
+    assert!(
+        target_content.contains("^4.17.0"),
+        "Should have version: {}",
+        target_content
+    );
+    assert!(!target_content.contains("axios"), "Should not have axios");
+
+    println!("✅ Successfully executed extract_dependencies");
+}
+
+// ============================================================================
+// Create Package Tests (Dry Run + Execute)
+// ============================================================================
+
+/// Test: Dry-run create package
+/// NOTE: Currently skipped because create_package doesn't support dryRun mode yet
+#[tokio::test]
+#[serial]
+#[ignore = "create_package dryRun not yet implemented"]
+async fn test_zod_create_package_dry_run() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    let pkg_path = ctx.workspace.absolute_path("packages/new-pkg-dry");
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "workspace",
+            json!({
+                "action": "create_package",
+                "params": {
+                    "path": pkg_path.to_string_lossy(),
+                    "name": "new-pkg-dry",
+                    "type": "npm"
+                },
+                "options": {
+                    "dryRun": true
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("create_package dry-run should succeed");
+
+    assert!(
+        result.get("result").is_some(),
+        "Should have result: {:?}",
+        result
+    );
+
+    // Package should NOT be created (dry run)
+    assert!(
+        !pkg_path.exists(),
+        "new-pkg-dry should NOT exist after dry run"
+    );
+
+    println!("✅ Successfully dry-run create_package");
+}
+
+/// Test: Execute create package
+#[tokio::test]
+#[serial]
+async fn test_zod_create_package_execute() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    let pkg_path = ctx.workspace.absolute_path("packages/new-pkg-exec");
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "workspace",
+            json!({
+                "action": "create_package",
+                "params": {
+                    "path": pkg_path.to_string_lossy(),
+                    "name": "new-pkg-exec",
+                    "type": "npm"
+                },
+                "options": {
+                    "dryRun": false,
+                    "addToWorkspace": false  // Zod doesn't have a workspace package.json
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("create_package execute should succeed");
+
+    assert!(
+        result.get("result").is_some(),
+        "Should have result: {:?}",
+        result
+    );
+
+    // Package should be created
+    assert!(
+        pkg_path.exists(),
+        "new-pkg-exec should exist after execute"
+    );
+    assert!(
+        pkg_path.join("package.json").exists(),
+        "package.json should exist"
+    );
+
+    // Verify package.json content
+    let pkg_content =
+        std::fs::read_to_string(pkg_path.join("package.json")).expect("Should read package.json");
+    assert!(
+        pkg_content.contains("new-pkg-exec"),
+        "Should have package name"
+    );
+
+    println!("✅ Successfully executed create_package");
+}
+
+// ============================================================================
+// Combined Workflow Tests
+// ============================================================================
+
+/// Test: Complete workflow - extract deps + move file
+#[tokio::test]
+#[serial]
+async fn test_zod_workflow_extract_and_move() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Step 1: Create a source package with dependencies
+    ctx.workspace.create_file(
+        "packages/old-workflow/package.json",
+        r#"{
+  "name": "old-workflow",
+  "version": "1.0.0",
+  "dependencies": {
+    "lodash": "^4.17.0"
+  }
+}"#,
+    );
+    ctx.workspace.create_file(
+        "packages/old-workflow/src/helpers.ts",
+        r#"export function formatName(name: string): string {
+  return name.trim().toLowerCase();
+}
+"#,
+    );
+
+    // Create target package
+    ctx.workspace.create_file(
+        "packages/new-workflow/package.json",
+        r#"{
+  "name": "new-workflow",
+  "version": "1.0.0",
+  "dependencies": {}
+}"#,
+    );
+    std::fs::create_dir_all(ctx.workspace.path().join("packages/new-workflow/src"))
+        .expect("Failed to create src dir");
+
+    // Step 2: Extract dependencies
+    let source_manifest = ctx
+        .workspace
+        .absolute_path("packages/old-workflow/package.json");
+    let target_manifest = ctx
+        .workspace
+        .absolute_path("packages/new-workflow/package.json");
+
+    let _result = ctx
+        .client
+        .call_tool_with_timeout(
+            "workspace",
+            json!({
+                "action": "extract_dependencies",
+                "params": {
+                    "sourceManifest": source_manifest.to_string_lossy(),
+                    "targetManifest": target_manifest.to_string_lossy(),
+                    "dependencies": ["lodash"]
+                },
+                "options": {
+                    "dryRun": false,
+                    "section": "dependencies"
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("extract_dependencies should succeed");
+
+    // Verify lodash was added
+    let new_pkg = ctx.workspace.read_file("packages/new-workflow/package.json");
+    assert!(new_pkg.contains("lodash"), "Should have lodash dependency");
+
+    // Step 3: Move a file to the new package
+    let source_file = ctx
+        .workspace
+        .absolute_path("packages/old-workflow/src/helpers.ts");
+    let dest_file = ctx
+        .workspace
+        .absolute_path("packages/new-workflow/src/helpers.ts");
+
+    let _result = ctx
+        .client
+        .call_tool_with_timeout(
+            "relocate",
+            json!({
+                "target": {
+                    "kind": "file",
+                    "filePath": source_file.to_string_lossy()
+                },
+                "destination": dest_file.to_string_lossy(),
+                "options": {
+                    "dryRun": false
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("relocate should succeed");
+
+    // Verify file was moved
+    assert!(!source_file.exists(), "Source file should be gone");
+    assert!(dest_file.exists(), "Dest file should exist");
+
+    // Verify content is preserved
+    let helpers_content = ctx.workspace.read_file("packages/new-workflow/src/helpers.ts");
+    assert!(helpers_content.contains("formatName"));
+    assert!(helpers_content.contains("trim()"));
+
+    println!("✅ Successfully completed workflow: extract deps + move file");
+}
+
+/// Test: Complete workflow - create package + move folder into it
+#[tokio::test]
+#[serial]
+async fn test_zod_workflow_create_package_and_move_folder() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Step 1: Create a source folder with files
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/utils-to-extract/index.ts",
+        "export * from './validators';",
+    );
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/utils-to-extract/validators.ts",
+        r#"export function validateEmail(email: string): boolean {
+  return email.includes('@');
+}
+export function validatePhone(phone: string): boolean {
+  return phone.length >= 10;
+}
+"#,
+    );
+
+    // Step 2: Create a new package
+    let new_pkg_path = ctx.workspace.absolute_path("packages/validators-pkg");
+
+    let _result = ctx
+        .client
+        .call_tool_with_timeout(
+            "workspace",
+            json!({
+                "action": "create_package",
+                "params": {
+                    "path": new_pkg_path.to_string_lossy(),
+                    "name": "validators-pkg",
+                    "type": "npm"
+                },
+                "options": {
+                    "dryRun": false
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("create_package should succeed");
+
+    assert!(new_pkg_path.exists(), "Package should be created");
+
+    // Create src directory in new package
+    std::fs::create_dir_all(new_pkg_path.join("src")).expect("Failed to create src dir");
+
+    // Step 3: Move the folder into the new package
+    let source_folder = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/utils-to-extract");
+    let dest_folder = ctx
+        .workspace
+        .absolute_path("packages/validators-pkg/src/validators");
+
+    let _result = ctx
+        .client
+        .call_tool_with_timeout(
+            "relocate",
+            json!({
+                "target": {
+                    "kind": "directory",
+                    "filePath": source_folder.to_string_lossy()
+                },
+                "destination": dest_folder.to_string_lossy(),
+                "options": {
+                    "dryRun": false
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("relocate folder should succeed");
+
+    // Verify folder was moved
+    assert!(
+        !source_folder.exists(),
+        "Source folder should no longer exist"
+    );
+    assert!(dest_folder.exists(), "Destination folder should exist");
+    assert!(
+        dest_folder.join("index.ts").exists(),
+        "index.ts should exist"
+    );
+    assert!(
+        dest_folder.join("validators.ts").exists(),
+        "validators.ts should exist"
+    );
+
+    // Verify content is preserved
+    let validators_content = std::fs::read_to_string(dest_folder.join("validators.ts"))
+        .expect("Should read validators.ts");
+    assert!(validators_content.contains("validateEmail"));
+    assert!(validators_content.contains("validatePhone"));
+
+    println!("✅ Successfully completed workflow: create package + move folder into it");
+}
+
+// ============================================================================
+// Folder Rename Tests (Dry Run + Execute)
+// ============================================================================
+
+/// Test: Dry-run rename folder in Zod
+#[tokio::test]
+#[serial]
+async fn test_zod_rename_folder_dry_run() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Create a test folder
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/rename-folder-dry/index.ts",
+        "export const value = 'rename-folder-test';",
+    );
+
+    let old_path = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/rename-folder-dry");
+    let new_path = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/renamed-folder-dry");
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "rename_all",
+            json!({
+                "target": {
+                    "kind": "directory",
+                    "filePath": old_path.to_string_lossy()
+                },
+                "newName": new_path.to_string_lossy(),
+                "options": {
+                    "dryRun": true
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("rename_all folder dry-run should succeed");
+
+    let inner_result = result.get("result").expect("Should have result field");
+    let content = inner_result
+        .get("content")
+        .expect("Should have content field");
+
+    let status = content.get("status").and_then(|s| s.as_str());
+    assert!(
+        status == Some("preview") || status == Some("success"),
+        "Should return preview or success status, got: {:?}",
+        status
+    );
+
+    // Verify folder NOT actually renamed (dry-run)
+    assert!(
+        old_path.exists(),
+        "rename-folder-dry should still exist after dry-run"
+    );
+    assert!(
+        !new_path.exists(),
+        "renamed-folder-dry should NOT exist after dry-run"
+    );
+
+    println!("✅ Successfully dry-run renamed rename-folder-dry");
+}
+
+/// Test: Execute actual folder rename in Zod
+#[tokio::test]
+#[serial]
+async fn test_zod_rename_folder_execute() {
+    let mut ctx = ZOD_CONTEXT.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Create a test folder
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/rename-folder-exec/index.ts",
+        "export const value = 'rename-folder-exec-test';",
+    );
+    ctx.workspace.create_file(
+        "packages/zod/src/v3/rename-folder-exec/utils.ts",
+        "export const util = 'util-value';",
+    );
+
+    let old_path = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/rename-folder-exec");
+    let new_path = ctx
+        .workspace
+        .absolute_path("packages/zod/src/v3/renamed-folder-exec");
+
+    let result = ctx
+        .client
+        .call_tool_with_timeout(
+            "rename_all",
+            json!({
+                "target": {
+                    "kind": "directory",
+                    "filePath": old_path.to_string_lossy()
+                },
+                "newName": new_path.to_string_lossy(),
+                "options": {
+                    "dryRun": false
+                }
+            }),
+            LARGE_PROJECT_TIMEOUT,
+        )
+        .await
+        .expect("rename_all folder should succeed");
+
+    let inner_result = result.get("result").expect("Should have result field");
+    let content = inner_result
+        .get("content")
+        .expect("Should have content field");
+
+    let status = content.get("status").and_then(|s| s.as_str());
+    assert_eq!(
+        status,
+        Some("success"),
+        "Folder rename should succeed, got: {:?}",
+        status
+    );
+
+    // Verify folder was actually renamed
+    assert!(
+        !old_path.exists(),
+        "rename-folder-exec should no longer exist after rename"
+    );
+    assert!(
+        new_path.exists(),
+        "renamed-folder-exec should exist after rename"
+    );
+    assert!(
+        new_path.join("index.ts").exists(),
+        "index.ts should exist in renamed folder"
+    );
+    assert!(
+        new_path.join("utils.ts").exists(),
+        "utils.ts should exist in renamed folder"
+    );
+
+    println!("✅ Successfully renamed rename-folder-exec -> renamed-folder-exec");
 }

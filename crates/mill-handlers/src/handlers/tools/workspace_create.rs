@@ -6,7 +6,7 @@ use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResu
 use mill_plugin_api::{CreatePackageConfig, PackageType, Template};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 /// Service for workspace package creation operations
 pub struct WorkspaceCreateService;
@@ -19,12 +19,39 @@ impl WorkspaceCreateService {
 
 // Parameter types for MCP interface
 
+/// Language/package manager type (npm, cargo, etc.)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LanguageType {
+    /// TypeScript/JavaScript (npm package.json)
+    Npm,
+    /// Rust (Cargo.toml)
+    #[default]
+    Cargo,
+    /// Python (pyproject.toml)
+    Python,
+}
+
+impl LanguageType {
+    /// Get the file extension for this language type
+    pub fn extension(&self) -> &'static str {
+        match self {
+            LanguageType::Npm => "ts",
+            LanguageType::Cargo => "rs",
+            LanguageType::Python => "py",
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CreatePackageParams {
     pub package_path: String,
     #[serde(default = "default_lib")]
     pub package_type: PackageType,
+    /// Language/package manager type (npm, cargo, python)
+    #[serde(default, alias = "type")]
+    pub language: LanguageType,
     #[serde(default)]
     pub options: CreatePackageOptions,
 }
@@ -78,15 +105,17 @@ pub async fn handle_create_package(
     context: &mill_handler_api::ToolHandlerContext,
     args: Value,
 ) -> ServerResult<Value> {
-    debug!("Handling workspace create_package action");
+    info!("Handling workspace create_package action");
+    info!(args = %serde_json::to_string_pretty(&args).unwrap_or_default(), "Received args");
 
     // Parse parameters
     let params: CreatePackageParams = serde_json::from_value(args)
         .map_err(|e| ServerError::invalid_request(format!("Invalid arguments: {}", e)))?;
 
-    debug!(
+    info!(
         package_path = %params.package_path,
         package_type = ?params.package_type,
+        language = ?params.language,
         dry_run = params.options.dry_run,
         "Parsed create_package parameters"
     );
@@ -98,9 +127,10 @@ pub async fn handle_create_package(
         ));
     }
 
-    // Detect language from package path extension or default to Rust
-    // For now, we only support Rust (manifest: Cargo.toml)
-    let language_ext = "rs"; // Default to Rust
+    // Get language extension based on the specified language type
+    let language_ext = params.language.extension();
+
+    info!(language_ext = %language_ext, "Using language plugin");
 
     // Get language plugin
     let plugin = context

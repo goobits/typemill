@@ -113,6 +113,13 @@ impl WorkspaceHandler {
             create_args["packageType"] = json!(template);
         }
 
+        // Map language/type field (npm, cargo, python)
+        if let Some(lang) = params.get("type").and_then(|v| v.as_str()) {
+            create_args["language"] = json!(lang);
+        } else if let Some(lang) = params.get("language").and_then(|v| v.as_str()) {
+            create_args["language"] = json!(lang);
+        }
+
         // Add options
         create_args["options"] = json!(options);
 
