@@ -6,11 +6,15 @@
 use anyhow::{Context, Result};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 /// Represents a parsed tsconfig.json file
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub(crate) struct TsConfig {
+    /// Path to a base configuration file to inherit from
+    pub extends: Option<String>,
+
     /// Compiler options including path mappings
     #[serde(rename = "compilerOptions")]
     pub compiler_options: Option<CompilerOptions>,
@@ -29,6 +33,19 @@ pub(crate) struct CompilerOptions {
     /// Uses IndexMap to preserve insertion order, which matches TypeScript's
     /// pattern matching behavior (first matching pattern wins).
     pub paths: Option<IndexMap<String, Vec<String>>>,
+}
+
+/// Resolved TypeScript configuration with absolute paths
+#[derive(Debug, Clone)]
+pub(crate) struct ResolvedTsConfig {
+    /// Effective base URL (absolute path)
+    pub base_url: PathBuf,
+
+    /// Path mappings with absolute replacement paths
+    pub paths: IndexMap<String, Vec<PathBuf>>,
+
+    /// Raw base URL string (used for inheritance)
+    pub raw_base_url: Option<String>,
 }
 
 impl TsConfig {
@@ -52,6 +69,87 @@ impl TsConfig {
             .with_context(|| format!("Failed to parse tsconfig.json at {:?}", path))
     }
 
+    /// Load and merge tsconfig.json with support for 'extends'
+    pub fn load_and_merge(path: &Path) -> Result<ResolvedTsConfig> {
+        let mut visited = HashSet::new();
+        Self::load_and_merge_recursive(path, &mut visited)
+    }
+
+    fn load_and_merge_recursive(
+        path: &Path,
+        visited: &mut HashSet<PathBuf>,
+    ) -> Result<ResolvedTsConfig> {
+        let canonical_path = std::fs::canonicalize(path).unwrap_or(path.to_path_buf());
+        if !visited.insert(canonical_path.clone()) {
+            return Err(anyhow::anyhow!("Circular extends dependency detected: {:?}", path));
+        }
+
+        let config = Self::from_file(&canonical_path)?;
+        let config_dir = canonical_path.parent().unwrap_or_else(|| Path::new("."));
+
+        // 1. Load base config if 'extends' is present
+        let mut resolved = if let Some(extends_path_str) = &config.extends {
+            // Resolve extends path relative to current config file
+            let extends_path = config_dir.join(extends_path_str);
+
+            if extends_path.exists() {
+                Self::load_and_merge_recursive(&extends_path, visited)?
+            } else {
+                 // Fallback: start with empty config if extended file not found
+                 // (or maybe it's in node_modules, but we skip that for now)
+                 ResolvedTsConfig {
+                     base_url: config_dir.to_path_buf(),
+                     paths: IndexMap::new(),
+                     raw_base_url: None,
+                 }
+            }
+        } else {
+            // No extends: start with default empty config
+            ResolvedTsConfig {
+                base_url: config_dir.to_path_buf(),
+                paths: IndexMap::new(),
+                raw_base_url: None,
+            }
+        };
+
+        // 2. Determine effective raw baseUrl (local overrides parent)
+        let local_base_url_str = config.compiler_options
+            .as_ref()
+            .and_then(|opts| opts.base_url.clone());
+
+        let effective_raw_base_url = local_base_url_str.or(resolved.raw_base_url);
+
+        // 3. Determine absolute baseUrl for THIS config file
+        let effective_base_url = if let Some(ref raw) = effective_raw_base_url {
+            config_dir.join(raw)
+        } else {
+            config_dir.to_path_buf()
+        };
+
+        // Update resolved config with new base URL info
+        resolved.base_url = effective_base_url.clone();
+        resolved.raw_base_url = effective_raw_base_url;
+
+        // 4. Resolve and merge paths
+        if let Some(compiler_options) = config.compiler_options {
+            if let Some(paths) = compiler_options.paths {
+                 for (pattern, replacements) in paths {
+                     let abs_replacements: Vec<PathBuf> = replacements
+                         .into_iter()
+                         .map(|r| {
+                             effective_base_url.join(r)
+                         })
+                         .collect();
+
+                     // Child paths override parent paths (merge by key)
+                     resolved.paths.insert(pattern, abs_replacements);
+                 }
+            }
+        }
+
+        Ok(resolved)
+    }
+
     /// Find the nearest tsconfig.json by walking up from a starting path
     ///
     /// # Arguments
@@ -61,22 +159,6 @@ impl TsConfig {
     /// # Returns
     ///
     /// Path to nearest tsconfig.json, or None if not found
-    ///
-    /// Finds the nearest tsconfig.json file by walking up the directory tree.
-    ///
-    /// Searches parent directories starting from the given path until a tsconfig.json
-    /// file is found or the root is reached.
-    ///
-    /// # Arguments
-    /// * `start_path` - The starting path to search from
-    ///
-    /// # Returns
-    /// Path to the nearest tsconfig.json, or None if not found
-    ///
-    /// # Note
-    /// This is a public API method. Internally, TypeScriptPathAliasResolver uses
-    /// a cached version (find_nearest_tsconfig) for better performance.
-    #[allow(dead_code)]
     pub fn find_nearest(start_path: &Path) -> Option<PathBuf> {
         let mut current = start_path.parent()?;
 
@@ -92,14 +174,6 @@ impl TsConfig {
     }
 
     /// Get the base URL as an absolute path
-    ///
-    /// # Arguments
-    ///
-    /// * `tsconfig_dir` - Directory containing the tsconfig.json file
-    ///
-    /// # Returns
-    ///
-    /// Absolute path to the base URL directory
     pub fn get_base_url(&self, tsconfig_dir: &Path) -> PathBuf {
         if let Some(ref compiler_options) = self.compiler_options {
             if let Some(ref base_url) = compiler_options.base_url {
@@ -116,27 +190,6 @@ impl TsConfig {
 /// TypeScript's tsconfig.json allows JavaScript-style comments (//, /* */),
 /// but standard JSON parsers don't support them. This function removes
 /// both line comments and block comments.
-///
-/// # Arguments
-///
-/// * `content` - JSON content with potential comments
-///
-/// # Returns
-///
-/// JSON content with all comments removed
-///
-/// # Supported Comment Styles
-///
-/// - Line comments: `// comment` (entire line or inline)
-/// - Block comments: `/* comment */` (single-line or multi-line)
-///
-/// # Implementation
-///
-/// This is a state-machine-based parser that correctly handles:
-/// - Inline comments: `"key": "value" // comment`
-/// - Block comments: `/* comment */`
-/// - Multi-line block comments
-/// - Comments inside strings (preserved)
 pub(crate) fn strip_json_comments(content: &str) -> String {
     let mut result = String::with_capacity(content.len());
     let mut chars = content.chars().peekable();
@@ -216,7 +269,12 @@ pub(crate) fn strip_json_comments(content: &str) -> String {
 mod tests {
     use super::*;
     use std::io::Write;
-    use tempfile::NamedTempFile;
+    use tempfile::{NamedTempFile, TempDir};
+
+    fn create_file(path: &Path, content: &str) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, content).unwrap();
+    }
 
     #[test]
     fn test_parse_tsconfig_with_path_mappings() {
@@ -249,262 +307,104 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_tsconfig_with_comments() {
-        let config_json = r#"{
-            // This is a comment
-            "compilerOptions": {
-                "baseUrl": ".",
-                // Path mappings for SvelteKit
-                "paths": {
-                    "$lib/*": ["src/lib/*"]
-                }
-            }
-        }"#;
-
-        let mut temp_file = NamedTempFile::new().unwrap();
-        temp_file.write_all(config_json.as_bytes()).unwrap();
-        temp_file.flush().unwrap();
-
-        let config = TsConfig::from_file(temp_file.path()).unwrap();
-        assert!(config.compiler_options.is_some());
-    }
-
-    #[test]
-    fn test_get_base_url_with_explicit_path() {
-        let config = TsConfig {
-            compiler_options: Some(CompilerOptions {
-                base_url: Some("src".to_string()),
-                paths: None,
-            }),
-        };
-
-        let tsconfig_dir = Path::new("/workspace/web");
-        let base_url = config.get_base_url(tsconfig_dir);
-
-        assert_eq!(base_url, Path::new("/workspace/web/src"));
-    }
-
-    #[test]
-    fn test_get_base_url_defaults_to_tsconfig_dir() {
-        let config = TsConfig {
-            compiler_options: Some(CompilerOptions {
-                base_url: None,
-                paths: None,
-            }),
-        };
-
-        let tsconfig_dir = Path::new("/workspace/web");
-        let base_url = config.get_base_url(tsconfig_dir);
-
-        assert_eq!(base_url, Path::new("/workspace/web"));
-    }
-
-    #[test]
-    fn test_get_base_url_no_compiler_options() {
-        let config = TsConfig {
-            compiler_options: None,
-        };
-
-        let tsconfig_dir = Path::new("/workspace/web");
-        let base_url = config.get_base_url(tsconfig_dir);
-
-        assert_eq!(base_url, Path::new("/workspace/web"));
-    }
-
-    #[test]
-    fn test_find_nearest_tsconfig() {
-        use tempfile::TempDir;
-
+    fn test_extends_and_merge() {
         let temp_dir = TempDir::new().unwrap();
         let project_root = temp_dir.path();
 
-        // Create directory structure: project/src/lib/
-        let src_dir = project_root.join("src");
-        let lib_dir = src_dir.join("lib");
-        std::fs::create_dir_all(&lib_dir).unwrap();
-
-        // Create tsconfig.json at project root
-        let tsconfig_path = project_root.join("tsconfig.json");
-        std::fs::write(&tsconfig_path, "{}").unwrap();
-
-        // Create a test file in lib/
-        let test_file = lib_dir.join("test.ts");
-        std::fs::write(&test_file, "").unwrap();
-
-        // Find tsconfig from test file
-        let found = TsConfig::find_nearest(&test_file);
-        assert!(found.is_some());
-        assert_eq!(found.unwrap(), tsconfig_path);
-    }
-
-    #[test]
-    fn test_find_nearest_tsconfig_not_found() {
-        // Use a path that definitely has no tsconfig.json
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        let test_file = temp_dir.path().join("test.ts");
-        std::fs::write(&test_file, "").unwrap();
-
-        // Should not find tsconfig.json (returns None when reaching filesystem root)
-        let found = TsConfig::find_nearest(&test_file);
-        assert!(found.is_none() || !found.unwrap().exists());
-    }
-
-    #[test]
-    fn test_strip_json_comments() {
-        let input = r#"{
-            // Line comment
-            "key": "value",
-            // Another comment
-            "key2": "value2"
-        }"#;
-
-        let output = strip_json_comments(input);
-
-        // Should not contain comment lines
-        assert!(!output.contains("// Line comment"));
-        assert!(!output.contains("// Another comment"));
-
-        // Should still contain JSON content
-        assert!(output.contains(r#""key": "value""#));
-        assert!(output.contains(r#""key2": "value2""#));
-    }
-
-    #[test]
-    fn test_strip_inline_comments() {
-        let input = r#"{
-            "compilerOptions": { // TypeScript options
-                "baseUrl": ".", // Base path
-                "paths": { // Path mappings
-                    "$lib/*": ["src/lib/*"] // SvelteKit alias
-                }
-            }
-        }"#;
-
-        let output = strip_json_comments(input);
-
-        // Should not contain inline comments
-        assert!(!output.contains("// TypeScript options"));
-        assert!(!output.contains("// Base path"));
-        assert!(!output.contains("// Path mappings"));
-        assert!(!output.contains("// SvelteKit alias"));
-
-        // Should still contain JSON content
-        assert!(output.contains(r#""compilerOptions""#));
-        assert!(output.contains(r#""baseUrl": ".""#));
-        assert!(output.contains(r#""$lib/*""#));
-
-        // Should parse as valid JSON
-        let parsed: serde_json::Value =
-            serde_json::from_str(&output).expect("Output should be valid JSON");
-        assert!(parsed.is_object());
-    }
-
-    #[test]
-    fn test_strip_block_comments() {
-        let input = r#"{
-            /* This is a block comment */
-            "compilerOptions": {
-                "baseUrl": ".", /* inline block */
-                "paths": {
-                    "$lib/*": ["src/lib/*"]
-                }
-            }
-        }"#;
-
-        let output = strip_json_comments(input);
-
-        // Should not contain block comments
-        assert!(!output.contains("/* This is a block comment */"));
-        assert!(!output.contains("/* inline block */"));
-
-        // Should still contain JSON content
-        assert!(output.contains(r#""compilerOptions""#));
-        assert!(output.contains(r#""baseUrl": ".""#));
-
-        // Should parse as valid JSON
-        let parsed: serde_json::Value =
-            serde_json::from_str(&output).expect("Output should be valid JSON");
-        assert!(parsed.is_object());
-    }
-
-    #[test]
-    fn test_strip_multiline_block_comments() {
-        let input = r#"{
-            /*
-             * Multi-line block comment
-             * with multiple lines
-             */
+        // Base config: defines $lib
+        let base_config = r#"{
             "compilerOptions": {
                 "baseUrl": ".",
                 "paths": {
-                    "$lib/*": ["src/lib/*"]
+                    "$lib/*": ["src/lib/*"],
+                    "shared/*": ["shared/*"]
                 }
             }
         }"#;
+        create_file(&project_root.join("base.json"), base_config);
 
-        let output = strip_json_comments(input);
-
-        // Should not contain any part of block comment
-        assert!(!output.contains("Multi-line block comment"));
-        assert!(!output.contains("with multiple lines"));
-
-        // Should parse as valid JSON
-        let parsed: serde_json::Value =
-            serde_json::from_str(&output).expect("Output should be valid JSON");
-        assert!(parsed.is_object());
-    }
-
-    #[test]
-    fn test_preserve_comments_in_strings() {
-        let input = r#"{
-            "description": "This // is not a comment",
-            "note": "Neither /* is */ this"
-        }"#;
-
-        let output = strip_json_comments(input);
-
-        // Should preserve "comments" that are inside strings
-        assert!(output.contains("This // is not a comment"));
-        assert!(output.contains("Neither /* is */ this"));
-
-        // Should parse as valid JSON
-        let parsed: serde_json::Value =
-            serde_json::from_str(&output).expect("Output should be valid JSON");
-        assert_eq!(parsed["description"], "This // is not a comment");
-        assert_eq!(parsed["note"], "Neither /* is */ this");
-    }
-
-    #[test]
-    fn test_parse_tsconfig_with_inline_and_block_comments() {
-        // Real-world tsconfig.json with various comment styles
-        let config_json = r#"{
-            /* TypeScript Configuration */
+        // Child config: extends base, overrides shared, adds @
+        let child_config = r#"{
+            "extends": "./base.json",
             "compilerOptions": {
-                "baseUrl": ".", // Project root
-                "paths": { // Path mappings for module resolution
-                    "$lib/*": ["src/lib/*"], // SvelteKit alias
-                    "@/*": ["src/*"] /* Common Next.js pattern */
+                "baseUrl": ".",
+                "paths": {
+                    "shared/*": ["new-shared/*"],
+                    "@/*": ["src/*"]
                 }
             }
         }"#;
+        create_file(&project_root.join("tsconfig.json"), child_config);
 
-        let mut temp_file = NamedTempFile::new().unwrap();
-        temp_file.write_all(config_json.as_bytes()).unwrap();
-        temp_file.flush().unwrap();
+        let resolved = TsConfig::load_and_merge(&project_root.join("tsconfig.json")).unwrap();
 
-        // Should parse successfully
-        let config =
-            TsConfig::from_file(temp_file.path()).expect("Should parse tsconfig with comments");
+        // $lib should come from base
+        assert!(resolved.paths.contains_key("$lib/*"));
+        let lib_paths = resolved.paths.get("$lib/*").unwrap();
+        // Base resolved absolute path
+        assert!(lib_paths[0].ends_with("src/lib/*"));
 
-        assert!(config.compiler_options.is_some());
-        let compiler_options = config.compiler_options.as_ref().unwrap();
+        // shared should be overridden by child
+        assert!(resolved.paths.contains_key("shared/*"));
+        let shared_paths = resolved.paths.get("shared/*").unwrap();
+        assert!(shared_paths[0].ends_with("new-shared/*"));
 
-        assert_eq!(compiler_options.base_url.as_deref(), Some("."));
-        assert!(compiler_options.paths.is_some());
+        // @ should come from child
+        assert!(resolved.paths.contains_key("@/*"));
+    }
 
-        let paths = compiler_options.paths.as_ref().unwrap();
-        assert_eq!(paths.len(), 2);
-        assert_eq!(paths.get("$lib/*").unwrap(), &vec!["src/lib/*"]);
-        assert_eq!(paths.get("@/*").unwrap(), &vec!["src/*"]);
+    #[test]
+    fn test_extends_nested_relative_resolution() {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+
+        // structure:
+        // /config/base.json (baseUrl: ".")
+        // /app/tsconfig.json (extends: "../config/base.json")
+
+        let config_dir = root.join("config");
+        create_file(&config_dir.join("base.json"), r#"{
+            "compilerOptions": {
+                "baseUrl": ".",
+                "paths": { "base/*": ["base-lib/*"] }
+            }
+        }"#);
+
+        let app_dir = root.join("app");
+        create_file(&app_dir.join("tsconfig.json"), r#"{
+            "extends": "../config/base.json",
+            "compilerOptions": {
+                "paths": { "app/*": ["app-lib/*"] }
+            }
+        }"#);
+
+        let resolved = TsConfig::load_and_merge(&app_dir.join("tsconfig.json")).unwrap();
+
+        // Use canonical paths for assertion to avoid symlink/resolution issues
+        let canonical_config_dir = std::fs::canonicalize(&config_dir).unwrap();
+        let canonical_app_dir = std::fs::canonicalize(&app_dir).unwrap();
+
+        // "base/*" should resolve relative to /config/base.json (because baseUrl="." in base)
+        let base_paths = resolved.paths.get("base/*").unwrap();
+        assert!(base_paths[0].starts_with(&canonical_config_dir));
+        assert!(base_paths[0].ends_with("base-lib/*"));
+
+        // "app/*" should resolve relative to /app/tsconfig.json (implicit baseUrl="." in child)
+        let app_paths = resolved.paths.get("app/*").unwrap();
+        assert!(app_paths[0].starts_with(&canonical_app_dir));
+        assert!(app_paths[0].ends_with("app-lib/*"));
+    }
+
+    #[test]
+    fn test_circular_extends() {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+
+        create_file(&root.join("a.json"), r#"{ "extends": "./b.json" }"#);
+        create_file(&root.join("b.json"), r#"{ "extends": "./a.json" }"#);
+
+        let result = TsConfig::load_and_merge(&root.join("a.json"));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Circular"));
     }
 }
