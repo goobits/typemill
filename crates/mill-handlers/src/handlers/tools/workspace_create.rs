@@ -6,7 +6,7 @@ use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResu
 use mill_plugin_api::{CreatePackageConfig, PackageType, Template};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 /// Service for workspace package creation operations
 pub struct WorkspaceCreateService;
@@ -105,13 +105,14 @@ pub async fn handle_create_package(
     context: &mill_handler_api::ToolHandlerContext,
     args: Value,
 ) -> ServerResult<Value> {
-    debug!("Handling workspace create_package action");
+    info!("Handling workspace create_package action");
+    info!(args = %serde_json::to_string_pretty(&args).unwrap_or_default(), "Received args");
 
     // Parse parameters
     let params: CreatePackageParams = serde_json::from_value(args)
         .map_err(|e| ServerError::invalid_request(format!("Invalid arguments: {}", e)))?;
 
-    debug!(
+    info!(
         package_path = %params.package_path,
         package_type = ?params.package_type,
         language = ?params.language,
@@ -129,7 +130,7 @@ pub async fn handle_create_package(
     // Get language extension based on the specified language type
     let language_ext = params.language.extension();
 
-    debug!(language_ext = %language_ext, "Using language plugin");
+    info!(language_ext = %language_ext, "Using language plugin");
 
     // Get language plugin
     let plugin = context
