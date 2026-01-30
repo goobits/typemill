@@ -356,6 +356,14 @@ impl RuntimePluginManager {
         self.plugins.get(name).map(|plugin| plugin.capabilities())
     }
 
+    /// Get capabilities for all plugins
+    pub fn get_all_capabilities(&self) -> HashMap<String, Capabilities> {
+        self.plugins
+            .iter()
+            .map(|(name, plugin)| (name.clone(), plugin.capabilities()))
+            .collect()
+    }
+
     /// Get statistics about the registry
     pub fn get_statistics(&self) -> RegistryStatistics {
         RegistryStatistics {
