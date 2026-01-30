@@ -34,6 +34,7 @@ use std::fmt;
 
 /// Errors that can occur during flag parsing
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)] // Variants reserved for future CLI enhancements
 pub enum FlagParseError {
     /// A required flag is missing
     MissingRequiredFlag(String),

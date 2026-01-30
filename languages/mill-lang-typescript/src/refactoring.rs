@@ -1012,9 +1012,11 @@ impl ExtractFunctionAnalyzer {
 }
 
 struct InlineVariableAnalyzer {
+    #[allow(dead_code)] // Kept for debugging context
     source: String,
     source_map: Lrc<SourceMap>,
     target_line: u32,
+    #[allow(dead_code)] // Reserved for column-based selection
     target_col: u32,
     // Found variable info
     variable_name: Option<String>,
@@ -1145,7 +1147,7 @@ impl Visit for InlineVariableAnalyzer {
                 // Get declaration range - use full VarDecl if only one declarator
                 // This ensures we delete "const x = 1;" not just "x = 1"
                 self.declaration_range = if self.current_var_decl_count == 1 {
-                    self.current_var_decl_range.clone()
+                    self.current_var_decl_range
                 } else {
                     Some(range)
                 };
@@ -1436,6 +1438,7 @@ fn is_valid_literal_location(line: &str, pos: usize, len: usize) -> bool {
 
 /// Analysis results for a symbol move operation
 #[derive(Debug)]
+#[allow(dead_code)] // Analysis struct for move operations
 struct SymbolMoveAnalysis {
     /// Name of the symbol being moved
     symbol_name: String,
@@ -1475,6 +1478,7 @@ fn analyze_symbol_move(
 
 /// AST visitor for finding symbols to move
 struct SymbolMoveAnalyzer {
+    #[allow(dead_code)] // Kept for debugging context
     source: String,
     source_map: Lrc<SourceMap>,
     target_line: u32,
@@ -1758,6 +1762,7 @@ fn compute_relative_import(source_file: &str, destination: &str) -> PluginResult
 
 /// Analysis results for a symbol delete operation
 #[derive(Debug)]
+#[allow(dead_code)] // Analysis struct for delete operations
 struct SymbolDeleteAnalysis {
     /// Name of the symbol being deleted
     symbol_name: String,
@@ -1786,6 +1791,7 @@ fn analyze_symbol_delete(
 
 /// AST visitor for finding symbols to delete
 struct SymbolDeleteAnalyzer {
+    #[allow(dead_code)] // Kept for debugging context
     source: String,
     source_map: Lrc<SourceMap>,
     target_line: u32,

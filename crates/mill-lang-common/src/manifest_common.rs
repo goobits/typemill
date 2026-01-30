@@ -209,34 +209,30 @@ impl TomlWorkspace {
             .map_err(|e| MillError::parse(format!("Failed to parse source TOML: {}", e)))?;
 
         // Merge [dependencies] section (Cargo-style)
-        if let Some(item) = source_doc.remove("dependencies") {
-            if let Item::Table(source_table) = item {
-                let base_deps = base_doc
-                    .entry("dependencies")
-                    .or_insert(Item::Table(toml_edit::Table::new()));
+        if let Some(Item::Table(source_table)) = source_doc.remove("dependencies") {
+            let base_deps = base_doc
+                .entry("dependencies")
+                .or_insert(Item::Table(toml_edit::Table::new()));
 
-                if let Some(base_table) = base_deps.as_table_mut() {
-                    for (key, value) in source_table.into_iter() {
-                        if !base_table.contains_key(&key) {
-                            base_table.insert(&key, value);
-                        }
+            if let Some(base_table) = base_deps.as_table_mut() {
+                for (key, value) in source_table.into_iter() {
+                    if !base_table.contains_key(&key) {
+                        base_table.insert(&key, value);
                     }
                 }
             }
         }
 
         // Merge dev-dependencies
-        if let Some(item) = source_doc.remove("dev-dependencies") {
-            if let Item::Table(source_table) = item {
-                let base_deps = base_doc
-                    .entry("dev-dependencies")
-                    .or_insert(Item::Table(toml_edit::Table::new()));
+        if let Some(Item::Table(source_table)) = source_doc.remove("dev-dependencies") {
+            let base_deps = base_doc
+                .entry("dev-dependencies")
+                .or_insert(Item::Table(toml_edit::Table::new()));
 
-                if let Some(base_table) = base_deps.as_table_mut() {
-                    for (key, value) in source_table.into_iter() {
-                        if !base_table.contains_key(&key) {
-                            base_table.insert(&key, value);
-                        }
+            if let Some(base_table) = base_deps.as_table_mut() {
+                for (key, value) in source_table.into_iter() {
+                    if !base_table.contains_key(&key) {
+                        base_table.insert(&key, value);
                     }
                 }
             }

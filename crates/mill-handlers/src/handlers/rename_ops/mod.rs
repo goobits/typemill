@@ -151,6 +151,8 @@ impl RenameService {
     ///
     /// When multiple targets in a batch rename modify the same file (e.g., root Cargo.toml),
     /// we need to merge their edits rather than having the last one win.
+    // TODO: wire up - needed for batch rename when multiple targets touch same file
+    #[allow(dead_code)]
     fn dedupe_document_changes(
         changes: Vec<lsp_types::DocumentChangeOperation>,
     ) -> Vec<lsp_types::DocumentChangeOperation> {
@@ -334,6 +336,8 @@ impl RenameService {
     }
 
     /// Plan batch rename for multiple targets
+    // TODO: wire up - expose via rename_all tool with targets array
+    #[allow(dead_code)]
     pub(crate) async fn plan_batch_rename(
         &self,
         targets: &[RenameTarget],

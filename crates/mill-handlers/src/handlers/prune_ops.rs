@@ -40,6 +40,7 @@ pub(crate) struct PrunePlanParams {
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct PruneTarget {
+    #[allow(dead_code)] // Used for dispatching but read via pattern matching elsewhere
     pub kind: String, // "symbol" | "file" | "directory"
     pub path: String,
     #[serde(default)]
@@ -60,6 +61,7 @@ pub(crate) struct PruneSelector {
 pub(crate) struct PruneOptions {
     /// Preview mode - don't actually apply changes (default: true for safety)
     #[serde(default = "crate::default_true")]
+    #[allow(dead_code)] // Deserialized but checked via options field in parent
     pub dry_run: bool,
     #[serde(default)]
     pub cleanup_imports: Option<bool>,
@@ -85,6 +87,8 @@ impl PrunePlanner {
     /// Helper to remove a specific identifier from an import statement
     /// Returns Some(new_line) if we can keep the import with other identifiers
     /// Returns None if the entire line should be deleted
+    // TODO: wire up - use when cleanup_imports option is enabled
+    #[allow(dead_code)]
     fn remove_import_identifier(&self, line: &str, identifier: &str) -> Option<String> {
         // Check if this is an import statement with curly braces
         if !line.trim_start().starts_with("import") || !line.contains('{') || !line.contains('}') {

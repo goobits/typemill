@@ -111,6 +111,7 @@ async fn calculate_file_checksums(
 
 /// Convert EditPlan to LSP WorkspaceEdit (for symbol moves)
 /// This is a simpler conversion that doesn't include file rename operations
+#[allow(clippy::mutable_key_type)] // Uri uses interior mutability for caching but is effectively immutable for hashing
 pub fn convert_edit_plan_to_workspace_edit(
     edit_plan: &EditPlan,
 ) -> ServerResult<lsp_types::WorkspaceEdit> {

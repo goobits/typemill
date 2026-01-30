@@ -235,7 +235,7 @@ impl PruneHandler {
             })
             .collect();
 
-        let plan_json = serde_json::to_value(&RefactorPlan::DeletePlan(plan.clone()))
+        let plan_json = serde_json::to_value(RefactorPlan::DeletePlan(plan.clone()))
             .map_err(|e| ServerError::internal(format!("Failed to serialize plan: {}", e)))?;
 
         let mut response = WriteResponse::preview(summary, files_changed, plan_json);
