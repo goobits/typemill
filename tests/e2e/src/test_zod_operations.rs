@@ -31,6 +31,15 @@ fn setup_zod_workspace() -> TestWorkspace {
 
     // Run mill setup
     let mill_path = std::env::var("MILL_PATH")
+        .or_else(|_| {
+            std::env::var("CARGO_MANIFEST_DIR").map(|dir| {
+                let mut path = std::path::PathBuf::from(dir);
+                path.pop(); // e2e
+                path.pop(); // tests
+                path.push("target/debug/mill");
+                path.to_string_lossy().into_owned()
+            })
+        })
         .unwrap_or_else(|_| "/home/user/typemill/target/debug/mill".to_string());
 
     let status = Command::new(&mill_path)
