@@ -108,6 +108,9 @@ pub mod test_real_project_zod;
 pub mod test_zod_operations;
 
 #[cfg(test)]
+pub mod manual_verification_test;
+
+#[cfg(test)]
 pub use harness::{TestClient, TestWorkspace};
 pub use helpers::*;
 pub use mocks::{MockAstService, MockLspService};
