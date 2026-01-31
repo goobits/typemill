@@ -516,19 +516,33 @@ pub(crate) fn find_variable_at_position(
     line: u32,
     col: u32,
 ) -> PluginResult<Option<PythonVariable>> {
-    let variables = extract_python_variables(source)?;
-    for var in variables {
-        if var.line == line {
-            let line_text = source
-                .lines()
-                .nth(line as usize)
-                .ok_or_else(|| PluginApiError::parse("Invalid line number"))?;
-            if let Some(var_pos) = line_text.find(&var.name) {
-                let var_end = var_pos + var.name.len();
-                if col >= var_pos as u32 && col <= var_end as u32 {
-                    return Ok(Some(var));
-                }
-            }
+    let line_text = source
+        .lines()
+        .nth(line as usize)
+        .ok_or_else(|| PluginApiError::parse("Invalid line number"))?;
+
+    if let Some(captures) = VARIABLE_ASSIGN_PATTERN.captures(line_text) {
+        let var_match = captures
+            .get(2)
+            .expect("Python assignment regex should always capture variable name at index 2");
+        let var_name = var_match.as_str();
+        let var_start = var_match.start();
+        let var_end = var_match.end();
+
+        if col >= var_start as u32 && col <= var_end as u32 {
+            let value = captures
+                .get(3)
+                .expect("Python assignment regex should always capture value at index 3")
+                .as_str();
+            let value_type = infer_python_value_type(value);
+            let is_constant = var_name.chars().all(|c| c.is_uppercase() || c == '_');
+
+            return Ok(Some(PythonVariable {
+                name: var_name.to_string(),
+                line,
+                value_type,
+                is_constant,
+            }));
         }
     }
     Ok(None)

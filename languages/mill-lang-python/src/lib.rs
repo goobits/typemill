@@ -23,6 +23,8 @@ pub mod workspace_support;
 
 #[cfg(test)]
 mod performance_tests;
+#[cfg(test)]
+mod benchmark_manifest;
 
 use async_trait::async_trait;
 use mill_lang_common::{
