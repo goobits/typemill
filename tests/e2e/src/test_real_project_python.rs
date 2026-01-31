@@ -152,12 +152,22 @@ class TestClass:
         .expect("relocate should succeed");
 
     assertions::assert_success(&result, "move module");
-    assert!(!source.exists(), "Source should be gone");
-    assert!(dest.exists(), "Dest should exist");
 
-    let content = std::fs::read_to_string(&dest).expect("Should read moved file");
-    assert!(content.contains("TestClass"), "Content should be preserved");
-    println!("✅ httpx: Successfully moved Python module");
+    // Verify move operation
+    ctx.verify_file_not_exists("httpx/test_move.py")
+        .expect("Source should be gone");
+    ctx.verify_file_exists("httpx/_internal/test_move.py")
+        .expect("Dest should exist");
+    ctx.verify_file_contains("httpx/_internal/test_move.py", "TestClass")
+        .expect("Class should be preserved");
+    ctx.verify_file_contains("httpx/_internal/test_move.py", "get_value")
+        .expect("Method should be preserved");
+
+    // Verify Python syntax is valid
+    ctx.verify_python_syntax("httpx/_internal/test_move.py")
+        .expect("Moved file should have valid Python syntax");
+
+    println!("✅ httpx: Successfully moved Python module with verified syntax");
 }
 
 #[tokio::test]
@@ -185,7 +195,8 @@ async fn test_httpx_prune_module() {
         .expect("prune should succeed");
 
     assertions::assert_success(&result, "prune module");
-    assert!(!file_path.exists(), "File should be deleted");
+    ctx.verify_file_not_exists("httpx/to_delete.py")
+        .expect("File should be deleted");
     println!("✅ httpx: Successfully pruned Python module");
 }
 
@@ -255,12 +266,15 @@ def use_old():
         .await
         .expect("find_replace should succeed");
 
-    let content = ctx.read_file("rich/test_replace.py");
-    assert!(
-        content.contains("NEW_CONSTANT"),
-        "Should have replaced constant"
-    );
-    println!("✅ rich: Successfully executed find/replace in Python");
+    // Verify replacement
+    ctx.verify_file_contains("rich/test_replace.py", "NEW_CONSTANT")
+        .expect("Should have replaced constant");
+    ctx.verify_file_not_contains("rich/test_replace.py", "OLD_CONSTANT")
+        .expect("Old constant should be gone");
+    ctx.verify_python_syntax("rich/test_replace.py")
+        .expect("File should still have valid Python syntax");
+
+    println!("✅ rich: Successfully executed find/replace in Python with verification");
 }
 
 #[tokio::test]
@@ -287,13 +301,18 @@ async fn test_rich_rename_folder() {
         .expect("rename_all should succeed");
 
     assertions::assert_success(&result, "rename folder");
-    assert!(!old_path.exists(), "Old folder should be gone");
-    assert!(new_path.exists(), "New folder should exist");
-    assert!(
-        new_path.join("__init__.py").exists(),
-        "__init__.py should exist"
-    );
-    println!("✅ rich: Successfully renamed Python package");
+
+    // Verify folder rename
+    ctx.verify_file_not_exists("rich/test_pkg")
+        .expect("Old folder should be gone");
+    ctx.verify_dir_exists("rich/renamed_pkg")
+        .expect("New folder should exist");
+    ctx.verify_file_exists("rich/renamed_pkg/__init__.py")
+        .expect("__init__.py should exist");
+    ctx.verify_file_exists("rich/renamed_pkg/utils.py")
+        .expect("utils.py should exist");
+
+    println!("✅ rich: Successfully renamed Python package with all files");
 }
 
 #[tokio::test]
@@ -335,9 +354,18 @@ def process(text: str) -> str:
         .expect("relocate should succeed");
 
     assertions::assert_success(&result, "move with import update");
-    assert!(!source.exists(), "Source should be gone");
-    assert!(dest.exists(), "Dest should exist");
 
+    // Verify file move
+    ctx.verify_file_not_exists("rich/helpers.py")
+        .expect("Source should be gone");
+    ctx.verify_file_exists("rich/utils/helpers.py")
+        .expect("Dest should exist");
+    ctx.verify_file_contains("rich/utils/helpers.py", "format_text")
+        .expect("Function should be preserved");
+    ctx.verify_python_syntax("rich/utils/helpers.py")
+        .expect("Moved file should have valid syntax");
+
+    // Check if imports were updated (may or may not be updated depending on LSP)
     let main_content = ctx.read_file("rich/main_test.py");
     if main_content.contains(".utils.helpers") {
         println!("✅ rich: Successfully moved Python module with import updates");
@@ -512,14 +540,18 @@ class UserModel:
         .expect("relocate should succeed");
 
     assertions::assert_success(&result, "move validators");
-    assert!(!source.exists(), "Source should be gone");
-    assert!(dest.exists(), "Dest should exist");
 
-    let validators_content = std::fs::read_to_string(&dest).expect("Should read validators");
-    assert!(
-        validators_content.contains("validate_email"),
-        "Content should be preserved"
-    );
+    // Verify move operation
+    ctx.verify_file_not_exists("pydantic/validators.py")
+        .expect("Source should be gone");
+    ctx.verify_file_exists("pydantic/core/validators.py")
+        .expect("Dest should exist");
+    ctx.verify_file_contains("pydantic/core/validators.py", "validate_email")
+        .expect("validate_email should be preserved");
+    ctx.verify_file_contains("pydantic/core/validators.py", "validate_phone")
+        .expect("validate_phone should be preserved");
+    ctx.verify_python_syntax("pydantic/core/validators.py")
+        .expect("Validators file should have valid syntax");
 
-    println!("✅ pydantic: Successfully completed move workflow");
+    println!("✅ pydantic: Successfully completed move workflow with verification");
 }

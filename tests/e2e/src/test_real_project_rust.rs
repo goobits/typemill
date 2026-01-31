@@ -145,12 +145,18 @@ impl TestStruct {
         .expect("relocate should succeed");
 
     assertions::assert_success(&result, "move module");
-    assert!(!source.exists(), "Source should be gone");
-    assert!(dest.exists(), "Dest should exist");
 
-    let content = std::fs::read_to_string(&dest).expect("Should read moved file");
-    assert!(content.contains("TestStruct"), "Content should be preserved");
-    println!("✅ thiserror: Successfully moved Rust module");
+    // Use verification methods for robust checking
+    ctx.verify_file_not_exists("src/test_move.rs")
+        .expect("Source should be gone");
+    ctx.verify_file_exists("src/internal/test_move.rs")
+        .expect("Dest should exist");
+    ctx.verify_file_contains("src/internal/test_move.rs", "TestStruct")
+        .expect("Content should be preserved");
+    ctx.verify_file_contains("src/internal/test_move.rs", "pub fn new")
+        .expect("Implementation should be preserved");
+
+    println!("✅ thiserror: Successfully moved Rust module with verified content");
 }
 
 #[tokio::test]
@@ -175,7 +181,8 @@ async fn test_thiserror_prune_module() {
         .expect("prune should succeed");
 
     assertions::assert_success(&result, "prune module");
-    assert!(!file_path.exists(), "File should be deleted");
+    ctx.verify_file_not_exists("src/to_delete.rs")
+        .expect("File should be deleted");
     println!("✅ thiserror: Successfully pruned Rust module");
 }
 
@@ -245,8 +252,11 @@ pub fn use_old() -> &'static str {
         .await
         .expect("find_replace should succeed");
 
-    let content = ctx.read_file("src/test_replace.rs");
-    assert!(content.contains("NEW_CONST"), "Should have replaced constant");
+    // Verify replacement worked
+    ctx.verify_file_contains("src/test_replace.rs", "NEW_CONST")
+        .expect("Should have replaced constant");
+    ctx.verify_file_not_contains("src/test_replace.rs", "OLD_CONST")
+        .expect("Old constant should be gone");
     println!("✅ once_cell: Successfully executed find/replace in Rust");
 }
 
@@ -278,10 +288,20 @@ async fn test_oncecell_rename_folder() {
         .expect("rename_all should succeed");
 
     assertions::assert_success(&result, "rename folder");
-    assert!(!old_path.exists(), "Old folder should be gone");
-    assert!(new_path.exists(), "New folder should exist");
-    assert!(new_path.join("mod.rs").exists(), "mod.rs should exist");
-    println!("✅ once_cell: Successfully renamed Rust module folder");
+
+    // Verify folder structure
+    ctx.verify_file_not_exists("src/test_dir")
+        .expect("Old folder should be gone");
+    ctx.verify_dir_exists("src/renamed_dir")
+        .expect("New folder should exist");
+    ctx.verify_file_exists("src/renamed_dir/mod.rs")
+        .expect("mod.rs should exist");
+    ctx.verify_file_exists("src/renamed_dir/utils.rs")
+        .expect("utils.rs should exist");
+    ctx.verify_file_exists("src/renamed_dir/helpers.rs")
+        .expect("helpers.rs should exist");
+
+    println!("✅ once_cell: Successfully renamed Rust module folder with all files");
 }
 
 // ============================================================================
@@ -431,13 +451,16 @@ async fn test_anyhow_move_with_mod_update() {
         .expect("relocate should succeed");
 
     assertions::assert_success(&result, "move with mod update");
-    assert!(!source.exists(), "Source should be gone");
-    assert!(dest.exists(), "Dest should exist");
 
-    let content = std::fs::read_to_string(&dest).expect("Should read moved file");
-    assert!(
-        content.contains("format_error"),
-        "Content should be preserved"
-    );
-    println!("✅ anyhow: Successfully moved Rust module");
+    // Verify move operation
+    ctx.verify_file_not_exists("src/utils.rs")
+        .expect("Source should be gone");
+    ctx.verify_file_exists("src/internal/utils.rs")
+        .expect("Dest should exist");
+    ctx.verify_file_contains("src/internal/utils.rs", "format_error")
+        .expect("Content should be preserved");
+    ctx.verify_file_contains("src/internal/utils.rs", "pub fn")
+        .expect("Function should be public");
+
+    println!("✅ anyhow: Successfully moved Rust module with verified content");
 }

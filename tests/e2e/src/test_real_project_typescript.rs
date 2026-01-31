@@ -140,9 +140,18 @@ export type AnotherType = MoveTestType & { extra: number };
         .expect("relocate should succeed");
 
     assertions::assert_success(&result, "move type file");
-    assert!(!source.exists(), "Source should be gone");
-    assert!(dest.exists(), "Dest should exist");
-    println!("✅ type-fest: Successfully moved type definition file");
+
+    // Verify move operation
+    ctx.verify_file_not_exists("source/test-move.d.ts")
+        .expect("Source should be gone");
+    ctx.verify_file_exists("source/internal/test-move.d.ts")
+        .expect("Dest should exist");
+    ctx.verify_file_contains("source/internal/test-move.d.ts", "MoveTestType")
+        .expect("Type should be preserved");
+    ctx.verify_file_contains("source/internal/test-move.d.ts", "AnotherType")
+        .expect("Second type should be preserved");
+
+    println!("✅ type-fest: Successfully moved type definition file with verified content");
 }
 
 // ============================================================================
@@ -237,9 +246,13 @@ export const useOLD_VALUE = OLD_VALUE;
         .await
         .expect("find_replace should succeed");
 
-    let content = ctx.read_file("src/test-replace/config.ts");
-    assert!(content.contains("NEW_VALUE"), "Should have replaced value");
-    println!("✅ ts-pattern: Successfully executed find/replace");
+    // Verify replacement
+    ctx.verify_file_contains("src/test-replace/config.ts", "NEW_VALUE")
+        .expect("Should have replaced value");
+    ctx.verify_file_not_contains("src/test-replace/config.ts", "OLD_VALUE")
+        .expect("Old value should be gone");
+
+    println!("✅ ts-pattern: Successfully executed find/replace with verification");
 }
 
 // ============================================================================
@@ -349,7 +362,8 @@ async fn test_nanoid_prune_file() {
         .expect("prune should succeed");
 
     assertions::assert_success(&result, "prune file");
-    assert!(!file_path.exists(), "File should be deleted");
+    ctx.verify_file_not_exists("test-prune.ts")
+        .expect("File should be deleted");
     println!("✅ nanoid: Successfully pruned file");
 }
 
@@ -394,10 +408,16 @@ export function createFormattedId(raw: string) {
         .expect("relocate should succeed");
 
     assertions::assert_success(&result, "move with import update");
-    assert!(!source.exists(), "Source should be gone");
-    assert!(dest.exists(), "Dest should exist");
 
-    // Check if imports were updated
+    // Verify file move
+    ctx.verify_file_not_exists("lib/helpers.ts")
+        .expect("Source should be gone");
+    ctx.verify_file_exists("lib/utils/helpers.ts")
+        .expect("Dest should exist");
+    ctx.verify_file_contains("lib/utils/helpers.ts", "formatId")
+        .expect("Function should be preserved");
+
+    // Check if imports were updated (may or may not be updated depending on LSP)
     let main_content = ctx.read_file("lib/main.ts");
     if main_content.contains("./utils/helpers") {
         println!("✅ nanoid: Successfully moved file with import updates");
