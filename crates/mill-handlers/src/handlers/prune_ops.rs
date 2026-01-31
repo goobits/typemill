@@ -128,6 +128,7 @@ impl PrunePlanner {
     }
 
     /// Generate edits to clean up imports of a symbol in other files
+    #[allow(clippy::mutable_key_type)] // Uri uses interior mutability for caching but is effectively immutable for hashing
     async fn cleanup_imports(
         &self,
         symbol_name: &str,
@@ -295,6 +296,7 @@ impl PrunePlanner {
     }
 
     /// Generate plan for symbol deletion using AST-based analysis
+    #[allow(clippy::mutable_key_type)] // Uri uses interior mutability for caching but is effectively immutable for hashing
     pub(crate) async fn plan_symbol_delete(
         &self,
         params: &PrunePlanParams,
