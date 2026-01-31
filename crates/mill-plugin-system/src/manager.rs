@@ -211,6 +211,7 @@ impl PluginManager {
     /// Get capabilities for all plugins
     pub async fn get_all_capabilities(&self) -> HashMap<String, Capabilities> {
         let registry = self.registry.read().await;
+        // Use optimized bulk retrieval from registry to avoid N+1 queries
         registry.get_all_capabilities()
     }
 
@@ -914,6 +915,52 @@ mod tests {
         // Verification: The optimized approach should be performant.
         // We don't assert strict "faster than" to avoid flakiness in CI environments,
         // but typically cloning 1000 items once is faster than 1000 lookups + clones.
+        assert!(duration_optimized < std::time::Duration::from_secs(1));
+    }
+
+    #[tokio::test]
+    async fn test_benchmark_capabilities_retrieval() {
+        use std::collections::HashMap;
+        use std::time::Instant;
+
+        let manager = PluginManager::new();
+        // Register 1000 dummy plugins
+        let count = 1000;
+        for i in 0..count {
+            let name = format!("plugin-cap-{}", i);
+            let plugin = Arc::new(TestPlugin {
+                name: name.clone(),
+                extensions: vec!["txt".to_string()],
+                capabilities: Capabilities::default(),
+                should_fail: false,
+            });
+            manager.register_plugin(&name, plugin).await.unwrap();
+        }
+
+        // Measure inefficient approach (simulating N+1 lookup)
+        let start = Instant::now();
+        let registry = manager.registry.read().await;
+        let mut inefficient_map = HashMap::new();
+
+        for name in registry.get_plugin_names() {
+            if let Some(caps) = registry.get_plugin_capabilities(&name) {
+                inefficient_map.insert(name, caps);
+            }
+        }
+        drop(registry);
+        let duration_inefficient = start.elapsed();
+
+        // Measure optimized approach (bulk retrieval)
+        let start = Instant::now();
+        let optimized_map = manager.get_all_capabilities().await;
+        let duration_optimized = start.elapsed();
+
+        println!("Capabilities Inefficient (N+1): {:?}", duration_inefficient);
+        println!("Capabilities Optimized (Bulk): {:?}", duration_optimized);
+
+        assert_eq!(inefficient_map.len(), count);
+        assert_eq!(optimized_map.len(), count);
+
         assert!(duration_optimized < std::time::Duration::from_secs(1));
     }
 }
