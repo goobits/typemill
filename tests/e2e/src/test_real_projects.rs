@@ -199,6 +199,229 @@ impl RealProjectContext {
     pub async fn wait_for_lsp(&mut self, file_path: &PathBuf) {
         let _ = self.client.wait_for_lsp_ready(file_path, 15000).await;
     }
+
+    // =========================================================================
+    // Verification Methods - Ensure operations actually worked
+    // =========================================================================
+
+    /// Verify Rust project compiles after refactoring
+    pub fn verify_rust_compiles(&self) -> Result<(), String> {
+        println!("🔍 Verifying Rust project compiles...");
+        let output = Command::new("cargo")
+            .args(["check", "--message-format=short"])
+            .current_dir(self.workspace.path())
+            .output()
+            .map_err(|e| format!("Failed to run cargo check: {}", e))?;
+
+        if output.status.success() {
+            println!("✅ Rust project compiles successfully");
+            Ok(())
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            Err(format!("Rust compilation failed:\n{}", stderr))
+        }
+    }
+
+    /// Verify TypeScript project compiles after refactoring
+    pub fn verify_typescript_compiles(&self) -> Result<(), String> {
+        println!("🔍 Verifying TypeScript project compiles...");
+
+        // Try npx tsc first, fall back to tsc
+        let output = Command::new("npx")
+            .args(["tsc", "--noEmit", "--skipLibCheck"])
+            .current_dir(self.workspace.path())
+            .output()
+            .or_else(|_| {
+                Command::new("tsc")
+                    .args(["--noEmit", "--skipLibCheck"])
+                    .current_dir(self.workspace.path())
+                    .output()
+            })
+            .map_err(|e| format!("Failed to run tsc: {}", e))?;
+
+        if output.status.success() {
+            println!("✅ TypeScript project compiles successfully");
+            Ok(())
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            // TypeScript errors go to stdout
+            if stdout.is_empty() {
+                Err(format!("TypeScript compilation failed:\n{}", stderr))
+            } else {
+                Err(format!("TypeScript compilation failed:\n{}", stdout))
+            }
+        }
+    }
+
+    /// Verify Python file is syntactically valid
+    pub fn verify_python_syntax(&self, file_path: &str) -> Result<(), String> {
+        println!("🔍 Verifying Python syntax for {}...", file_path);
+        let abs_path = self.absolute_path(file_path);
+
+        let output = Command::new("python3")
+            .args(["-m", "py_compile", abs_path.to_string_lossy().as_ref()])
+            .current_dir(self.workspace.path())
+            .output()
+            .or_else(|_| {
+                Command::new("python")
+                    .args(["-m", "py_compile", abs_path.to_string_lossy().as_ref()])
+                    .current_dir(self.workspace.path())
+                    .output()
+            })
+            .map_err(|e| format!("Failed to run python: {}", e))?;
+
+        if output.status.success() {
+            println!("✅ Python file {} is syntactically valid", file_path);
+            Ok(())
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            Err(format!("Python syntax error in {}:\n{}", file_path, stderr))
+        }
+    }
+
+    /// Verify a Python module can be imported
+    pub fn verify_python_import(&self, module_path: &str) -> Result<(), String> {
+        println!("🔍 Verifying Python import {}...", module_path);
+
+        let output = Command::new("python3")
+            .args(["-c", &format!("import {}", module_path)])
+            .current_dir(self.workspace.path())
+            .env("PYTHONPATH", self.workspace.path())
+            .output()
+            .or_else(|_| {
+                Command::new("python")
+                    .args(["-c", &format!("import {}", module_path)])
+                    .current_dir(self.workspace.path())
+                    .env("PYTHONPATH", self.workspace.path())
+                    .output()
+            })
+            .map_err(|e| format!("Failed to run python: {}", e))?;
+
+        if output.status.success() {
+            println!("✅ Python module {} imports successfully", module_path);
+            Ok(())
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            Err(format!("Python import failed for {}:\n{}", module_path, stderr))
+        }
+    }
+
+    /// Verify file contains expected content
+    pub fn verify_file_contains(&self, file_path: &str, expected: &str) -> Result<(), String> {
+        let content = self.read_file(file_path);
+        if content.contains(expected) {
+            println!("✅ File {} contains expected content", file_path);
+            Ok(())
+        } else {
+            Err(format!(
+                "File {} does not contain expected content.\nExpected to find: {}\nActual content:\n{}",
+                file_path, expected, content
+            ))
+        }
+    }
+
+    /// Verify file does NOT contain specific content (useful for checking old imports removed)
+    pub fn verify_file_not_contains(&self, file_path: &str, unexpected: &str) -> Result<(), String> {
+        let content = self.read_file(file_path);
+        if !content.contains(unexpected) {
+            println!("✅ File {} correctly does not contain: {}", file_path, unexpected);
+            Ok(())
+        } else {
+            Err(format!(
+                "File {} unexpectedly contains: {}\nActual content:\n{}",
+                file_path, unexpected, content
+            ))
+        }
+    }
+
+    /// Verify import was updated in a file (old import gone, new import present)
+    pub fn verify_import_updated(
+        &self,
+        file_path: &str,
+        old_import: &str,
+        new_import: &str,
+    ) -> Result<(), String> {
+        println!("🔍 Verifying import update in {}...", file_path);
+        let content = self.read_file(file_path);
+
+        let has_old = content.contains(old_import);
+        let has_new = content.contains(new_import);
+
+        match (has_old, has_new) {
+            (false, true) => {
+                println!("✅ Import correctly updated: '{}' → '{}'", old_import, new_import);
+                Ok(())
+            }
+            (true, false) => Err(format!(
+                "Import NOT updated in {}.\nStill contains old: {}\nMissing new: {}\nContent:\n{}",
+                file_path, old_import, new_import, content
+            )),
+            (true, true) => Err(format!(
+                "Both old and new imports present in {}.\nOld: {}\nNew: {}\nContent:\n{}",
+                file_path, old_import, new_import, content
+            )),
+            (false, false) => Err(format!(
+                "Neither old nor new import found in {}.\nExpected new: {}\nContent:\n{}",
+                file_path, new_import, content
+            )),
+        }
+    }
+
+    /// Verify a file exists at the expected path
+    pub fn verify_file_exists(&self, path: &str) -> Result<(), String> {
+        let abs_path = self.absolute_path(path);
+        if abs_path.exists() {
+            println!("✅ File exists: {}", path);
+            Ok(())
+        } else {
+            Err(format!("File does not exist: {}", path))
+        }
+    }
+
+    /// Verify a file does NOT exist (was moved/deleted)
+    pub fn verify_file_not_exists(&self, path: &str) -> Result<(), String> {
+        let abs_path = self.absolute_path(path);
+        if !abs_path.exists() {
+            println!("✅ File correctly removed: {}", path);
+            Ok(())
+        } else {
+            Err(format!("File still exists but should be gone: {}", path))
+        }
+    }
+
+    /// Verify directory exists
+    pub fn verify_dir_exists(&self, path: &str) -> Result<(), String> {
+        let abs_path = self.absolute_path(path);
+        if abs_path.is_dir() {
+            println!("✅ Directory exists: {}", path);
+            Ok(())
+        } else {
+            Err(format!("Directory does not exist: {}", path))
+        }
+    }
+
+    /// Run a custom verification command
+    pub fn verify_command(&self, cmd: &str, args: &[&str], description: &str) -> Result<(), String> {
+        println!("🔍 Running verification: {}...", description);
+        let output = Command::new(cmd)
+            .args(args)
+            .current_dir(self.workspace.path())
+            .output()
+            .map_err(|e| format!("Failed to run {}: {}", cmd, e))?;
+
+        if output.status.success() {
+            println!("✅ {}", description);
+            Ok(())
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            Err(format!(
+                "Verification failed: {}\nstdout: {}\nstderr: {}",
+                description, stdout, stderr
+            ))
+        }
+    }
 }
 
 /// Common test assertions
