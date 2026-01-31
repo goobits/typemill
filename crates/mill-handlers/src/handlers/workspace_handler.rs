@@ -568,7 +568,6 @@ impl WorkspaceHandler {
         context: &mill_handler_api::ToolHandlerContext,
         args: &Value,
     ) -> ServerResult<Value> {
-        use tokio::fs;
         use std::path::Path;
         use toml_edit::{DocumentMut, Item};
 
@@ -619,144 +618,154 @@ impl WorkspaceHandler {
             })
             .ok_or_else(|| ServerError::invalid_request("Missing 'workspaceManifest' path"))?;
 
-        // Read and parse Cargo.toml
-        let cargo_content = fs::read_to_string(&manifest_path).await.map_err(|e| {
-            ServerError::invalid_request(format!(
-                "Failed to read workspace manifest '{}': {}",
-                manifest_path, e
-            ))
-        })?;
+        let params_clone = params.clone();
+        let sub_action_clone = sub_action.to_string();
+        let manifest_path_clone = manifest_path.clone();
 
-        let mut doc = cargo_content.parse::<DocumentMut>().map_err(|e| {
-            ServerError::invalid_request(format!("Failed to parse workspace manifest: {}", e))
-        })?;
+        let (members_before, members_after, changes_made, workspace_updated) = tokio::task::spawn_blocking(move || -> ServerResult<(Vec<String>, Vec<String>, usize, bool)> {
+            use std::fs;
+            // Read and parse Cargo.toml
+            let cargo_content = fs::read_to_string(&manifest_path_clone).map_err(|e| {
+                ServerError::invalid_request(format!(
+                    "Failed to read workspace manifest '{}': {}",
+                    manifest_path_clone, e
+                ))
+            })?;
 
-        // Check if workspace section exists
-        let has_workspace_section = doc.get("workspace").is_some();
+            let mut doc = cargo_content.parse::<DocumentMut>().map_err(|e| {
+                ServerError::invalid_request(format!("Failed to parse workspace manifest: {}", e))
+            })?;
 
-        if !has_workspace_section && !create_if_missing {
-            return Err(ServerError::invalid_request(
-                "Cargo.toml does not contain a [workspace] section. Use createIfMissing: true to create it."
-            ));
-        }
+            // Check if workspace section exists
+            let has_workspace_section = doc.get("workspace").is_some();
 
-        // Create workspace section if needed and allowed
-        if !has_workspace_section && create_if_missing {
-            let mut workspace_table = toml_edit::Table::new();
-            workspace_table.insert(
-                "members",
-                Item::Value(toml_edit::Value::Array(toml_edit::Array::new())),
-            );
-            doc.insert("workspace", Item::Table(workspace_table));
-        }
+            if !has_workspace_section && !create_if_missing {
+                return Err(ServerError::invalid_request(
+                    "Cargo.toml does not contain a [workspace] section. Use createIfMissing: true to create it."
+                ));
+            }
 
-        // Get current members
-        let members_before: Vec<String> = doc
-            .get("workspace")
-            .and_then(|w| w.get("members"))
-            .and_then(|m| m.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                    .collect()
-            })
-            .unwrap_or_default();
+            // Create workspace section if needed and allowed
+            if !has_workspace_section && create_if_missing {
+                let mut workspace_table = toml_edit::Table::new();
+                workspace_table.insert(
+                    "members",
+                    Item::Value(toml_edit::Value::Array(toml_edit::Array::new())),
+                );
+                doc.insert("workspace", Item::Table(workspace_table));
+            }
 
-        let (members_after, changes_made, workspace_updated) = match sub_action {
-            "add" => {
-                let new_members: Vec<String> = params
-                    .get("members")
-                    .and_then(|v| v.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| {
-                                v.as_str().map(|s| {
-                                    // Normalize path separators (backslash to forward slash)
-                                    s.replace('\\', "/")
+            // Get current members
+            let members_before: Vec<String> = doc
+                .get("workspace")
+                .and_then(|w| w.get("members"))
+                .and_then(|m| m.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect()
+                })
+                .unwrap_or_default();
+
+            let (members_after, changes_made, workspace_updated) = match sub_action_clone.as_str() {
+                "add" => {
+                    let new_members: Vec<String> = params_clone
+                        .get("members")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| {
+                                    v.as_str().map(|s| {
+                                        // Normalize path separators (backslash to forward slash)
+                                        s.replace('\\', "/")
+                                    })
                                 })
-                            })
-                            .collect()
-                    })
-                    .unwrap_or_default();
+                                .collect()
+                        })
+                        .unwrap_or_default();
 
-                let mut members_after = members_before.clone();
-                let mut added = 0;
-                for member in &new_members {
-                    if !members_after.contains(member) {
-                        members_after.push(member.clone());
-                        added += 1;
+                    let mut members_after = members_before.clone();
+                    let mut added = 0;
+                    for member in &new_members {
+                        if !members_after.contains(member) {
+                            members_after.push(member.clone());
+                            added += 1;
+                        }
                     }
-                }
 
-                if added > 0 && !dry_run {
-                    // Update the document
-                    let members_array = members_after
+                    if added > 0 && !dry_run {
+                        // Update the document
+                        let members_array = members_after
+                            .iter()
+                            .map(|s| toml_edit::Value::from(s.as_str()))
+                            .collect::<toml_edit::Array>();
+
+                        if let Some(workspace) = doc.get_mut("workspace") {
+                            workspace["members"] = Item::Value(toml_edit::Value::Array(members_array));
+                        }
+
+                        fs::write(&manifest_path_clone, doc.to_string()).map_err(|e| {
+                            ServerError::invalid_request(format!(
+                                "Failed to write workspace manifest: {}",
+                                e
+                            ))
+                        })?;
+                    }
+
+                    (members_after, added, added > 0)
+                }
+                "remove" => {
+                    let remove_members: Vec<String> = params_clone
+                        .get("members")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect()
+                        })
+                        .unwrap_or_default();
+
+                    let members_after: Vec<String> = members_before
                         .iter()
-                        .map(|s| toml_edit::Value::from(s.as_str()))
-                        .collect::<toml_edit::Array>();
+                        .filter(|m| !remove_members.contains(m))
+                        .cloned()
+                        .collect();
 
-                    if let Some(workspace) = doc.get_mut("workspace") {
-                        workspace["members"] = Item::Value(toml_edit::Value::Array(members_array));
+                    let removed = members_before.len() - members_after.len();
+
+                    if removed > 0 && !dry_run {
+                        // Update the document
+                        let members_array = members_after
+                            .iter()
+                            .map(|s| toml_edit::Value::from(s.as_str()))
+                            .collect::<toml_edit::Array>();
+
+                        if let Some(workspace) = doc.get_mut("workspace") {
+                            workspace["members"] = Item::Value(toml_edit::Value::Array(members_array));
+                        }
+
+                        fs::write(&manifest_path_clone, doc.to_string()).map_err(|e| {
+                            ServerError::invalid_request(format!(
+                                "Failed to write workspace manifest: {}",
+                                e
+                            ))
+                        })?;
                     }
 
-                    fs::write(&manifest_path, doc.to_string()).await.map_err(|e| {
-                        ServerError::invalid_request(format!(
-                            "Failed to write workspace manifest: {}",
-                            e
-                        ))
-                    })?;
+                    (members_after, removed, removed > 0)
                 }
-
-                (members_after, added, added > 0)
-            }
-            "remove" => {
-                let remove_members: Vec<String> = params
-                    .get("members")
-                    .and_then(|v| v.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                            .collect()
-                    })
-                    .unwrap_or_default();
-
-                let members_after: Vec<String> = members_before
-                    .iter()
-                    .filter(|m| !remove_members.contains(m))
-                    .cloned()
-                    .collect();
-
-                let removed = members_before.len() - members_after.len();
-
-                if removed > 0 && !dry_run {
-                    // Update the document
-                    let members_array = members_after
-                        .iter()
-                        .map(|s| toml_edit::Value::from(s.as_str()))
-                        .collect::<toml_edit::Array>();
-
-                    if let Some(workspace) = doc.get_mut("workspace") {
-                        workspace["members"] = Item::Value(toml_edit::Value::Array(members_array));
-                    }
-
-                    fs::write(&manifest_path, doc.to_string()).await.map_err(|e| {
-                        ServerError::invalid_request(format!(
-                            "Failed to write workspace manifest: {}",
-                            e
-                        ))
-                    })?;
+                "list" => (members_before.clone(), 0, false),
+                _ => {
+                    return Err(ServerError::invalid_request(format!(
+                        "Invalid update_members action: {}. Valid: add, remove, list",
+                        sub_action_clone
+                    )));
                 }
-
-                (members_after, removed, removed > 0)
-            }
-            "list" => (members_before.clone(), 0, false),
-            _ => {
-                return Err(ServerError::invalid_request(format!(
-                    "Invalid update_members action: {}. Valid: add, remove, list",
-                    sub_action
-                )));
-            }
-        };
+            };
+            Ok((members_before, members_after, changes_made, workspace_updated))
+        })
+        .await
+        .map_err(|e| ServerError::internal(format!("Task join error: {}", e)))??;
 
         let summary = match sub_action {
             "add" => {
@@ -908,4 +917,5 @@ members = []
         let new_content = std::fs::read_to_string(&cargo_toml_path).unwrap();
         assert!(new_content.contains("\"new_member\""));
     }
+
 }
