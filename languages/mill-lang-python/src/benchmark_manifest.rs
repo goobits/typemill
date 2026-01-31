@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use super::super::manifest::parse_setup_py;
-    use std::path::PathBuf;
+    use crate::manifest::parse_setup_py;
     use std::time::Instant;
     use std::io::Write;
     use tempfile::NamedTempFile;
