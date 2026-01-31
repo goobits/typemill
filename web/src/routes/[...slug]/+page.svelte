@@ -92,6 +92,7 @@
 <div class="doc-page">
 	<!-- Breadcrumbs -->
 	<nav class="breadcrumbs">
+		<!-- Keyed block for performance optimization -->
 		{#each breadcrumbs as crumb, i (crumb.href)}
 			{#if i > 0}<span class="separator">/</span>{/if}
 			{#if i === breadcrumbs.length - 1}
