@@ -106,10 +106,26 @@ pub mod test_language_parity;
 #[cfg(test)]
 pub mod test_cross_platform;
 
-// Real project integration tests (Zod)
+// Real project integration tests framework
+#[cfg(test)]
+pub mod test_real_projects;
+
+// Real project integration tests (Zod - TypeScript)
 // NOTE: Tests share a single Zod workspace and LSP client to avoid redundant setup
 #[cfg(test)]
 pub mod test_real_project_zod;
+
+// Real project integration tests - TypeScript (type-fest, ts-pattern, nanoid)
+#[cfg(test)]
+pub mod test_real_project_typescript;
+
+// Real project integration tests - Rust (thiserror, once_cell, anyhow)
+#[cfg(test)]
+pub mod test_real_project_rust;
+
+// Real project integration tests - Python (httpx, rich, pydantic)
+#[cfg(test)]
+pub mod test_real_project_python;
 
 // SvelteKit path alias tests ($lib, @/ patterns)
 #[cfg(test)]
