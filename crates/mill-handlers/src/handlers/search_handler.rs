@@ -277,11 +277,8 @@ impl SearchHandler {
             if let Some(workspace_cache) = cache.get(&workspace_path) {
                 for ext in &unique_extensions {
                     if let Some(path) = workspace_cache.get(ext) {
-                        // Verify file still exists to avoid using stale cache
-                        if tokio::fs::try_exists(path).await.unwrap_or(false) {
-                            representative_files.insert(ext.clone(), path.clone());
-                            missing_extensions.remove(ext);
-                        }
+                        representative_files.insert(ext.clone(), path.clone());
+                        missing_extensions.remove(ext);
                     }
                 }
             }
@@ -822,7 +819,7 @@ mod performance_tests {
             }
         }
 
-        // Benchmark cache access + verify existence
+        // Benchmark cache access (pure memory)
         let start_cache = Instant::now();
         let iterations = 1000;
         for _ in 0..iterations {
@@ -830,8 +827,8 @@ mod performance_tests {
              if let Some(workspace_cache) = cache.get(&workspace_path) {
                 for ext in &extensions {
                     if let Some(path) = workspace_cache.get(ext) {
-                        // verify existence
-                        let _ = tokio::fs::try_exists(path).await;
+                        // Access the path to ensure it's not optimized away
+                        std::hint::black_box(path);
                     }
                 }
              }
@@ -839,8 +836,8 @@ mod performance_tests {
         let duration_cache = start_cache.elapsed();
 
         println!("BENCHMARK: Scan (1 call): {:?}", duration_scan);
-        println!("BENCHMARK: Cache + Stat ({} calls): {:?}", iterations, duration_cache);
-        println!("BENCHMARK: Average Cache + Stat: {:?}", duration_cache / iterations);
+        println!("BENCHMARK: Cache ({} calls): {:?}", iterations, duration_cache);
+        println!("BENCHMARK: Average Cache: {:?}", duration_cache / iterations);
     }
 
     #[tokio::test]
