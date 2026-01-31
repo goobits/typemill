@@ -129,14 +129,14 @@ pub const TS_ZOD_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
     file_template: TS_TEMPLATES,
 };
 
-/// SvelteKit Skeleton - Framework template (path aliases: $lib, @/)
-/// Tests import path alias handling
-pub const TS_SVELTEKIT_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
-    repo_url: "https://github.com/sveltejs/kit.git",
-    project_name: "sveltekit",
-    source_dir: "packages/kit/src",
+/// ky - HTTP client (small, clean TypeScript structure)
+/// Replaces SvelteKit which was too large (timeouts on monorepo operations)
+pub const TS_KY_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
+    repo_url: "https://github.com/sindresorhus/ky.git",
+    project_name: "ky",
+    source_dir: "source",
     file_ext: "ts",
-    build_verify: BuildVerification::None, // Complex build, skip verification
+    build_verify: BuildVerification::TypeScript,
     file_template: TS_TEMPLATES,
 };
 
@@ -757,15 +757,16 @@ impl RefactoringMatrixRunner {
             let src_dir = self.config.source_dir;
             let ext = self.config.file_ext;
 
-            self.ctx.create_test_file(
-                &format!("{}/top_level.{}", src_dir, ext),
-                self.config.file_template.simple_module,
-            );
+            let rel_path = format!("{}/top_level.{}", src_dir, ext);
+            self.ctx.create_test_file(&rel_path, self.config.file_template.simple_module);
+
+            // Verify file was actually created (debug step)
+            self.ctx.verify_file_exists(&rel_path)?;
 
             let dest_dir = self.ctx.absolute_path(&format!("{}/x/y/z", src_dir));
             std::fs::create_dir_all(&dest_dir).ok();
 
-            let source = self.ctx.absolute_path(&format!("{}/top_level.{}", src_dir, ext));
+            let source = self.ctx.absolute_path(&rel_path);
             let dest = self.ctx.absolute_path(&format!("{}/x/y/z/buried.{}", src_dir, ext));
 
             self.ctx
@@ -799,12 +800,13 @@ impl RefactoringMatrixRunner {
             let src_dir = self.config.source_dir;
             let ext = self.config.file_ext;
 
-            self.ctx.create_test_file(
-                &format!("{}/to_delete.{}", src_dir, ext),
-                self.config.file_template.simple_module,
-            );
+            let rel_path = format!("{}/to_delete.{}", src_dir, ext);
+            self.ctx.create_test_file(&rel_path, self.config.file_template.simple_module);
 
-            let file_path = self.ctx.absolute_path(&format!("{}/to_delete.{}", src_dir, ext));
+            // Verify file was actually created (debug step)
+            self.ctx.verify_file_exists(&rel_path)?;
+
+            let file_path = self.ctx.absolute_path(&rel_path);
 
             self.ctx
                 .call_tool(
@@ -929,12 +931,12 @@ async fn test_matrix_ts_zod() {
     run_matrix_test(TS_ZOD_CONFIG, 0.5).await;
 }
 
-/// TypeScript: SvelteKit (path aliases: $lib, @/)
+/// TypeScript: ky (small HTTP client, clean structure)
 #[tokio::test]
 #[serial]
 #[ignore]
-async fn test_matrix_ts_sveltekit() {
-    run_matrix_test(TS_SVELTEKIT_CONFIG, 0.5).await;
+async fn test_matrix_ts_ky() {
+    run_matrix_test(TS_KY_CONFIG, 0.5).await;
 }
 
 /// TypeScript: nanoid (flat/minimal structure)
