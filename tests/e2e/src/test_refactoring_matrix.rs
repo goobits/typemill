@@ -60,78 +60,181 @@ pub struct FileTemplate {
 }
 
 // ============================================================================
-// Predefined Configurations
+// Shared File Templates (DRY)
 // ============================================================================
 
-pub const TYPESCRIPT_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
-    repo_url: "https://github.com/colinhacks/zod.git",
-    project_name: "zod",
-    source_dir: "src",
-    file_ext: "ts",
-    build_verify: BuildVerification::TypeScript,
-    file_template: FileTemplate {
-        simple_module: r#"export const value = 42;
+/// TypeScript file templates
+pub const TS_TEMPLATES: FileTemplate = FileTemplate {
+    simple_module: r#"export const value = 42;
 "#,
-        export_module: r#"export function helper(): string {
+    export_module: r#"export function helper(): string {
     return "helper";
 }
 
 export const CONSTANT = "constant-value";
 "#,
-        import_template: r#"import { helper, CONSTANT } from "./{import_path}";
+    import_template: r#"import { helper, CONSTANT } from "./{import_path}";
 
 export function useHelper(): string {
     return helper() + CONSTANT;
 }
 "#,
-    },
 };
 
-pub const RUST_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
-    repo_url: "https://github.com/dtolnay/thiserror.git",
-    project_name: "thiserror",
-    source_dir: "src",
-    file_ext: "rs",
-    build_verify: BuildVerification::Rust,
-    file_template: FileTemplate {
-        simple_module: r#"pub const VALUE: i32 = 42;
+/// Rust file templates
+pub const RS_TEMPLATES: FileTemplate = FileTemplate {
+    simple_module: r#"pub const VALUE: i32 = 42;
 "#,
-        export_module: r#"pub fn helper() -> &'static str {
+    export_module: r#"pub fn helper() -> &'static str {
     "helper"
 }
 
 pub const CONSTANT: &str = "constant-value";
 "#,
-        import_template: r#"use super::{import_path}::{helper, CONSTANT};
+    import_template: r#"use super::{import_path}::{helper, CONSTANT};
 
 pub fn use_helper() -> String {
     format!("{}{}", helper(), CONSTANT)
 }
 "#,
-    },
 };
 
-pub const PYTHON_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
+/// Python file templates
+pub const PY_TEMPLATES: FileTemplate = FileTemplate {
+    simple_module: r#"VALUE = 42
+"#,
+    export_module: r#"def helper() -> str:
+    return "helper"
+
+CONSTANT = "constant-value"
+"#,
+    import_template: r#"from .{import_path} import helper, CONSTANT
+
+def use_helper() -> str:
+    return helper() + CONSTANT
+"#,
+};
+
+// ============================================================================
+// TypeScript Configurations (Diverse Structures)
+// ============================================================================
+
+/// Zod - Schema validation library (monorepo with packages/)
+pub const TS_ZOD_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
+    repo_url: "https://github.com/colinhacks/zod.git",
+    project_name: "zod",
+    source_dir: "src",
+    file_ext: "ts",
+    build_verify: BuildVerification::TypeScript,
+    file_template: TS_TEMPLATES,
+};
+
+/// SvelteKit Skeleton - Framework template (path aliases: $lib, @/)
+/// Tests import path alias handling
+pub const TS_SVELTEKIT_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
+    repo_url: "https://github.com/sveltejs/kit.git",
+    project_name: "sveltekit",
+    source_dir: "packages/kit/src",
+    file_ext: "ts",
+    build_verify: BuildVerification::None, // Complex build, skip verification
+    file_template: TS_TEMPLATES,
+};
+
+/// nanoid - Unique ID generator (flat structure, minimal)
+pub const TS_NANOID_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
+    repo_url: "https://github.com/ai/nanoid.git",
+    project_name: "nanoid",
+    source_dir: ".",
+    file_ext: "ts",
+    build_verify: BuildVerification::TypeScript,
+    file_template: TS_TEMPLATES,
+};
+
+/// ts-pattern - Pattern matching (packages/ structure)
+pub const TS_PATTERN_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
+    repo_url: "https://github.com/gvergnaud/ts-pattern.git",
+    project_name: "ts-pattern",
+    source_dir: "src",
+    file_ext: "ts",
+    build_verify: BuildVerification::TypeScript,
+    file_template: TS_TEMPLATES,
+};
+
+// ============================================================================
+// Rust Configurations (Diverse Structures)
+// ============================================================================
+
+/// thiserror - Error derive macro (proc-macro workspace)
+pub const RS_THISERROR_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
+    repo_url: "https://github.com/dtolnay/thiserror.git",
+    project_name: "thiserror",
+    source_dir: "src",
+    file_ext: "rs",
+    build_verify: BuildVerification::Rust,
+    file_template: RS_TEMPLATES,
+};
+
+/// once_cell - Lazy initialization (single lib crate)
+pub const RS_ONCECELL_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
+    repo_url: "https://github.com/matklad/once_cell.git",
+    project_name: "once_cell",
+    source_dir: "src",
+    file_ext: "rs",
+    build_verify: BuildVerification::Rust,
+    file_template: RS_TEMPLATES,
+};
+
+/// anyhow - Error handling (lib + tests structure)
+pub const RS_ANYHOW_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
+    repo_url: "https://github.com/dtolnay/anyhow.git",
+    project_name: "anyhow",
+    source_dir: "src",
+    file_ext: "rs",
+    build_verify: BuildVerification::Rust,
+    file_template: RS_TEMPLATES,
+};
+
+// ============================================================================
+// Python Configurations (Diverse Structures)
+// ============================================================================
+
+/// httpx - HTTP client (standard package structure)
+pub const PY_HTTPX_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
     repo_url: "https://github.com/encode/httpx.git",
     project_name: "httpx",
     source_dir: "httpx",
     file_ext: "py",
     build_verify: BuildVerification::Python,
-    file_template: FileTemplate {
-        simple_module: r#"VALUE = 42
-"#,
-        export_module: r#"def helper() -> str:
-    return "helper"
-
-CONSTANT = "constant-value"
-"#,
-        import_template: r#"from .{import_path} import helper, CONSTANT
-
-def use_helper() -> str:
-    return helper() + CONSTANT
-"#,
-    },
+    file_template: PY_TEMPLATES,
 };
+
+/// rich - Terminal formatting (deeply nested modules)
+pub const PY_RICH_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
+    repo_url: "https://github.com/Textualize/rich.git",
+    project_name: "rich",
+    source_dir: "rich",
+    file_ext: "py",
+    build_verify: BuildVerification::Python,
+    file_template: PY_TEMPLATES,
+};
+
+/// pydantic - Data validation (src/ layout)
+pub const PY_PYDANTIC_CONFIG: RefactoringTestConfig = RefactoringTestConfig {
+    repo_url: "https://github.com/pydantic/pydantic.git",
+    project_name: "pydantic",
+    source_dir: "pydantic",
+    file_ext: "py",
+    build_verify: BuildVerification::Python,
+    file_template: PY_TEMPLATES,
+};
+
+// ============================================================================
+// Legacy Aliases (backwards compatibility)
+// ============================================================================
+
+pub const TYPESCRIPT_CONFIG: RefactoringTestConfig = TS_ZOD_CONFIG;
+pub const RUST_CONFIG: RefactoringTestConfig = RS_THISERROR_CONFIG;
+pub const PYTHON_CONFIG: RefactoringTestConfig = PY_HTTPX_CONFIG;
 
 // ============================================================================
 // Test Runner
@@ -723,57 +826,141 @@ impl RefactoringMatrixRunner {
 // Test Entry Points
 // ============================================================================
 
-/// TypeScript matrix test (Zod)
+/// Helper to run matrix and assert minimum pass rate
+async fn run_matrix_test(config: RefactoringTestConfig, min_pass_rate: f64) {
+    let mut runner = RefactoringMatrixRunner::new(config);
+    runner.run_all().await;
+
+    let passed = runner.results.iter().filter(|r| r.passed).count();
+    let total = runner.results.len();
+    let pass_rate = passed as f64 / total as f64;
+
+    assert!(
+        pass_rate >= min_pass_rate,
+        "Pass rate {:.0}% below threshold {:.0}% ({}/{})",
+        pass_rate * 100.0,
+        min_pass_rate * 100.0,
+        passed,
+        total
+    );
+}
+
+// ============================================================================
+// TypeScript Matrix Tests
+// ============================================================================
+
+/// TypeScript: Zod (monorepo structure)
+#[tokio::test]
+#[serial]
+#[ignore]
+async fn test_matrix_ts_zod() {
+    run_matrix_test(TS_ZOD_CONFIG, 0.5).await;
+}
+
+/// TypeScript: SvelteKit (path aliases: $lib, @/)
+#[tokio::test]
+#[serial]
+#[ignore]
+async fn test_matrix_ts_sveltekit() {
+    run_matrix_test(TS_SVELTEKIT_CONFIG, 0.5).await;
+}
+
+/// TypeScript: nanoid (flat/minimal structure)
+#[tokio::test]
+#[serial]
+#[ignore]
+async fn test_matrix_ts_nanoid() {
+    run_matrix_test(TS_NANOID_CONFIG, 0.5).await;
+}
+
+/// TypeScript: ts-pattern (packages/ structure)
+#[tokio::test]
+#[serial]
+#[ignore]
+async fn test_matrix_ts_pattern() {
+    run_matrix_test(TS_PATTERN_CONFIG, 0.5).await;
+}
+
+// ============================================================================
+// Rust Matrix Tests
+// ============================================================================
+
+/// Rust: thiserror (proc-macro workspace)
+#[tokio::test]
+#[serial]
+#[ignore]
+async fn test_matrix_rs_thiserror() {
+    run_matrix_test(RS_THISERROR_CONFIG, 0.5).await;
+}
+
+/// Rust: once_cell (single lib crate)
+#[tokio::test]
+#[serial]
+#[ignore]
+async fn test_matrix_rs_oncecell() {
+    run_matrix_test(RS_ONCECELL_CONFIG, 0.5).await;
+}
+
+/// Rust: anyhow (lib + tests structure)
+#[tokio::test]
+#[serial]
+#[ignore]
+async fn test_matrix_rs_anyhow() {
+    run_matrix_test(RS_ANYHOW_CONFIG, 0.5).await;
+}
+
+// ============================================================================
+// Python Matrix Tests
+// ============================================================================
+
+/// Python: httpx (standard package structure)
+#[tokio::test]
+#[serial]
+#[ignore]
+async fn test_matrix_py_httpx() {
+    run_matrix_test(PY_HTTPX_CONFIG, 0.5).await;
+}
+
+/// Python: rich (deeply nested modules)
+#[tokio::test]
+#[serial]
+#[ignore]
+async fn test_matrix_py_rich() {
+    run_matrix_test(PY_RICH_CONFIG, 0.5).await;
+}
+
+/// Python: pydantic (complex data validation)
+#[tokio::test]
+#[serial]
+#[ignore]
+async fn test_matrix_py_pydantic() {
+    run_matrix_test(PY_PYDANTIC_CONFIG, 0.5).await;
+}
+
+// ============================================================================
+// Legacy Test Aliases (backwards compatibility)
+// ============================================================================
+
+/// Legacy: TypeScript matrix (runs Zod)
 #[tokio::test]
 #[serial]
 #[ignore]
 async fn test_matrix_typescript() {
-    let mut runner = RefactoringMatrixRunner::new(TYPESCRIPT_CONFIG);
-    runner.run_all().await;
-
-    // Assert overall pass rate
-    let passed = runner.results.iter().filter(|r| r.passed).count();
-    let total = runner.results.len();
-    assert!(
-        passed >= total / 2,
-        "Less than 50% of tests passed ({}/{})",
-        passed,
-        total
-    );
+    run_matrix_test(TYPESCRIPT_CONFIG, 0.5).await;
 }
 
-/// Rust matrix test (thiserror)
+/// Legacy: Rust matrix (runs thiserror)
 #[tokio::test]
 #[serial]
 #[ignore]
 async fn test_matrix_rust() {
-    let mut runner = RefactoringMatrixRunner::new(RUST_CONFIG);
-    runner.run_all().await;
-
-    let passed = runner.results.iter().filter(|r| r.passed).count();
-    let total = runner.results.len();
-    assert!(
-        passed >= total / 2,
-        "Less than 50% of tests passed ({}/{})",
-        passed,
-        total
-    );
+    run_matrix_test(RUST_CONFIG, 0.5).await;
 }
 
-/// Python matrix test (httpx)
+/// Legacy: Python matrix (runs httpx)
 #[tokio::test]
 #[serial]
 #[ignore]
 async fn test_matrix_python() {
-    let mut runner = RefactoringMatrixRunner::new(PYTHON_CONFIG);
-    runner.run_all().await;
-
-    let passed = runner.results.iter().filter(|r| r.passed).count();
-    let total = runner.results.len();
-    assert!(
-        passed >= total / 2,
-        "Less than 50% of tests passed ({}/{})",
-        passed,
-        total
-    );
+    run_matrix_test(PYTHON_CONFIG, 0.5).await;
 }
