@@ -95,15 +95,16 @@
 	<!-- Breadcrumbs -->
 	<nav class="breadcrumbs" aria-label="Breadcrumb">
 		<ol>
-			{#each breadcrumbs as crumb, i (crumb.href)}
+			{#each (breadcrumbs || []).slice(0, -1) as crumb (crumb.href)}
 				<li>
-					{#if i === breadcrumbs.length - 1}
-						<span class="current" aria-current="page">{crumb.label}</span>
-					{:else}
-						<a href={crumb.href}>{crumb.label}</a>
-					{/if}
+					<a href={crumb.href}>{crumb.label}</a>
 				</li>
 			{/each}
+			{#if (breadcrumbs || []).length > 0}
+				<li>
+					<span class="current" aria-current="page">{breadcrumbs[breadcrumbs.length - 1].label}</span>
+				</li>
+			{/if}
 		</ol>
 	</nav>
 
