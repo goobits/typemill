@@ -5,6 +5,9 @@ export default defineConfig({
 	plugins: [sveltekit()],
 	server: {
 		host: '0.0.0.0',
-		port: 3040
+		port: 3000
+	},
+	optimizeDeps: {
+		exclude: ['@goobits/docs-engine']
 	}
 });

@@ -43,7 +43,8 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	try {
 		// Read markdown file from workspace root
-		const filePath = join('/workspace', path);
+		const workspaceRoot = process.env.WORKSPACE_ROOT || join(process.cwd(), '..');
+		const filePath = join(workspaceRoot, path);
 		const content = await readFile(filePath, 'utf-8');
 
 		// Parse frontmatter
