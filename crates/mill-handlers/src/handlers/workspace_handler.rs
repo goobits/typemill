@@ -629,20 +629,19 @@ impl WorkspaceHandler {
             })
             .unwrap_or_default();
 
-        let manifest_path_clone = manifest_path.clone();
         let sub_action = sub_action.to_string();
         let sub_action_clone = sub_action.clone();
 
-        let (members_before, members_after, changes_made, workspace_updated) =
-            tokio::task::spawn_blocking(move || {
-                // Read and parse Cargo.toml using std::fs (blocking I/O in blocking thread)
-                let cargo_content = std::fs::read_to_string(&manifest_path_clone).map_err(|e| {
-                    ServerError::invalid_request(format!(
-                        "Failed to read workspace manifest '{}': {}",
-                        manifest_path_clone, e
-                    ))
-                })?;
+        // Read Cargo.toml asynchronously
+        let cargo_content = tokio::fs::read_to_string(&manifest_path).await.map_err(|e| {
+            ServerError::invalid_request(format!(
+                "Failed to read workspace manifest '{}': {}",
+                manifest_path, e
+            ))
+        })?;
 
+        let (members_before, members_after, changes_made, workspace_updated, new_content) =
+            tokio::task::spawn_blocking(move || {
                 let mut doc = cargo_content.parse::<DocumentMut>().map_err(|e| {
                     ServerError::invalid_request(format!(
                         "Failed to parse workspace manifest: {}",
@@ -697,7 +696,7 @@ impl WorkspaceHandler {
                             }
                         }
 
-                        if added > 0 && !dry_run {
+                        let content = if added > 0 && !dry_run {
                             // Update the document
                             let members_array = members_after
                                 .iter()
@@ -708,16 +707,12 @@ impl WorkspaceHandler {
                                 workspace["members"] =
                                     Item::Value(toml_edit::Value::Array(members_array));
                             }
+                            Some(doc.to_string())
+                        } else {
+                            None
+                        };
 
-                            std::fs::write(&manifest_path_clone, doc.to_string()).map_err(|e| {
-                                ServerError::invalid_request(format!(
-                                    "Failed to write workspace manifest: {}",
-                                    e
-                                ))
-                            })?;
-                        }
-
-                        Ok((members_before, members_after, added, added > 0))
+                        Ok((members_before, members_after, added, added > 0, content))
                     }
                     "remove" => {
                         let remove_members = members_arg;
@@ -730,7 +725,7 @@ impl WorkspaceHandler {
 
                         let removed = members_before.len() - members_after.len();
 
-                        if removed > 0 && !dry_run {
+                        let content = if removed > 0 && !dry_run {
                             // Update the document
                             let members_array = members_after
                                 .iter()
@@ -741,18 +736,14 @@ impl WorkspaceHandler {
                                 workspace["members"] =
                                     Item::Value(toml_edit::Value::Array(members_array));
                             }
+                            Some(doc.to_string())
+                        } else {
+                            None
+                        };
 
-                            std::fs::write(&manifest_path_clone, doc.to_string()).map_err(|e| {
-                                ServerError::invalid_request(format!(
-                                    "Failed to write workspace manifest: {}",
-                                    e
-                                ))
-                            })?;
-                        }
-
-                        Ok((members_before, members_after, removed, removed > 0))
+                        Ok((members_before, members_after, removed, removed > 0, content))
                     }
-                    "list" => Ok((members_before.clone(), members_before, 0, false)),
+                    "list" => Ok((members_before.clone(), members_before, 0, false, None)),
                     _ => Err(ServerError::invalid_request(format!(
                         "Invalid update_members action: {}. Valid: add, remove, list",
                         sub_action_clone
@@ -761,6 +752,15 @@ impl WorkspaceHandler {
             })
             .await
             .map_err(|e| ServerError::internal(format!("Task join error: {}", e)))??;
+
+        if let Some(content) = new_content {
+            tokio::fs::write(&manifest_path, content).await.map_err(|e| {
+                ServerError::invalid_request(format!(
+                    "Failed to write workspace manifest: {}",
+                    e
+                ))
+            })?;
+        }
 
         let summary = match sub_action.as_str() {
             "add" => {
