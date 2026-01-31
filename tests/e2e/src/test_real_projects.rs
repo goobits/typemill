@@ -7,7 +7,7 @@
 //! to avoid redundant setup time. Tests run serially within each module.
 
 use crate::harness::{TestClient, TestWorkspace};
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
