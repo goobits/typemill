@@ -64,13 +64,20 @@ Last updated: 2026-01-31
 
 ### Real-World Project Tests
 
-- [ ] **Rust: Add real-world Rust project tests**
-  - Similar to Zod tests in `tests/e2e/src/test_real_project_zod.rs`
-  - Target project: Consider serde, tokio, or smaller crate
+- [x] **TypeScript: Expanded real-world project tests** ✅ DONE
+  - Location: `tests/e2e/src/test_real_project_typescript.rs`
+  - Projects: type-fest, ts-pattern, nanoid
+  - Tests: search, inspect, rename, move, find/replace, prune
 
-- [ ] **Python: Add real-world Python project tests**
-  - Similar to Zod tests
-  - Target project: Consider requests, httpx, or pydantic
+- [x] **Rust: Add real-world Rust project tests** ✅ DONE
+  - Location: `tests/e2e/src/test_real_project_rust.rs`
+  - Projects: thiserror, once_cell, anyhow
+  - Tests: search, inspect, rename, move, find/replace, symbol rename
+
+- [x] **Python: Add real-world Python project tests** ✅ DONE
+  - Location: `tests/e2e/src/test_real_project_python.rs`
+  - Projects: httpx, rich, pydantic
+  - Tests: search, inspect, rename, move, find/replace, symbol rename
 
 ---
 
@@ -133,7 +140,7 @@ Last updated: 2026-01-31
 | test_fixtures | ✅ | ✅ | ✅ |
 | create_package | ✅ | ✅ | ✅ |
 | path_aliases | ✅ | ✅ | N/A |
-| real-world tests | ⬜ | ✅ (Zod) | ⬜ |
+| real-world tests | ✅ | ✅ (Zod + 3) | ✅ |
 
 **Legend**: ✅ Complete | ⚠️ Partial | ⬜ Missing
 
@@ -147,5 +154,5 @@ Last updated: 2026-01-31
 4. ~~**TypeScript consolidation** - Enables monorepo refactoring~~ ✅ DONE
 5. ~~**Python consolidation** - Enables monorepo refactoring~~ ✅ DONE
 6. ~~**Test fixtures parity** - Improves test coverage~~ ✅ DONE
-7. **Svelte/Vite path alias support** - $lib, vite.config aliases
-8. **Real-world project tests** - Validates implementations (Rust + Python + SvelteKit pending)
+7. ~~**Svelte/Vite path alias support** - $lib, vite.config aliases~~ ✅ DONE
+8. ~~**Real-world project tests** - TypeScript (4), Rust (3), Python (3)~~ ✅ DONE

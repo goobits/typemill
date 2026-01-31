@@ -95,6 +95,7 @@
 	<!-- Breadcrumbs -->
 	<nav class="breadcrumbs" aria-label="Breadcrumb">
 		<ol>
+			<!-- Keyed block for performance optimization -->
 			{#each breadcrumbs as crumb, i (crumb.href)}
 				<li>
 					{#if i === breadcrumbs.length - 1}
