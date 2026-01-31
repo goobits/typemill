@@ -568,7 +568,7 @@ impl WorkspaceHandler {
         context: &mill_handler_api::ToolHandlerContext,
         args: &Value,
     ) -> ServerResult<Value> {
-        use std::fs;
+        use tokio::fs;
         use std::path::Path;
         use toml_edit::{DocumentMut, Item};
 
@@ -620,7 +620,7 @@ impl WorkspaceHandler {
             .ok_or_else(|| ServerError::invalid_request("Missing 'workspaceManifest' path"))?;
 
         // Read and parse Cargo.toml
-        let cargo_content = fs::read_to_string(&manifest_path).map_err(|e| {
+        let cargo_content = fs::read_to_string(&manifest_path).await.map_err(|e| {
             ServerError::invalid_request(format!(
                 "Failed to read workspace manifest '{}': {}",
                 manifest_path, e
@@ -699,7 +699,7 @@ impl WorkspaceHandler {
                         workspace["members"] = Item::Value(toml_edit::Value::Array(members_array));
                     }
 
-                    fs::write(&manifest_path, doc.to_string()).map_err(|e| {
+                    fs::write(&manifest_path, doc.to_string()).await.map_err(|e| {
                         ServerError::invalid_request(format!(
                             "Failed to write workspace manifest: {}",
                             e
@@ -739,7 +739,7 @@ impl WorkspaceHandler {
                         workspace["members"] = Item::Value(toml_edit::Value::Array(members_array));
                     }
 
-                    fs::write(&manifest_path, doc.to_string()).map_err(|e| {
+                    fs::write(&manifest_path, doc.to_string()).await.map_err(|e| {
                         ServerError::invalid_request(format!(
                             "Failed to write workspace manifest: {}",
                             e
@@ -799,10 +799,113 @@ impl WorkspaceHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::{Path, PathBuf};
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
+    use mill_handler_api::{FileService, LanguagePluginRegistry};
+    use mill_foundation::core::dry_run::DryRunnable;
+    use mill_foundation::errors::MillError;
+    use mill_foundation::protocol::EditPlan;
+    use mill_plugin_api::{LanguagePlugin, ScanScope};
+
+    // Mock implementations
+    struct DummyFileService;
+    #[async_trait]
+    impl FileService for DummyFileService {
+        async fn read_file(&self, _: &Path) -> Result<String, MillError> { Ok("".to_string()) }
+        async fn list_files(&self, _: &Path, _: bool) -> Result<Vec<String>, MillError> { Ok(vec![]) }
+        async fn write_file(&self, _: &Path, _: &str, _: bool) -> Result<DryRunnable<Value>, MillError> { Ok(DryRunnable::new(false, Value::Null)) }
+        async fn delete_file(&self, _: &Path, _: bool, _: bool) -> Result<DryRunnable<Value>, MillError> { Ok(DryRunnable::new(false, Value::Null)) }
+        async fn create_file(&self, _: &Path, _: Option<&str>, _: bool, _: bool) -> Result<DryRunnable<Value>, MillError> { Ok(DryRunnable::new(false, Value::Null)) }
+        async fn rename_file_with_imports(&self, _: &Path, _: &Path, _: bool, _: Option<ScanScope>) -> Result<DryRunnable<Value>, MillError> { Ok(DryRunnable::new(false, Value::Null)) }
+        async fn rename_directory_with_imports(&self, _: &Path, _: &Path, _: bool, _: Option<ScanScope>, _: bool) -> Result<DryRunnable<Value>, MillError> { Ok(DryRunnable::new(false, Value::Null)) }
+        async fn list_files_with_pattern(&self, _: &Path, _: bool, _: Option<&str>) -> Result<Vec<String>, MillError> { Ok(vec![]) }
+        fn to_absolute_path_checked(&self, p: &Path) -> Result<PathBuf, MillError> { Ok(p.to_path_buf()) }
+        async fn apply_edit_plan(&self, _: &EditPlan) -> Result<mill_foundation::protocol::EditPlanResult, MillError> {
+            Ok(mill_foundation::protocol::EditPlanResult {
+                success: true,
+                modified_files: vec![],
+                errors: None,
+                plan_metadata: mill_foundation::planning::EditPlanMetadata {
+                    intent_name: "".to_string(),
+                    intent_arguments: serde_json::Value::Null,
+                    created_at: chrono::Utc::now(),
+                    complexity: 0,
+                    impact_areas: vec![],
+                    consolidation: None,
+                }
+            })
+        }
+    }
+
+    struct DummyPluginRegistry;
+    impl LanguagePluginRegistry for DummyPluginRegistry {
+        fn get_plugin(&self, _: &str) -> Option<&dyn LanguagePlugin> { None }
+        fn supported_extensions(&self) -> Vec<String> { vec![] }
+        fn get_plugin_for_manifest(&self, _: &Path) -> Option<&dyn LanguagePlugin> { None }
+        fn inner(&self) -> &dyn std::any::Any { self }
+    }
 
     #[test]
     fn test_handler_tool_names() {
         let handler = WorkspaceHandler::new();
         assert_eq!(handler.tool_names(), &["workspace"]);
+    }
+
+    #[tokio::test]
+    async fn test_update_members_repro() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let cargo_toml_path = temp_dir.path().join("Cargo.toml");
+
+        let cargo_content = r#"
+[workspace]
+members = []
+"#;
+        std::fs::write(&cargo_toml_path, cargo_content).unwrap();
+
+        let handler = WorkspaceHandler::new();
+
+        let app_state = Arc::new(mill_handler_api::AppState {
+            file_service: Arc::new(DummyFileService),
+            language_plugins: Arc::new(DummyPluginRegistry),
+            project_root: temp_dir.path().to_path_buf(),
+            extensions: None,
+        });
+
+        let plugin_manager = Arc::new(mill_plugin_system::PluginManager::new());
+        let lsp_adapter = Arc::new(Mutex::new(None));
+
+        let context = mill_handler_api::ToolHandlerContext {
+            user_id: None,
+            app_state,
+            plugin_manager,
+            lsp_adapter,
+        };
+
+        let args = json!({
+            "action": "update_members",
+            "params": {
+                "action": "add",
+                "workspaceManifest": cargo_toml_path.to_str().unwrap(),
+                "members": ["new_member"]
+            },
+            "options": {
+                "dryRun": false
+            }
+        });
+
+        let tool_call = ToolCall {
+            name: "workspace".to_string(),
+            arguments: Some(args),
+        };
+
+        let result = handler.handle_tool_call(&context, &tool_call).await.unwrap();
+
+        // Verify response
+        assert_eq!(result["status"], "success");
+
+        // Verify file content
+        let new_content = std::fs::read_to_string(&cargo_toml_path).unwrap();
+        assert!(new_content.contains("\"new_member\""));
     }
 }
