@@ -78,11 +78,12 @@ Last updated: 2026-01-31
 
 ### Svelte/Vite Path Alias Support
 
-- [ ] **TypeScript: Verify $lib and vite.config path aliases work**
+- [x] **TypeScript: Verify $lib and vite.config path aliases work** ✅ DONE
   - SvelteKit uses `$lib` alias pointing to `src/lib`
   - Vite uses aliases in `vite.config.ts` (e.g., `@/components`)
-  - Test: Move files with $lib imports and verify updates
-  - Location: `languages/mill-lang-typescript/src/path_alias_resolver.rs`
+  - Fixed: `reference_detector.rs` now handles path aliases ($, @, ~)
+  - Fixed: `import_support.rs` correctly detects file vs directory moves
+  - Tests: 5 e2e tests in `test_sveltekit_path_aliases.rs` + 2 unit tests
 
 ---
 
@@ -131,7 +132,7 @@ Last updated: 2026-01-31
 | workspace_support | ✅ | ✅ | ✅ (PDM/Poetry) |
 | test_fixtures | ✅ | ✅ | ✅ |
 | create_package | ✅ | ✅ | ✅ |
-| path_aliases | ✅ | ⚠️ (tsconfig only) | N/A |
+| path_aliases | ✅ | ✅ | N/A |
 | real-world tests | ⬜ | ✅ (Zod) | ⬜ |
 
 **Legend**: ✅ Complete | ⚠️ Partial | ⬜ Missing

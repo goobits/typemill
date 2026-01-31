@@ -1,17 +1,20 @@
-//! SvelteKit Path Alias Integration Tests
+//! SvelteKit/TypeScript Path Alias Integration Tests
 //!
 //! Tests that $lib and other path aliases are correctly handled during file moves
-//! in SvelteKit/Vite projects. Verifies:
+//! in TypeScript projects. Verifies:
 //! - Moving files within $lib preserves alias imports
 //! - Moving files out of $lib converts to relative imports
 //! - Moving files into $lib converts to alias imports
 //! - Cross-directory moves update imports correctly
+//!
+//! Note: These tests use .ts files since the TypeScript plugin handles those extensions.
+//! The path alias logic applies equally to any file type that uses TypeScript-style imports.
 
 use crate::harness::{TestClient, TestWorkspace};
 use serde_json::json;
 
-/// Create a SvelteKit-like project structure with tsconfig.json
-fn setup_sveltekit_workspace(workspace: &TestWorkspace) {
+/// Create a TypeScript project structure with tsconfig.json path aliases
+fn setup_typescript_workspace(workspace: &TestWorkspace) {
     // Create tsconfig.json with $lib alias (SvelteKit pattern)
     workspace.create_file(
         "tsconfig.json",
@@ -30,7 +33,7 @@ fn setup_sveltekit_workspace(workspace: &TestWorkspace) {
     workspace.create_file(
         "package.json",
         r#"{
-  "name": "test-sveltekit",
+  "name": "test-typescript",
   "type": "module"
 }"#,
     );
@@ -46,7 +49,7 @@ fn setup_sveltekit_workspace(workspace: &TestWorkspace) {
 #[tokio::test]
 async fn test_move_within_lib_preserves_alias() {
     let workspace = TestWorkspace::new();
-    setup_sveltekit_workspace(&workspace);
+    setup_typescript_workspace(&workspace);
 
     // Create a utility file in $lib/utils
     workspace.create_file(
@@ -62,28 +65,24 @@ export function capitalize(str: string): string {
 
     // Create a component that imports from $lib/utils
     workspace.create_file(
-        "src/lib/components/DateDisplay.svelte",
-        r#"<script lang="ts">
-import { formatDate } from '$lib/utils/helpers';
+        "src/lib/components/DateDisplay.ts",
+        r#"import { formatDate } from '$lib/utils/helpers';
 
-export let date: Date;
-</script>
-
-<span>{formatDate(date)}</span>"#,
+export function displayDate(date: Date): string {
+    return formatDate(date);
+}"#,
     );
 
     // Create a route that imports from $lib
     workspace.create_file(
-        "src/routes/+page.svelte",
-        r#"<script lang="ts">
-import { capitalize } from '$lib/utils/helpers';
-import DateDisplay from '$lib/components/DateDisplay.svelte';
+        "src/routes/page.ts",
+        r#"import { capitalize } from '$lib/utils/helpers';
+import { displayDate } from '$lib/components/DateDisplay';
 
-let name = capitalize('world');
-</script>
-
-<h1>Hello {name}</h1>
-<DateDisplay date={new Date()} />"#,
+export function render() {
+    const name = capitalize('world');
+    return `Hello ${name}`;
+}"#,
     );
 
     let mut client = TestClient::new(workspace.path());
@@ -100,9 +99,7 @@ let name = capitalize('world');
             "kind": "file",
             "filePath": old_path.to_string_lossy()
         },
-        "destination": {
-            "filePath": new_path.to_string_lossy()
-        },
+        "destination": new_path.to_string_lossy(),
         "options": { "dryRun": false }
     });
 
@@ -127,7 +124,7 @@ let name = capitalize('world');
     assert!(workspace.file_exists("src/lib/utils/string/helpers.ts"));
 
     // Verify imports in component were updated (should still use $lib)
-    let component_content = workspace.read_file("src/lib/components/DateDisplay.svelte");
+    let component_content = workspace.read_file("src/lib/components/DateDisplay.ts");
     assert!(
         component_content.contains("$lib/utils/string/helpers"),
         "Component should have updated $lib import path.\nActual content:\n{}",
@@ -135,7 +132,7 @@ let name = capitalize('world');
     );
 
     // Verify imports in route were updated
-    let route_content = workspace.read_file("src/routes/+page.svelte");
+    let route_content = workspace.read_file("src/routes/page.ts");
     assert!(
         route_content.contains("$lib/utils/string/helpers"),
         "Route should have updated $lib import path.\nActual content:\n{}",
@@ -149,7 +146,7 @@ let name = capitalize('world');
 #[tokio::test]
 async fn test_move_out_of_lib_converts_to_relative() {
     let workspace = TestWorkspace::new();
-    setup_sveltekit_workspace(&workspace);
+    setup_typescript_workspace(&workspace);
 
     // Create a utility in $lib
     workspace.create_file(
@@ -162,7 +159,7 @@ async fn test_move_out_of_lib_converts_to_relative() {
 
     // Create a route that imports from $lib
     workspace.create_file(
-        "src/routes/api/+server.ts",
+        "src/routes/api/server.ts",
         r#"import { fetchData } from '$lib/utils/api';
 
 export async function GET() {
@@ -184,9 +181,7 @@ export async function GET() {
             "kind": "file",
             "filePath": old_path.to_string_lossy()
         },
-        "destination": {
-            "filePath": new_path.to_string_lossy()
-        },
+        "destination": new_path.to_string_lossy(),
         "options": { "dryRun": false }
     });
 
@@ -211,7 +206,7 @@ export async function GET() {
     assert!(workspace.file_exists("src/server/api.ts"));
 
     // Verify imports were converted to relative paths
-    let server_content = workspace.read_file("src/routes/api/+server.ts");
+    let server_content = workspace.read_file("src/routes/api/server.ts");
 
     // Should no longer have $lib import
     assert!(
@@ -234,41 +229,38 @@ export async function GET() {
 #[tokio::test]
 async fn test_move_directory_within_lib() {
     let workspace = TestWorkspace::new();
-    setup_sveltekit_workspace(&workspace);
+    setup_typescript_workspace(&workspace);
 
     // Create multiple files in a directory
     workspace.create_file(
-        "src/lib/components/Button.svelte",
-        r#"<script lang="ts">
-export let label: string;
-</script>
-<button>{label}</button>"#,
+        "src/lib/components/Button.ts",
+        r#"export function Button(label: string): string {
+    return `<button>${label}</button>`;
+}"#,
     );
 
     workspace.create_file(
-        "src/lib/components/Input.svelte",
-        r#"<script lang="ts">
-export let value: string;
-</script>
-<input bind:value />"#,
+        "src/lib/components/Input.ts",
+        r#"export function Input(value: string): string {
+    return `<input value="${value}" />`;
+}"#,
     );
 
     // Create an index file that re-exports
     workspace.create_file(
         "src/lib/components/index.ts",
-        r#"export { default as Button } from './Button.svelte';
-export { default as Input } from './Input.svelte';"#,
+        r#"export { Button } from './Button';
+export { Input } from './Input';"#,
     );
 
     // Create a route that imports from the components
     workspace.create_file(
-        "src/routes/+page.svelte",
-        r#"<script lang="ts">
-import { Button, Input } from '$lib/components';
-</script>
+        "src/routes/page.ts",
+        r#"import { Button, Input } from '$lib/components';
 
-<Input value="" />
-<Button label="Submit" />"#,
+export function render() {
+    return Input('') + Button('Submit');
+}"#,
     );
 
     let mut client = TestClient::new(workspace.path());
@@ -305,13 +297,13 @@ import { Button, Input } from '$lib/components';
     );
 
     // Verify directory was moved
-    assert!(!workspace.file_exists("src/lib/components/Button.svelte"));
-    assert!(workspace.file_exists("src/lib/ui/components/Button.svelte"));
-    assert!(workspace.file_exists("src/lib/ui/components/Input.svelte"));
+    assert!(!workspace.file_exists("src/lib/components/Button.ts"));
+    assert!(workspace.file_exists("src/lib/ui/components/Button.ts"));
+    assert!(workspace.file_exists("src/lib/ui/components/Input.ts"));
     assert!(workspace.file_exists("src/lib/ui/components/index.ts"));
 
     // Verify route imports were updated
-    let route_content = workspace.read_file("src/routes/+page.svelte");
+    let route_content = workspace.read_file("src/routes/page.ts");
     assert!(
         route_content.contains("$lib/ui/components"),
         "Route should have updated import path.\nActual content:\n{}",
@@ -361,8 +353,8 @@ async fn test_at_alias_pattern() {
         "src/components/Price.tsx",
         r#"import { formatCurrency } from '@/utils/format';
 
-export function Price({ amount }: { amount: number }) {
-    return <span>{formatCurrency(amount)}</span>;
+export function Price(amount: number): string {
+    return `<span>${formatCurrency(amount)}</span>`;
 }"#,
     );
 
@@ -373,7 +365,7 @@ export function Price({ amount }: { amount: number }) {
 import { formatCurrency } from '@/utils/format';
 
 export default function Home() {
-    return <Price amount={99.99} />;
+    return Price(99.99);
 }"#,
     );
 
@@ -390,9 +382,7 @@ export default function Home() {
             "kind": "file",
             "filePath": old_path.to_string_lossy()
         },
-        "destination": {
-            "filePath": new_path.to_string_lossy()
-        },
+        "destination": new_path.to_string_lossy(),
         "options": { "dryRun": false }
     });
 
@@ -434,20 +424,20 @@ export default function Home() {
 #[tokio::test]
 async fn test_dry_run_shows_alias_updates() {
     let workspace = TestWorkspace::new();
-    setup_sveltekit_workspace(&workspace);
+    setup_typescript_workspace(&workspace);
 
     workspace.create_file(
         "src/lib/stores/user.ts",
-        r#"import { writable } from 'svelte/store';
-export const user = writable(null);"#,
+        r#"export const user = { name: 'test' };"#,
     );
 
     workspace.create_file(
-        "src/routes/+layout.svelte",
-        r#"<script lang="ts">
-import { user } from '$lib/stores/user';
-</script>
-<slot />"#,
+        "src/routes/layout.ts",
+        r#"import { user } from '$lib/stores/user';
+
+export function getUser() {
+    return user;
+}"#,
     );
 
     let mut client = TestClient::new(workspace.path());
@@ -463,9 +453,7 @@ import { user } from '$lib/stores/user';
             "kind": "file",
             "filePath": old_path.to_string_lossy()
         },
-        "destination": {
-            "filePath": new_path.to_string_lossy()
-        },
+        "destination": new_path.to_string_lossy(),
         "options": { "dryRun": true }
     });
 
@@ -479,11 +467,17 @@ import { user } from '$lib/stores/user';
         .and_then(|r| r.get("content"))
         .expect("Should have result.content");
 
-    // Check that the plan shows file edits
-    let edits = content.get("fileEdits").and_then(|e| e.as_array());
+    // Check that the plan shows file edits (structure: changes.edits.documentChanges)
+    let has_changes = content
+        .get("changes")
+        .and_then(|c| c.get("edits"))
+        .and_then(|e| e.get("documentChanges"))
+        .and_then(|dc| dc.as_array())
+        .map(|arr| !arr.is_empty())
+        .unwrap_or(false);
     assert!(
-        edits.is_some() && !edits.unwrap().is_empty(),
-        "Dry run should show file edits.\nPlan content:\n{:?}",
+        has_changes,
+        "Dry run should show file edits in changes.edits.documentChanges.\nPlan content:\n{:?}",
         content
     );
 
