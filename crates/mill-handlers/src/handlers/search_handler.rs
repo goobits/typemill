@@ -194,16 +194,15 @@ impl SearchHandler {
                     } else if file_type.is_dir() && !needed_extensions.is_empty() {
                         // Only allocate full path when recursing
                         let path = entry.path();
-                            let found_in_subdir = Box::pin(Self::find_files_recursive(
-                                &path,
-                                &needed_extensions,
-                                max_depth - 1,
-                            ))
-                            .await;
-                            for (ext, p) in found_in_subdir {
-                                results.insert(ext.clone(), p);
-                                needed_extensions.remove(&ext);
-                            }
+                        let found_in_subdir = Box::pin(Self::find_files_recursive(
+                            &path,
+                            &needed_extensions,
+                            max_depth - 1,
+                        ))
+                        .await;
+                        for (ext, p) in found_in_subdir {
+                            results.insert(ext.clone(), p);
+                            needed_extensions.remove(&ext);
                         }
                     }
                 }
