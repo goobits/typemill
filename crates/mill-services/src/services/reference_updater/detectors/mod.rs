@@ -6,4 +6,4 @@
 pub mod generic;
 
 // Re-export key functions (crate-internal only)
-pub(crate) use generic::{find_generic_affected_files, get_all_imported_files};
+pub(crate) use generic::{find_generic_affected_files_cached, get_all_imported_files};

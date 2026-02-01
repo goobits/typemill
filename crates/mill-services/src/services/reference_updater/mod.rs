@@ -7,7 +7,7 @@
 mod cache;
 pub mod detectors;
 
-pub use cache::FileImportInfo;
+pub use cache::{FileImportInfo, ImportCache};
 
 use mill_foundation::errors::MillError as ServerError;
 use mill_foundation::protocol::{
@@ -17,17 +17,16 @@ use mill_foundation::protocol::{
 type ServerResult<T> = Result<T, ServerError>;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::task::JoinSet;
 
 /// A service for updating references in a workspace.
 pub struct ReferenceUpdater {
     /// Project root directory
     project_root: PathBuf,
-    /// Cache of file import information for performance
-    /// Maps file path -> (imports, last_modified_time)
-    #[allow(dead_code)]
-    pub(crate) import_cache: Arc<Mutex<HashMap<PathBuf, FileImportInfo>>>,
+    /// Cache of file imports with reverse index for O(1) lookups
+    /// The cache is populated on first scan and enables fast "who imports this?" queries
+    pub(crate) import_cache: Arc<ImportCache>,
 }
 
 impl ReferenceUpdater {
@@ -35,7 +34,18 @@ impl ReferenceUpdater {
     pub fn new(project_root: impl AsRef<Path>) -> Self {
         Self {
             project_root: project_root.as_ref().to_path_buf(),
-            import_cache: Arc::new(Mutex::new(HashMap::new())),
+            import_cache: ImportCache::shared(),
+        }
+    }
+
+    /// Creates a new `ReferenceUpdater` with a shared cache
+    ///
+    /// Use this when you want to share the cache across multiple operations
+    /// (e.g., batch renames) for better performance.
+    pub fn with_cache(project_root: impl AsRef<Path>, cache: Arc<ImportCache>) -> Self {
+        Self {
+            project_root: project_root.as_ref().to_path_buf(),
+            import_cache: cache,
         }
     }
 
@@ -714,7 +724,7 @@ impl ReferenceUpdater {
                     .cloned()
                     .collect();
 
-                let generic_affected = detectors::find_generic_affected_files(
+                let generic_affected = detectors::find_generic_affected_files_cached(
                     old_path,
                     new_path,
                     &self.project_root,
@@ -722,6 +732,7 @@ impl ReferenceUpdater {
                     plugins,
                     plugin_map,
                     rename_info,
+                    Some(self.import_cache.clone()),
                 )
                 .await;
 
@@ -729,7 +740,7 @@ impl ReferenceUpdater {
             } else {
                 // Plugin found but no reference detector - use generic detection for ALL files
                 // (This handles TypeScript, Python, etc. which rely on generic import detection)
-                let generic_affected = detectors::find_generic_affected_files(
+                let generic_affected = detectors::find_generic_affected_files_cached(
                     old_path,
                     new_path,
                     &self.project_root,
@@ -737,6 +748,7 @@ impl ReferenceUpdater {
                     plugins,
                     plugin_map,
                     rename_info,
+                    Some(self.import_cache.clone()),
                 )
                 .await;
 
@@ -744,7 +756,7 @@ impl ReferenceUpdater {
             }
         } else {
             // No specific plugin found - use generic detection for everything
-            let generic_affected = detectors::find_generic_affected_files(
+            let generic_affected = detectors::find_generic_affected_files_cached(
                 old_path,
                 new_path,
                 &self.project_root,
@@ -752,6 +764,7 @@ impl ReferenceUpdater {
                 plugins,
                 plugin_map,
                 rename_info,
+                Some(self.import_cache.clone()),
             )
             .await;
 
