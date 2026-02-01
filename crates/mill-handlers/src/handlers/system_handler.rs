@@ -1,6 +1,6 @@
 //! System operations tool handler
 //!
-//! Handles: health_check, notify_file_opened, notify_file_saved, notify_file_closed
+//! Handles: health_check, get_lsp_progress, notify_file_opened, notify_file_saved, notify_file_closed
 //!
 //! Note: Import optimization available via optimize_imports
 
@@ -36,6 +36,7 @@ impl ToolHandler for SystemHandler {
     fn tool_names(&self) -> &[&str] {
         &[
             "health_check",
+            "get_lsp_progress",
             "notify_file_opened",
             "notify_file_saved",
             "notify_file_closed",
@@ -51,6 +52,7 @@ impl ToolHandler for SystemHandler {
 
         match tool_call.name.as_str() {
             "health_check" => self.handle_health_check(tool_call.clone(), context).await,
+            "get_lsp_progress" => self.handle_get_lsp_progress(context).await,
             "notify_file_opened" => {
                 self.handle_notify_file_opened(tool_call.clone(), context)
                     .await
@@ -133,6 +135,58 @@ impl SystemHandler {
             "workflows": {
                 "paused": paused_workflows
             }
+        }))
+    }
+
+    async fn handle_get_lsp_progress(
+        &self,
+        context: &mill_handler_api::ToolHandlerContext,
+    ) -> ServerResult<Value> {
+        debug!("Handling get_lsp_progress request");
+
+        // Get the LSP adapter from context
+        let lsp_adapter_guard = context.lsp_adapter.lock().await;
+        let lsp_adapter = lsp_adapter_guard.as_ref().ok_or_else(|| {
+            ServerError::internal("LSP adapter not initialized")
+        })?;
+
+        // Downcast to DirectLspAdapter to access progress methods
+        let direct_adapter = lsp_adapter
+            .as_any()
+            .downcast_ref::<DirectLspAdapter>()
+            .ok_or_else(|| {
+                ServerError::internal("LSP adapter is not a DirectLspAdapter")
+            })?;
+
+        // Get progress from all active LSP clients
+        let progress = direct_adapter.get_all_lsp_progress().await;
+
+        // Calculate summary
+        let mut total_tasks = 0;
+        let mut in_progress = 0;
+        let mut completed = 0;
+
+        for (_ext, tasks) in &progress {
+            for (_, info) in tasks {
+                total_tasks += 1;
+                match info.status.as_str() {
+                    "in_progress" => in_progress += 1,
+                    "completed" => completed += 1,
+                    _ => {}
+                }
+            }
+        }
+
+        let is_ready = in_progress == 0;
+
+        Ok(json!({
+            "ready": is_ready,
+            "summary": {
+                "totalTasks": total_tasks,
+                "inProgress": in_progress,
+                "completed": completed
+            },
+            "progress": progress
         }))
     }
 

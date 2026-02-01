@@ -364,6 +364,118 @@ impl ProgressManager {
             .map(|entry| (entry.key().clone(), entry.value().clone()))
             .collect()
     }
+
+    /// Subscribe to progress updates
+    ///
+    /// Returns a receiver that will receive all progress updates.
+    /// Useful for displaying progress to users.
+    pub fn subscribe(&self) -> broadcast::Receiver<(ProgressToken, ProgressState)> {
+        self.updates_tx.subscribe()
+    }
+
+    /// Waits for any indexing-related progress to complete
+    ///
+    /// This waits for common indexing tokens like:
+    /// - "rustAnalyzer/Indexing"
+    /// - "rustAnalyzer/Roots Scanned"
+    /// - TypeScript server project loading
+    ///
+    /// Returns progress updates via callback as they occur.
+    pub async fn wait_for_indexing_with_progress<F>(
+        &self,
+        timeout: Duration,
+        mut on_progress: F,
+    ) -> Result<(), ProgressError>
+    where
+        F: FnMut(&str, Option<u32>), // (message, percentage)
+    {
+        let mut rx = self.updates_tx.subscribe();
+        let start = std::time::Instant::now();
+
+        // Known indexing-related tokens
+        let indexing_tokens = [
+            "rustAnalyzer/Indexing",
+            "rustAnalyzer/Roots Scanned",
+            "rustAnalyzer/cargo check",
+        ];
+
+        let mut active_indexing: std::collections::HashSet<ProgressToken> =
+            std::collections::HashSet::new();
+
+        loop {
+            if start.elapsed() >= timeout {
+                if active_indexing.is_empty() {
+                    // No indexing was ever started, consider it done
+                    return Ok(());
+                }
+                return Err(ProgressError::Timeout(timeout));
+            }
+
+            let remaining = timeout.saturating_sub(start.elapsed());
+
+            match tokio::time::timeout(remaining, rx.recv()).await {
+                Ok(Ok((token, state))) => {
+                    let token_str = token.to_string();
+                    let is_indexing = indexing_tokens
+                        .iter()
+                        .any(|t| token_str.contains(t) || token_str.to_lowercase().contains("index"));
+
+                    if is_indexing {
+                        match &state {
+                            ProgressState::InProgress {
+                                title,
+                                message,
+                                percentage,
+                            } => {
+                                active_indexing.insert(token.clone());
+                                let msg = message.as_deref().unwrap_or(title.as_str());
+                                on_progress(msg, *percentage);
+                            }
+                            ProgressState::Completed { message } => {
+                                active_indexing.remove(&token);
+                                if let Some(msg) = message {
+                                    on_progress(msg, Some(100));
+                                }
+                                // Check if all indexing is done
+                                if active_indexing.is_empty() {
+                                    // Give a small delay for any follow-up tasks
+                                    tokio::time::sleep(Duration::from_millis(100)).await;
+                                    // Check if new tasks started
+                                    let current_tasks = self.active_tasks();
+                                    let still_indexing = current_tasks.iter().any(|(t, s)| {
+                                        let t_str = t.to_string();
+                                        matches!(s, ProgressState::InProgress { .. })
+                                            && indexing_tokens.iter().any(|it| t_str.contains(it))
+                                    });
+                                    if !still_indexing {
+                                        return Ok(());
+                                    }
+                                }
+                            }
+                            ProgressState::Failed { reason } => {
+                                active_indexing.remove(&token);
+                                on_progress(&format!("Failed: {}", reason), None);
+                            }
+                        }
+                    }
+                }
+                Ok(Err(broadcast::error::RecvError::Lagged(_))) => {
+                    // Missed some messages, continue
+                    continue;
+                }
+                Ok(Err(broadcast::error::RecvError::Closed)) => {
+                    return Err(ProgressError::ChannelClosed);
+                }
+                Err(_) => {
+                    // Timeout in recv - check if we're done
+                    if active_indexing.is_empty() {
+                        return Ok(());
+                    }
+                    return Err(ProgressError::Timeout(timeout));
+                }
+            }
+        }
+    }
 }
 
 impl Default for ProgressManager {

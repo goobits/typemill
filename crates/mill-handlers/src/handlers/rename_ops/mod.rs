@@ -415,7 +415,12 @@ impl RenameService {
         // Detect naming conflicts (same new_name from different sources)
         let mut new_names_map: HashMap<String, Vec<String>> = HashMap::new();
         for target in targets {
-            let new_name = target.new_name.as_ref().unwrap();
+            let new_name = target.new_name.as_ref().ok_or_else(|| {
+                ServerError::invalid_request(format!(
+                    "Missing 'newName' for target '{}'",
+                    target.path
+                ))
+            })?;
             new_names_map
                 .entry(new_name.clone())
                 .or_default()
@@ -454,9 +459,11 @@ impl RenameService {
         let dir_moves: Vec<(std::path::PathBuf, std::path::PathBuf)> = targets
             .iter()
             .filter(|t| t.kind == "directory")
-            .map(|t| {
+            .filter_map(|t| {
+                // new_name already validated above, but defensive check
+                let new_name = t.new_name.as_ref()?;
                 let old_path = std::path::PathBuf::from(&t.path);
-                let new_path = std::path::PathBuf::from(t.new_name.as_ref().unwrap());
+                let new_path = std::path::PathBuf::from(new_name);
 
                 // Normalize to absolute paths for workspace planning
                 let abs_old = if old_path.is_absolute() {
@@ -470,7 +477,7 @@ impl RenameService {
                     project_root.join(new_path)
                 };
 
-                (abs_old, abs_new)
+                Some((abs_old, abs_new))
             })
             .collect();
 
@@ -549,7 +556,12 @@ impl RenameService {
         // PHASE 2: Plan individual target renames (may include duplicate workspace edits)
 
         for target in targets {
-            let new_name = target.new_name.as_ref().unwrap();
+            let new_name = target.new_name.as_ref().ok_or_else(|| {
+                ServerError::invalid_request(format!(
+                    "Missing 'newName' for target '{}'",
+                    target.path
+                ))
+            })?;
 
             debug!(
                 kind = %target.kind,
