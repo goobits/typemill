@@ -983,6 +983,14 @@ impl LspClient {
         self.progress_manager.is_completed(token)
     }
 
+    /// Get all active progress tasks
+    ///
+    /// Returns a list of (token, state) pairs for all currently tracked progress tasks.
+    /// Useful for monitoring LSP server warmup/indexing progress.
+    pub fn get_active_progress(&self) -> Vec<(ProgressToken, crate::progress::ProgressState)> {
+        self.progress_manager.active_tasks()
+    }
+
     /// Notify the LSP server that a file has been opened
     pub async fn notify_file_opened(&self, file_path: &std::path::Path) -> ServerResult<()> {
         if !self.is_initialized().await {

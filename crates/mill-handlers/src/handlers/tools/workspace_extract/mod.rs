@@ -409,6 +409,54 @@ fn resolve_path(workspace_root: &Path, path: &str) -> ServerResult<std::path::Pa
         workspace_root.join(path)
     };
 
+    // Security: Validate resolved path stays within workspace root
+    // Canonicalize to resolve any .. or symlinks
+    let canonical_root = workspace_root.canonicalize().map_err(|e| {
+        ServerError::invalid_request(format!(
+            "Cannot canonicalize workspace root '{}': {}",
+            workspace_root.display(),
+            e
+        ))
+    })?;
+
+    // For existing paths, canonicalize fully
+    // For non-existing paths, canonicalize parent and check containment
+    let canonical_resolved = if resolved.exists() {
+        resolved.canonicalize().map_err(|e| {
+            ServerError::invalid_request(format!(
+                "Cannot canonicalize path '{}': {}",
+                resolved.display(),
+                e
+            ))
+        })?
+    } else {
+        // Find the first existing ancestor and canonicalize that
+        let mut ancestor = resolved.clone();
+        while !ancestor.exists() {
+            if let Some(parent) = ancestor.parent() {
+                ancestor = parent.to_path_buf();
+            } else {
+                break;
+            }
+        }
+        let ancestor_for_prefix = ancestor.clone();
+        let canonical_ancestor = ancestor.canonicalize().unwrap_or(ancestor);
+        // Reconstruct the path relative to the canonical ancestor
+        if let Ok(remainder) = resolved.strip_prefix(&ancestor_for_prefix) {
+            canonical_ancestor.join(remainder)
+        } else {
+            resolved.clone()
+        }
+    };
+
+    // Check containment
+    if !canonical_resolved.starts_with(&canonical_root) {
+        return Err(ServerError::invalid_request(format!(
+            "Path '{}' is outside workspace root",
+            path
+        )));
+    }
+
     Ok(resolved)
 }
 

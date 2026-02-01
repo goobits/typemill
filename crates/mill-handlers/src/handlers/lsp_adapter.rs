@@ -5,11 +5,29 @@
 
 use async_trait::async_trait;
 use mill_plugin_system::LspService;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{debug, warn};
+
+/// Information about an LSP progress task
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LspProgressInfo {
+    /// Status: "in_progress", "completed", or "failed"
+    pub status: String,
+    /// Title of the progress task (e.g., "Indexing")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Current message (e.g., "Processing files...")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    /// Progress percentage (0-100)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub percentage: Option<u32>,
+}
 
 /// Direct LSP adapter that bypasses the old LSP manager and its hard-coded mappings
 #[derive(Clone)]
@@ -105,6 +123,60 @@ impl DirectLspAdapter {
         }
 
         Ok(client)
+    }
+
+    /// Get progress from all active LSP clients
+    ///
+    /// Returns a map of extension -> list of (token, state) pairs for all active progress tasks.
+    /// Useful for monitoring LSP server warmup/indexing progress.
+    pub async fn get_all_lsp_progress(
+        &self,
+    ) -> HashMap<String, Vec<(String, LspProgressInfo)>> {
+        let clients = self.lsp_clients.lock().await;
+        let mut result = HashMap::new();
+
+        for (extension, client) in clients.iter() {
+            let progress_list: Vec<(String, LspProgressInfo)> = client
+                .get_active_progress()
+                .into_iter()
+                .map(|(token, state)| {
+                    let token_str = token.to_string();
+                    let info = match state {
+                        mill_lsp::progress::ProgressState::InProgress {
+                            title,
+                            message,
+                            percentage,
+                        } => LspProgressInfo {
+                            status: "in_progress".to_string(),
+                            title: Some(title),
+                            message,
+                            percentage,
+                        },
+                        mill_lsp::progress::ProgressState::Completed { message } => {
+                            LspProgressInfo {
+                                status: "completed".to_string(),
+                                title: None,
+                                message,
+                                percentage: Some(100),
+                            }
+                        }
+                        mill_lsp::progress::ProgressState::Failed { reason } => LspProgressInfo {
+                            status: "failed".to_string(),
+                            title: None,
+                            message: Some(reason),
+                            percentage: None,
+                        },
+                    };
+                    (token_str, info)
+                })
+                .collect();
+
+            if !progress_list.is_empty() {
+                result.insert(extension.clone(), progress_list);
+            }
+        }
+
+        result
     }
 
     /// Query all active LSP servers for workspace symbols and merge results
