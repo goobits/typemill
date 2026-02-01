@@ -194,22 +194,22 @@ impl InspectHandler {
 
                     match item.as_str() {
                         "definition" => {
-                            result.definition = Some(self.apply_pagination(&content, params));
+                            result.definition = Some(self.apply_pagination(content, params));
                         }
                         "typeInfo" => {
                             result.type_info = Some(content);
                         }
                         "references" => {
-                            result.references = Some(self.apply_pagination(&content, params));
+                            result.references = Some(self.apply_pagination(content, params));
                         }
                         "implementations" => {
-                            result.implementations = Some(self.apply_pagination(&content, params));
+                            result.implementations = Some(self.apply_pagination(content, params));
                         }
                         "callHierarchy" => {
-                            result.call_hierarchy = Some(self.apply_pagination(&content, params));
+                            result.call_hierarchy = Some(self.apply_pagination(content, params));
                         }
                         "diagnostics" => {
-                            result.diagnostics = Some(self.apply_pagination(&content, params));
+                            result.diagnostics = Some(self.apply_pagination(content, params));
                         }
                         _ => {}
                     }
@@ -229,26 +229,27 @@ impl InspectHandler {
     }
 
     /// Apply pagination to list results
-    fn apply_pagination(&self, content: &Value, params: &InspectParams) -> Value {
-        if let Some(arr) = content.as_array() {
-            let offset = params.offset.unwrap_or(0);
-            let limit = params.limit;
+    fn apply_pagination(&self, content: Value, params: &InspectParams) -> Value {
+        match content {
+            Value::Array(arr) => {
+                let offset = params.offset.unwrap_or(0);
+                let limit = params.limit;
+                let total = arr.len();
 
-            let paginated: Vec<Value> = arr
-                .iter()
-                .skip(offset)
-                .take(limit.unwrap_or(usize::MAX))
-                .cloned()
-                .collect();
+                let paginated: Vec<Value> = arr
+                    .into_iter()
+                    .skip(offset)
+                    .take(limit.unwrap_or(usize::MAX))
+                    .collect();
 
-            json!({
-                "items": paginated,
-                "total": arr.len(),
-                "offset": offset,
-                "limit": limit
-            })
-        } else {
-            content.clone()
+                json!({
+                    "items": paginated,
+                    "total": total,
+                    "offset": offset,
+                    "limit": limit
+                })
+            }
+            other => other,
         }
     }
 }
@@ -433,7 +434,7 @@ mod tests {
             offset: Some(2),
         };
 
-        let result = handler.apply_pagination(&items, &params);
+        let result = handler.apply_pagination(items, &params);
         let result_items = result.get("items").unwrap().as_array().unwrap();
 
         assert_eq!(result_items.len(), 3);
@@ -459,7 +460,7 @@ mod tests {
             offset: Some(1),
         };
 
-        let result = handler.apply_pagination(&items, &params);
+        let result = handler.apply_pagination(items, &params);
         let result_items = result.get("items").unwrap().as_array().unwrap();
 
         assert_eq!(result_items.len(), 2);
