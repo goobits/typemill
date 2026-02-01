@@ -206,7 +206,6 @@ impl SearchHandler {
                             }
                         }
                     }
-                }
 
                 if needed_extensions.is_empty() {
                     break;
