@@ -272,13 +272,13 @@ async fn plan_documentation_and_config_edits(
     use std::path::PathBuf;
 
     let mut edits = Vec::new();
-    let mut files_to_scan: Vec<PathBuf> = Vec::new();
 
     // Find all markdown, TOML, YAML files in the project
     // Note: .rs files are NOT included here - they're fully handled by reference_updater
     // which updates both imports AND qualified paths (e.g., crate_b::func()).
     // Including .rs here would create duplicate overlapping edits.
-    let file_extensions = ["md", "markdown", "toml", "yaml", "yml"];
+    let file_extensions: std::collections::HashSet<&str> =
+        ["md", "markdown", "toml", "yaml", "yml"].into_iter().collect();
 
     // Pre-compute the files inside the directory being moved so we can
     // update references to specific files (e.g., docs/guide.md)
@@ -297,8 +297,40 @@ async fn plan_documentation_and_config_edits(
         }
     }
 
-    for ext in &file_extensions {
-        info!(extension = ext, "Looking for plugin for extension");
+    // OPTIMIZATION: Walk the project ONCE and collect all files with target extensions
+    // This replaces the previous O(5N) approach (walking 5 times for each extension)
+    // with O(N) - a single walk that collects files grouped by extension
+    let mut files_by_extension: std::collections::HashMap<String, Vec<PathBuf>> =
+        std::collections::HashMap::new();
+
+    let walker = ignore::WalkBuilder::new(project_root)
+        .hidden(false)
+        .git_ignore(true)
+        .build();
+
+    for entry in walker.flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                if file_extensions.contains(ext) {
+                    files_by_extension
+                        .entry(ext.to_string())
+                        .or_default()
+                        .push(path.to_path_buf());
+                }
+            }
+        }
+    }
+
+    info!(
+        extensions_found = files_by_extension.len(),
+        total_files = files_by_extension.values().map(|v| v.len()).sum::<usize>(),
+        "Collected files for doc/config update in single walk"
+    );
+
+    // Process files grouped by extension
+    for (ext, files_to_scan) in &files_by_extension {
+        info!(extension = ext, files_count = files_to_scan.len(), "Processing extension");
 
         if let Some(plugin) = plugin_registry.find_by_extension(ext) {
             info!(
@@ -307,31 +339,8 @@ async fn plan_documentation_and_config_edits(
                 "Found plugin for extension"
             );
 
-            // Walk the project to find files with this extension
-            let walker = ignore::WalkBuilder::new(project_root)
-                .hidden(false)
-                .git_ignore(true)
-                .build();
-
-            for entry in walker.flatten() {
-                let path = entry.path();
-                if path.is_file() {
-                    if let Some(file_ext) = path.extension().and_then(|e| e.to_str()) {
-                        if file_ext == *ext {
-                            files_to_scan.push(path.to_path_buf());
-                        }
-                    }
-                }
-            }
-
-            info!(
-                extension = ext,
-                files_found = files_to_scan.len(),
-                "Found files for extension"
-            );
-
             // Process each file with its plugin
-            for file_path in &files_to_scan {
+            for file_path in files_to_scan {
                 match tokio::fs::read_to_string(file_path).await {
                     Ok(content) => {
                         let mut combined_content = content.clone();
@@ -437,8 +446,6 @@ async fn plan_documentation_and_config_edits(
                     }
                 }
             }
-
-            files_to_scan.clear(); // Clear for next extension
         } else {
             info!(extension = ext, "No plugin found for extension");
         }
