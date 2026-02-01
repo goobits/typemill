@@ -405,11 +405,18 @@ impl ReferenceUpdater {
                 }
 
                 // Step 2: Update imports by calling with individual file paths
-                // Get all files within the moved directory
-                let files_in_directory: Vec<&PathBuf> = project_files
-                    .iter()
-                    .filter(|f| f.starts_with(old_path) && f.is_file())
-                    .collect();
+                // IMPORTANT: Skip this step for files INSIDE the moved directory.
+                // Step 1 already handled internal updates via directory-level processing.
+                // Processing individual files here would corrupt relative imports between
+                // files that are both moving together.
+                let is_importer_inside_moved_dir = file_path.starts_with(old_path);
+
+                if !is_importer_inside_moved_dir {
+                    // Get all files within the moved directory
+                    let files_in_directory: Vec<&PathBuf> = project_files
+                        .iter()
+                        .filter(|f| f.starts_with(old_path) && f.is_file())
+                        .collect();
 
                 // Process each file in the directory that might be referenced
                 for file_in_dir in &files_in_directory {
@@ -447,6 +454,7 @@ impl ReferenceUpdater {
                         }
                     }
                 }
+                } // end if !is_importer_inside_moved_dir
 
                 // If any changes were made, add a single edit for this file
                 if total_changes > 0 && combined_content != content {
