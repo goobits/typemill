@@ -6,14 +6,14 @@
 
 mod cache;
 pub mod detectors;
+pub mod helpers;
 
 pub use cache::{FileImportInfo, ImportCache};
+pub use helpers::{compute_line_info, create_full_file_edit, create_import_update_edit, create_path_reference_edit};
 
 use async_trait::async_trait;
 use mill_foundation::errors::MillError as ServerError;
-use mill_foundation::protocol::{
-    DependencyUpdate, EditLocation, EditPlan, EditPlanMetadata, EditType, TextEdit,
-};
+use mill_foundation::protocol::{DependencyUpdate, EditPlan, EditPlanMetadata};
 
 type ServerResult<T> = Result<T, ServerError>;
 use std::collections::{HashMap, HashSet};
@@ -469,9 +469,6 @@ impl ReferenceUpdater {
 
                     if let Some((updated_content, count)) = rewrite_result {
                         if count > 0 && updated_content != content {
-                            let line_count = content.lines().count();
-                            let last_line_len = content.lines().last().map(|l| l.len()).unwrap_or(0);
-
                             // For directory renames, files inside the renamed directory need to use the NEW path
                             // For file renames, all affected files are outside the renamed file, so use original paths
                             let edit_file_path =
@@ -485,23 +482,13 @@ impl ReferenceUpdater {
                                     file_path.clone()
                                 };
 
-                            file_edits.push(TextEdit {
-                                file_path: Some(edit_file_path.to_string_lossy().to_string()),
-                                edit_type: EditType::UpdateImport,
-                                location: EditLocation {
-                                    start_line: 0,
-                                    start_column: 0,
-                                    end_line: line_count.saturating_sub(1) as u32,
-                                    end_column: last_line_len as u32,
-                                },
-                                original_text: content.clone(),
-                                new_text: updated_content,
-                                priority: 1,
-                                description: format!(
-                                    "Update imports in {} for crate rename",
-                                    edit_file_path.display()
-                                ),
-                            });
+                            file_edits.push(create_import_update_edit(
+                                &edit_file_path,
+                                content.clone(),
+                                updated_content,
+                                count,
+                                "crate rename",
+                            ));
                         }
                     }
                 } else if is_directory_rename {
@@ -596,9 +583,6 @@ impl ReferenceUpdater {
 
                     // If any changes were made, add a single edit for this file
                     if total_changes > 0 && combined_content != content {
-                        let line_count = content.lines().count();
-                        let last_line_len = content.lines().last().map(|l| l.len()).unwrap_or(0);
-
                         tracing::info!(
                             file_path = %file_path.display(),
                             total_changes,
@@ -606,24 +590,13 @@ impl ReferenceUpdater {
                             total_changes
                         );
 
-                        file_edits.push(TextEdit {
-                            file_path: Some(file_path.to_string_lossy().to_string()),
-                            edit_type: EditType::UpdateImport,
-                            location: EditLocation {
-                                start_line: 0,
-                                start_column: 0,
-                                end_line: line_count.saturating_sub(1) as u32,
-                                end_column: last_line_len as u32,
-                            },
-                            original_text: content.clone(),
-                            new_text: combined_content,
-                            priority: 1,
-                            description: format!(
-                                "Update {} imports in {} for directory rename",
-                                total_changes,
-                                file_path.display()
-                            ),
-                        });
+                        file_edits.push(create_import_update_edit(
+                            &file_path,
+                            content.clone(),
+                            combined_content,
+                            total_changes,
+                            "directory rename",
+                        ));
                     }
                 } else {
                     // File rename logic
@@ -658,26 +631,13 @@ impl ReferenceUpdater {
 
                     if let Some((updated_content, count)) = rewrite_result {
                         if count > 0 && updated_content != content {
-                            let line_count = content.lines().count();
-                            let last_line_len = content.lines().last().map(|l| l.len()).unwrap_or(0);
-
-                            file_edits.push(TextEdit {
-                                file_path: Some(file_path.to_string_lossy().to_string()),
-                                edit_type: EditType::UpdateImport,
-                                location: EditLocation {
-                                    start_line: 0,
-                                    start_column: 0,
-                                    end_line: line_count.saturating_sub(1) as u32,
-                                    end_column: last_line_len as u32,
-                                },
-                                original_text: content.clone(),
-                                new_text: updated_content,
-                                priority: 1,
-                                description: format!(
-                                    "Update imports in {} for file rename",
-                                    file_path.display()
-                                ),
-                            });
+                            file_edits.push(create_import_update_edit(
+                                &file_path,
+                                content.clone(),
+                                updated_content,
+                                count,
+                                "file rename",
+                            ));
                         }
                     }
                 }

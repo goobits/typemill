@@ -276,7 +276,7 @@ async fn plan_documentation_and_config_edits(
     project_root: &Path,
     rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
 ) -> ServerResult<Vec<mill_foundation::protocol::TextEdit>> {
-    use mill_foundation::protocol::{EditLocation, EditType, TextEdit};
+    use crate::services::reference_updater::create_path_reference_edit;
     use std::path::PathBuf;
     use std::sync::Arc;
 
@@ -430,10 +430,6 @@ async fn plan_documentation_and_config_edits(
                 rename_info.as_ref().as_ref(),
             ) {
                 if total_changes > 0 && combined_content != content {
-                    // File needs updating - create a full-file replacement edit
-                    let line_count = content.lines().count().max(1);
-                    let last_line_len = content.lines().last().map(|l| l.len()).unwrap_or(0);
-
                     // CRITICAL: Check if this file will be moved as part of directory rename
                     // If so, use NEW path in edit (edit_plan.rs will map back to OLD path for snapshots)
                     let target_file_path = moved_files
@@ -450,24 +446,12 @@ async fn plan_documentation_and_config_edits(
                         );
                     }
 
-                    let edit = TextEdit {
-                        file_path: Some(target_file_path.to_string_lossy().to_string()),
-                        edit_type: EditType::Replace,
-                        location: EditLocation {
-                            start_line: 0,
-                            start_column: 0,
-                            end_line: (line_count - 1) as u32,
-                            end_column: last_line_len as u32,
-                        },
-                        original_text: content.clone(),
-                        new_text: combined_content,
-                        priority: 0,
-                        description: format!(
-                            "Update {} path references in {}",
-                            total_changes,
-                            file_path.display()
-                        ),
-                    };
+                    let edit = create_path_reference_edit(
+                        target_file_path,
+                        content.clone(),
+                        combined_content,
+                        total_changes,
+                    );
 
                     info!(
                         file = %file_path.display(),
