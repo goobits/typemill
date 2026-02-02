@@ -10,8 +10,10 @@ use crate::tsconfig::{ResolvedTsConfig, TsConfig};
 use indexmap::IndexMap;
 use mill_plugin_api::path_alias_resolver::PathAliasResolver;
 use regex::Regex;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::{Arc, Mutex};
 
 /// TypeScript-specific path alias resolver
@@ -357,9 +359,17 @@ impl TypeScriptPathAliasResolver {
             }
         }
 
-        let content = std::fs::read_to_string(config_path).ok()?;
         let config_dir = config_path.parent()?;
-        let map = Arc::new(parse_aliases_from_config(&content, config_dir));
+        let map = if let Some(runtime_map) = load_aliases_from_config_runtime(
+            config_path,
+            config_dir,
+            ConfigKind::Svelte,
+        ) {
+            Arc::new(runtime_map)
+        } else {
+            let content = std::fs::read_to_string(config_path).ok()?;
+            Arc::new(parse_aliases_from_config(&content, config_dir))
+        };
 
         if let Ok(mut cache) = self.svelte_alias_cache.lock() {
             cache.insert(config_path.to_path_buf(), Arc::clone(&map));
@@ -379,9 +389,15 @@ impl TypeScriptPathAliasResolver {
             }
         }
 
-        let content = std::fs::read_to_string(config_path).ok()?;
         let config_dir = config_path.parent()?;
-        let map = Arc::new(parse_aliases_from_config(&content, config_dir));
+        let map = if let Some(runtime_map) =
+            load_aliases_from_config_runtime(config_path, config_dir, ConfigKind::Vite)
+        {
+            Arc::new(runtime_map)
+        } else {
+            let content = std::fs::read_to_string(config_path).ok()?;
+            Arc::new(parse_aliases_from_config(&content, config_dir))
+        };
 
         if let Ok(mut cache) = self.vite_alias_cache.lock() {
             cache.insert(config_path.to_path_buf(), Arc::clone(&map));
@@ -701,6 +717,166 @@ fn parse_aliases_from_config(
 enum AliasBlockType {
     Object,
     Array,
+}
+
+#[derive(Copy, Clone)]
+enum ConfigKind {
+    Svelte,
+    Vite,
+}
+
+fn load_aliases_from_config_runtime(
+    config_path: &Path,
+    config_dir: &Path,
+    kind: ConfigKind,
+) -> Option<IndexMap<String, Vec<PathBuf>>> {
+    let ext = config_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+    if ext == "ts" {
+        return None;
+    }
+
+    let absolute = config_path.canonicalize().ok()?;
+    let file_arg = absolute.to_string_lossy().to_string();
+
+    let output = if ext == "mjs" {
+        run_node_alias_script(&file_arg, kind, NodeMode::Esm)
+    } else if ext == "cjs" {
+        run_node_alias_script(&file_arg, kind, NodeMode::Cjs)
+    } else {
+        run_node_alias_script(&file_arg, kind, NodeMode::Esm)
+            .or_else(|| run_node_alias_script(&file_arg, kind, NodeMode::Cjs))
+    }?;
+
+    let alias_values: Vec<(String, String)> = parse_alias_json(&output)?;
+
+    let mut map: IndexMap<String, Vec<PathBuf>> = IndexMap::new();
+    for (find, replacement) in alias_values {
+        if let Some(path) = normalize_alias_path(&replacement, config_dir) {
+            map.entry(find).or_default().push(path);
+        }
+    }
+
+    if map.is_empty() {
+        None
+    } else {
+        Some(map)
+    }
+}
+
+#[derive(Copy, Clone)]
+enum NodeMode {
+    Esm,
+    Cjs,
+}
+
+fn run_node_alias_script(
+    file_arg: &str,
+    kind: ConfigKind,
+    mode: NodeMode,
+) -> Option<String> {
+    let kind_str = match kind {
+        ConfigKind::Svelte => "svelte",
+        ConfigKind::Vite => "vite",
+    };
+
+    let (arg0, arg1) = match mode {
+        NodeMode::Esm => (
+            "--input-type=module",
+            r#"import { pathToFileURL } from "url";
+const file = process.argv[1];
+const kind = process.argv[2];
+const mod = await import(pathToFileURL(file).href);
+const cfg = mod?.default ?? mod;
+const resolved = typeof cfg === "function" ? await cfg({ command: "build", mode: "production" }) : cfg;
+const alias = kind === "svelte" ? resolved?.kit?.alias : resolved?.resolve?.alias;
+const normalized = [];
+const pushEntry = (find, replacement) => {
+  if (!find || !replacement) return;
+  if (typeof replacement === "string") normalized.push([find, replacement]);
+  else if (Array.isArray(replacement)) replacement.forEach(r => { if (typeof r === "string") normalized.push([find, r]); });
+};
+if (Array.isArray(alias)) {
+  alias.forEach(entry => {
+    if (!entry) return;
+    if (typeof entry.find === "string" && typeof entry.replacement === "string") {
+      pushEntry(entry.find, entry.replacement);
+    }
+  });
+} else if (alias && typeof alias === "object") {
+  for (const [key, value] of Object.entries(alias)) {
+    pushEntry(key, value);
+  }
+}
+process.stdout.write(JSON.stringify(normalized));"#,
+        ),
+        NodeMode::Cjs => (
+            "",
+            r#"const file = process.argv[1];
+const kind = process.argv[2];
+const mod = require(file);
+const cfg = mod?.default ?? mod;
+const resolved = typeof cfg === "function" ? cfg({ command: "build", mode: "production" }) : cfg;
+const alias = kind === "svelte" ? resolved?.kit?.alias : resolved?.resolve?.alias;
+const normalized = [];
+const pushEntry = (find, replacement) => {
+  if (!find || !replacement) return;
+  if (typeof replacement === "string") normalized.push([find, replacement]);
+  else if (Array.isArray(replacement)) replacement.forEach(r => { if (typeof r === "string") normalized.push([find, r]); });
+};
+if (Array.isArray(alias)) {
+  alias.forEach(entry => {
+    if (!entry) return;
+    if (typeof entry.find === "string" && typeof entry.replacement === "string") {
+      pushEntry(entry.find, entry.replacement);
+    }
+  });
+} else if (alias && typeof alias === "object") {
+  for (const [key, value] of Object.entries(alias)) {
+    pushEntry(key, value);
+  }
+}
+process.stdout.write(JSON.stringify(normalized));"#,
+        ),
+    };
+
+    let mut cmd = Command::new("node");
+    if !arg0.is_empty() {
+        cmd.arg(arg0);
+    }
+    let output = cmd
+        .arg("-e")
+        .arg(arg1)
+        .arg(file_arg)
+        .arg(kind_str)
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if stdout.is_empty() {
+        None
+    } else {
+        Some(stdout)
+    }
+}
+
+fn parse_alias_json(json_str: &str) -> Option<Vec<(String, String)>> {
+    let value: Value = serde_json::from_str(json_str).ok()?;
+    let array = value.as_array()?;
+    let mut result = Vec::new();
+    for entry in array {
+        let pair = entry.as_array()?;
+        if pair.len() != 2 {
+            continue;
+        }
+        let find = pair[0].as_str()?.to_string();
+        let replacement = pair[1].as_str()?.to_string();
+        result.push((find, replacement));
+    }
+    Some(result)
 }
 
 fn extract_alias_block(content: &str, start: usize) -> Option<(&str, AliasBlockType)> {
