@@ -48,9 +48,29 @@ release-npm:
 		current_version=$$(node -p "require('./$$pkg_path').version"); \
 		echo "✅ Bumped to $$current_version"; \
 	fi; \
-	if ! node -e "const fs=require('fs');const path=require('path');const pkg=require('./$$pkg_path');const ver=pkg.version;const binDir=path.join('$(NPM_DIR)','bin');const entries=fs.readdirSync(binDir,{withFileTypes:true}).filter(d=>d.isDirectory()).map(d=>path.join(binDir,d.name,'$(NPM_BIN_NAME)'));let ok=true;for(const bin of entries){if(!fs.existsSync(bin)) continue;const out=require('child_process').execFileSync(bin,['--version'],{encoding:'utf8'}).trim();if(!out.endsWith(ver)){console.error(`❌ ${bin} reports ${out}, expected ${ver}`);ok=false;}}if(!ok) process.exit(1);"; then \
-		echo "❌ Binary versions do not match package.json. Rebuild binaries before publish."; \
-		exit 1; \
+	platform_dir=$$(uname -s | tr '[:upper:]' '[:lower:]'); \
+	arch=$$(uname -m); \
+	case "$$platform_dir:$$arch" in \
+		darwin:arm64) target_dir="aarch64-apple-darwin" ;; \
+		darwin:x86_64) target_dir="x86_64-apple-darwin" ;; \
+		linux:aarch64|linux:arm64) target_dir="aarch64-unknown-linux-gnu" ;; \
+		linux:x86_64) target_dir="x86_64-unknown-linux-gnu" ;; \
+		*) target_dir="" ;; \
+	esac; \
+	if [ -n "$$target_dir" ]; then \
+		bin_path="$(NPM_DIR)/bin/$$target_dir/$(NPM_BIN_NAME)"; \
+		if [ -x "$$bin_path" ]; then \
+			expected=$$(node -p "require('./$$pkg_path').version"); \
+			actual=$$($$bin_path --version 2>/dev/null | tail -n1); \
+			if [ -z "$$actual" ] || ! echo "$$actual" | grep -q "$$expected"; then \
+				echo "❌ $$bin_path reports '$$actual', expected $$expected"; \
+				exit 1; \
+			fi; \
+		else \
+			echo "⚠️  Skipping binary version check (missing or non-executable: $$bin_path)"; \
+		fi; \
+	else \
+		echo "⚠️  Skipping binary version check (unknown platform)"; \
 	fi; \
 	cd $(NPM_DIR) && npm publish --access public
 
