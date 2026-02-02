@@ -26,6 +26,10 @@ pub mod relocate_handler;
 pub mod rename_all_handler;
 pub mod search_handler;
 pub mod workspace_handler;
+
+#[cfg(test)]
+mod lsp_will_rename_test;
+
 // Note: mcp_tools module removed - all functionality now handled by plugin system
 pub use file_operation_handler::FileOperationHandler;
 pub use lsp_adapter::DirectLspAdapter;

@@ -463,32 +463,6 @@ impl DirectLspAdapter {
         Ok(Value::Array(all_symbols))
     }
 
-    /// Extract symbol positions (line, character) from documentSymbol response
-    fn extract_symbol_positions(&self, response: &Value) -> Vec<(u32, u32)> {
-        let mut positions = Vec::new();
-
-        if let Some(symbols) = response.as_array() {
-            for symbol in symbols {
-                // Handle both DocumentSymbol and SymbolInformation formats
-                if let Some(range) = symbol.get("range").or_else(|| symbol.get("location").and_then(|l| l.get("range"))) {
-                    if let (Some(line), Some(character)) = (
-                        range.get("start").and_then(|s| s.get("line")).and_then(|l| l.as_u64()),
-                        range.get("start").and_then(|s| s.get("character")).and_then(|c| c.as_u64()),
-                    ) {
-                        positions.push((line as u32, character as u32));
-                    }
-                }
-
-                // Recursively handle children (for DocumentSymbol format)
-                if let Some(children) = symbol.get("children") {
-                    positions.extend(self.extract_symbol_positions(children));
-                }
-            }
-        }
-
-        positions
-    }
-
     /// Gracefully shutdown all LSP clients
     pub async fn shutdown(&self) -> Result<(), String> {
         let mut clients_map = self.lsp_clients.lock().await;
@@ -561,125 +535,200 @@ impl DirectLspAdapter {
             }
         }
     }
+
+    /// Send workspace/willRenameFiles request to get import updates for a file rename
+    ///
+    /// This is the CORRECT LSP method for finding files that need import updates.
+    /// Unlike textDocument/references (which returns symbol usages), this method
+    /// returns a WorkspaceEdit with the actual import path changes needed.
+    ///
+    /// Returns the list of files that would need import updates.
+    pub async fn find_files_using_will_rename(
+        &self,
+        old_path: &std::path::Path,
+        new_path: &std::path::Path,
+    ) -> Result<Vec<std::path::PathBuf>, String> {
+        // Get extension from file path
+        let extension = old_path
+            .extension()
+            .and_then(|e| e.to_str())
+            .ok_or_else(|| format!("Could not get extension from path: {}", old_path.display()))?;
+
+        // Get or create LSP client for this extension
+        let client = self.get_or_create_client(extension).await?;
+
+        // Check if the server supports willRenameFiles
+        // TypeScript LSP supports this via fileOperations.willRename capability
+        if !client.supports_will_rename_files().await {
+            debug!(
+                extension = %extension,
+                "LSP server does not support workspace/willRenameFiles"
+            );
+            return Err(format!(
+                "LSP server for '{}' does not support workspace/willRenameFiles",
+                extension
+            ));
+        }
+
+        // Ensure file is open in LSP for proper context
+        if let Err(e) = client.notify_file_opened(old_path).await {
+            debug!(
+                file = %old_path.display(),
+                error = %e,
+                "Failed to open file in LSP for willRenameFiles"
+            );
+            // Continue anyway - file might already be open
+        }
+
+        // Build the request params
+        let old_uri = format!("file://{}", old_path.display());
+        let new_uri = format!("file://{}", new_path.display());
+
+        let params = json!({
+            "files": [
+                {
+                    "oldUri": &old_uri,
+                    "newUri": &new_uri
+                }
+            ]
+        });
+
+        debug!(
+            old_path = %old_path.display(),
+            new_path = %new_path.display(),
+            "Sending workspace/willRenameFiles request"
+        );
+
+        // Send the request
+        let response = client
+            .send_request("workspace/willRenameFiles", params)
+            .await
+            .map_err(|e| format!("workspace/willRenameFiles request failed: {}", e))?;
+
+        // Parse the WorkspaceEdit response to extract affected files
+        let affected_files = Self::extract_affected_files_from_workspace_edit(&response);
+
+        debug!(
+            old_path = %old_path.display(),
+            affected_files_count = affected_files.len(),
+            "workspace/willRenameFiles returned affected files"
+        );
+
+        Ok(affected_files)
+    }
+
+    /// Extract file paths from a WorkspaceEdit response
+    ///
+    /// WorkspaceEdit can have two formats:
+    /// 1. "changes": { uri -> TextEdit[] }
+    /// 2. "documentChanges": TextDocumentEdit[]
+    ///
+    /// This function handles both and returns unique file paths.
+    fn extract_affected_files_from_workspace_edit(
+        workspace_edit: &serde_json::Value,
+    ) -> Vec<std::path::PathBuf> {
+        let mut files = std::collections::HashSet::new();
+
+        // Format 1: "changes" (uri -> edits[])
+        if let Some(changes) = workspace_edit.get("changes").and_then(|c| c.as_object()) {
+            for uri in changes.keys() {
+                if let Some(path) = Self::uri_to_path(uri) {
+                    files.insert(path);
+                }
+            }
+        }
+
+        // Format 2: "documentChanges" (array of TextDocumentEdit)
+        if let Some(doc_changes) = workspace_edit
+            .get("documentChanges")
+            .and_then(|d| d.as_array())
+        {
+            for change in doc_changes {
+                // TextDocumentEdit has textDocument.uri
+                if let Some(uri) = change
+                    .get("textDocument")
+                    .and_then(|td| td.get("uri"))
+                    .and_then(|u| u.as_str())
+                {
+                    if let Some(path) = Self::uri_to_path(uri) {
+                        files.insert(path);
+                    }
+                }
+            }
+        }
+
+        files.into_iter().collect()
+    }
+
+    /// Convert a file:// URI to a PathBuf
+    fn uri_to_path(uri: &str) -> Option<std::path::PathBuf> {
+        if !uri.starts_with("file://") {
+            return None;
+        }
+        let path_str = uri.trim_start_matches("file://");
+        // Handle URL-encoded paths (spaces become %20, etc.)
+        match urlencoding::decode(path_str) {
+            Ok(decoded) => Some(std::path::PathBuf::from(decoded.as_ref())),
+            Err(_) => Some(std::path::PathBuf::from(path_str)),
+        }
+    }
 }
 
 #[async_trait]
 impl LspImportFinder for DirectLspAdapter {
     /// Find all files that import/reference the given file path
     ///
-    /// Uses LSP's textDocument/references to find all files that reference
-    /// symbols exported from the given file. This is much faster than scanning
-    /// the entire project because LSP maintains an index.
+    /// Uses LSP's workspace/willRenameFiles to find all files that would need
+    /// import updates if this file were renamed. This is the CORRECT approach
+    /// (unlike textDocument/references which returns symbol usages).
     ///
-    /// Returns a list of file paths that import/reference the given file.
+    /// Returns a list of file paths that import the given file.
     async fn find_files_that_import(
         &self,
         file_path: &std::path::Path,
     ) -> Result<Vec<std::path::PathBuf>, String> {
-        use std::collections::HashSet;
+        // Generate a hypothetical new path for the willRenameFiles query.
+        // We use a path that preserves the extension but changes the name,
+        // which triggers the LSP to compute all import updates needed.
+        let hypothetical_new_path = if let Some(parent) = file_path.parent() {
+            let stem = file_path.file_stem().and_then(|s| s.to_str()).unwrap_or("file");
+            let ext = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+            if ext.is_empty() {
+                parent.join(format!("{}_renamed", stem))
+            } else {
+                parent.join(format!("{}_renamed.{}", stem, ext))
+            }
+        } else {
+            return Err(format!(
+                "Could not determine parent directory for: {}",
+                file_path.display()
+            ));
+        };
 
-        // Get extension from file path
-        let extension = file_path
-            .extension()
-            .and_then(|e| e.to_str())
-            .ok_or_else(|| format!("Could not get extension from path: {}", file_path.display()))?;
-
-        // Get or create LSP client for this extension
-        let client = self.get_or_create_client(extension).await?;
-
-        // Ensure file is open in LSP
-        if let Err(e) = client.notify_file_opened(file_path).await {
-            debug!(
-                file = %file_path.display(),
-                error = %e,
-                "Failed to open file in LSP for reference search"
-            );
-            // Continue anyway - file might already be open
-        }
-
-        // Get document symbols to find exportable symbols
-        let uri = format!("file://{}", file_path.display());
-        let doc_symbols_params = json!({
-            "textDocument": { "uri": &uri }
-        });
-
-        let symbols_response = client
-            .send_request("textDocument/documentSymbol", doc_symbols_params)
+        // Use workspace/willRenameFiles to find files that would need import updates
+        match self
+            .find_files_using_will_rename(file_path, &hypothetical_new_path)
             .await
-            .map_err(|e| format!("Failed to get document symbols: {}", e))?;
-
-        // Extract symbol positions from response
-        let symbol_positions = self.extract_symbol_positions(&symbols_response);
-
-        if symbol_positions.is_empty() {
-            debug!(
-                file = %file_path.display(),
-                "No symbols found in file for reference search"
-            );
-            return Ok(Vec::new());
-        }
-
-        // Query references for each symbol and collect unique file paths
-        let mut importing_files: HashSet<std::path::PathBuf> = HashSet::new();
-
-        // Limit to first few symbols to avoid too many LSP calls
-        const MAX_SYMBOLS_TO_CHECK: usize = 5;
-        let symbols_to_check = symbol_positions.into_iter().take(MAX_SYMBOLS_TO_CHECK);
-
-        for (line, character) in symbols_to_check {
-            let refs_params = json!({
-                "textDocument": { "uri": &uri },
-                "position": { "line": line, "character": character },
-                "context": { "includeDeclaration": false }
-            });
-
-            match client
-                .send_request("textDocument/references", refs_params)
-                .await
-            {
-                Ok(refs_response) => {
-                    if let Some(refs) = refs_response.as_array() {
-                        for reference in refs {
-                            if let Some(ref_uri) = reference.get("uri").and_then(|u| u.as_str()) {
-                                // Skip references in the same file
-                                if ref_uri == uri {
-                                    continue;
-                                }
-
-                                // Convert URI to path
-                                if ref_uri.starts_with("file://") {
-                                    let path_str = ref_uri.trim_start_matches("file://");
-                                    // Handle URL-encoded paths
-                                    if let Ok(decoded) = urlencoding::decode(path_str) {
-                                        let path = std::path::PathBuf::from(decoded.as_ref());
-                                        importing_files.insert(path);
-                                    } else {
-                                        importing_files.insert(std::path::PathBuf::from(path_str));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    debug!(
-                        file = %file_path.display(),
-                        line = line,
-                        error = %e,
-                        "Failed to get references for symbol"
-                    );
-                    // Continue with other symbols
-                }
+        {
+            Ok(files) => {
+                debug!(
+                    file = %file_path.display(),
+                    importing_files_count = files.len(),
+                    "Found files that import this file via workspace/willRenameFiles"
+                );
+                Ok(files)
+            }
+            Err(e) => {
+                debug!(
+                    file = %file_path.display(),
+                    error = %e,
+                    "workspace/willRenameFiles failed - returning empty list"
+                );
+                // Return empty list instead of falling back to broken textDocument/references.
+                // The plugin-based scanner will be used as the fallback in ReferenceUpdater.
+                Ok(Vec::new())
             }
         }
-
-        debug!(
-            file = %file_path.display(),
-            importing_files_count = importing_files.len(),
-            "Found files that import this file via LSP"
-        );
-
-        Ok(importing_files.into_iter().collect())
     }
 
     /// Find all files that import any file within a directory
@@ -721,7 +770,7 @@ impl LspImportFinder for DirectLspAdapter {
         const MAX_FILES_TO_CHECK: usize = 20;
         let files_to_check: Vec<_> = files_in_dir.into_iter().take(MAX_FILES_TO_CHECK).collect();
 
-        // Find importers for each file
+        // Find importers for each file using workspace/willRenameFiles
         for file_path in &files_to_check {
             match self.find_files_that_import(file_path).await {
                 Ok(importers) => {

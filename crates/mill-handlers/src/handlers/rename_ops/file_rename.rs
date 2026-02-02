@@ -52,11 +52,19 @@ impl RenameService {
         // Get concrete AppState to access move_service()
         let concrete_state = get_concrete_app_state(&context.app_state)?;
 
-        // NOTE: Not using LSP finder - see relocate_ops/file_move.rs for explanation
+        // Get LSP import finder from context (uses workspace/willRenameFiles for correct import detection)
+        // The finder may return empty if the LSP doesn't support willRenameFiles, in which case
+        // the plugin-based scanner (TypeScriptReferenceDetector) is used as a fallback.
+        let lsp_adapter_guard = context.lsp_adapter.lock().await;
+        let lsp_finder: Option<&dyn mill_services::services::reference_updater::LspImportFinder> =
+            lsp_adapter_guard
+                .as_ref()
+                .map(|adapter| adapter.as_import_finder());
+
         // Call MoveService directly to get the EditPlan (using absolute paths)
         let edit_plan = concrete_state
             .move_service()
-            .plan_file_move_with_scope(&abs_old, &abs_new, Some(&rename_scope), None)
+            .plan_file_move_with_scope(&abs_old, &abs_new, Some(&rename_scope), lsp_finder)
             .await?;
 
         debug!(

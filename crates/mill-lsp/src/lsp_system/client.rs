@@ -870,6 +870,26 @@ impl LspClient {
         }
     }
 
+    /// Check if the server supports workspace/willRenameFiles
+    ///
+    /// This capability allows clients to request import path updates when files are renamed.
+    /// TypeScript LSP supports this via fileOperations.willRename.
+    pub async fn supports_will_rename_files(&self) -> bool {
+        let caps = self.server_capabilities.lock().await;
+        match caps.as_ref() {
+            Some(c) => {
+                // Check if workspace.fileOperations.willRename is supported
+                if let Some(ref workspace) = c.workspace {
+                    if let Some(ref file_ops) = workspace.file_operations {
+                        return file_ops.will_rename.is_some();
+                    }
+                }
+                false
+            }
+            None => true, // Unknown capabilities - try anyway
+        }
+    }
+
     /// Get cached diagnostics for a file URI
     ///
     /// Returns diagnostics received via textDocument/publishDiagnostics notifications.
