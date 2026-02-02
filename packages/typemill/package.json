@@ -1,6 +1,6 @@
 {
   "name": "@goobits/typemill",
-  "version": "0.8.8",
+  "version": "0.8.9",
   "description": "Pure Rust MCP server bridging Language Server Protocol functionality to AI coding assistants",
   "keywords": [
     "mcp",
@@ -21,8 +21,8 @@
   "license": "MIT",
   "author": "Anthropic",
   "bin": {
-    "typemill": "./bin/run.js",
-    "mill": "./bin/run.js"
+    "typemill": "bin/run.js",
+    "mill": "bin/run.js"
   },
   "files": [
     "bin/",
