@@ -30,6 +30,7 @@ NPM_DIR ?= packages/typemill
 NPM_PKG ?= @goobits/typemill
 NPM_VERSION ?= $(shell node -p "require('./$(NPM_DIR)/package.json').version" 2>/dev/null)
 NPM_BUMP ?= patch
+NPM_BIN_NAME ?= mill
 
 release-rust:
 	$(CARGO) build --release
@@ -45,6 +46,10 @@ release-npm:
 		cd $(NPM_DIR) && npm version $(NPM_BUMP) --no-git-tag-version; \
 		current_version=$$(node -p "require('./package.json').version"); \
 		echo "✅ Bumped to $$current_version"; \
+	fi; \
+	if ! node -e "const fs=require('fs');const path=require('path');const pkg=require('./$(NPM_DIR)/package.json');const ver=pkg.version;const binDir=path.join('$(NPM_DIR)','bin');const entries=fs.readdirSync(binDir,{withFileTypes:true}).filter(d=>d.isDirectory()).map(d=>path.join(binDir,d.name,'$(NPM_BIN_NAME)'));let ok=true;for(const bin of entries){if(!fs.existsSync(bin)) continue;const out=require('child_process').execFileSync(bin,['--version'],{encoding:'utf8'}).trim();if(!out.endsWith(ver)){console.error(`❌ ${bin} reports ${out}, expected ${ver}`);ok=false;}}if(!ok) process.exit(1);"; then \
+		echo "❌ Binary versions do not match package.json. Rebuild binaries before publish."; \
+		exit 1; \
 	fi; \
 	cd $(NPM_DIR) && npm publish --access public
 
