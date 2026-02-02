@@ -6,6 +6,7 @@ export interface NavItem {
 
 /**
  * Generate navigation structure from docs directory
+ * Updated to match actual files in docs/
  */
 export function generateNavigation(): NavItem[] {
 	return [
@@ -14,17 +15,33 @@ export function generateNavigation(): NavItem[] {
 			href: '/'
 		},
 		{
-			label: 'Documentation',
-			href: '/docs',
+			label: 'User Guide',
+			href: '/user-guide/getting-started',
 			children: [
 				{
 					label: 'Getting Started',
-					href: '/docs'
+					href: '/user-guide/getting-started'
+				},
+				{
+					label: 'Configuration',
+					href: '/user-guide/configuration'
+				},
+				{
+					label: 'Cheatsheet',
+					href: '/user-guide/cheatsheet'
+				},
+				{
+					label: 'Cookbook',
+					href: '/user-guide/cookbook'
+				},
+				{
+					label: 'Troubleshooting',
+					href: '/user-guide/troubleshooting'
 				}
 			]
 		},
 		{
-			label: 'Tools Reference',
+			label: 'Tools',
 			href: '/tools',
 			children: [
 				{
@@ -32,24 +49,36 @@ export function generateNavigation(): NavItem[] {
 					href: '/tools'
 				},
 				{
-					label: 'Navigation',
-					href: '/tools/navigation'
+					label: 'inspect_code',
+					href: '/tools/inspect_code'
 				},
 				{
-					label: 'Refactoring',
+					label: 'search_code',
+					href: '/tools/search_code'
+				},
+				{
+					label: 'rename_all',
+					href: '/tools/rename_all'
+				},
+				{
+					label: 'relocate',
+					href: '/tools/relocate'
+				},
+				{
+					label: 'prune',
+					href: '/tools/prune'
+				},
+				{
+					label: 'refactor',
 					href: '/tools/refactor'
 				},
 				{
-					label: 'Analysis',
-					href: '/tools/analysis'
-				},
-				{
-					label: 'System',
-					href: '/tools/system'
-				},
-				{
-					label: 'Workspace',
+					label: 'workspace',
 					href: '/tools/workspace'
+				},
+				{
+					label: 'system',
+					href: '/tools/system'
 				}
 			]
 		},
@@ -58,52 +87,64 @@ export function generateNavigation(): NavItem[] {
 			href: '/architecture',
 			children: [
 				{
-					label: 'Overview',
-					href: '/architecture/overview'
+					label: 'Core Concepts',
+					href: '/architecture/core-concepts'
 				},
 				{
-					label: 'API Contracts',
-					href: '/architecture/api_contracts'
+					label: 'Specifications',
+					href: '/architecture/specifications'
 				},
 				{
-					label: 'Layer Architecture',
-					href: '/architecture/layers'
+					label: 'Public API',
+					href: '/architecture/public_api'
 				},
 				{
-					label: 'Language Common API',
+					label: 'Language API',
 					href: '/architecture/lang_common_api'
 				}
 			]
 		},
 		{
-			label: 'Operations',
-			href: '/operations',
+			label: 'Development',
+			href: '/development/overview',
 			children: [
 				{
-					label: 'Docker Deployment',
-					href: '/operations/docker_deployment'
+					label: 'Overview',
+					href: '/development/overview'
 				},
 				{
-					label: 'Cache Configuration',
+					label: 'Testing',
+					href: '/development/testing'
+				},
+				{
+					label: 'Logging',
+					href: '/development/logging_guidelines'
+				},
+				{
+					label: 'Plugin Development',
+					href: '/development/plugin-development'
+				},
+				{
+					label: 'Dev Container',
+					href: '/development/dev-container'
+				}
+			]
+		},
+		{
+			label: 'Operations',
+			href: '/operations/cache_configuration',
+			children: [
+				{
+					label: 'Cache Config',
 					href: '/operations/cache_configuration'
 				},
 				{
 					label: 'CI/CD',
 					href: '/operations/cicd'
-				}
-			]
-		},
-		{
-			label: 'Development',
-			href: '/development',
-			children: [
-				{
-					label: 'Testing Guide',
-					href: '/development/testing'
 				},
 				{
-					label: 'Logging Guidelines',
-					href: '/development/logging_guidelines'
+					label: 'Docker',
+					href: '/operations/docker_deployment'
 				}
 			]
 		},
@@ -119,7 +160,7 @@ export function generateNavigation(): NavItem[] {
  */
 export function getSectionNav(section: string): NavItem[] {
 	const nav = generateNavigation();
-	const sectionItem = nav.find(item => item.href.includes(section));
+	const sectionItem = nav.find((item) => item.href.includes(section));
 	return sectionItem?.children || [];
 }
 
