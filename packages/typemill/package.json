@@ -33,7 +33,7 @@
     "package.json"
   ],
   "scripts": {
-    "release": "node tasks/release.js"
+    "release": "TYPEMILL_TARGETS=aarch64-apple-darwin,aarch64-unknown-linux-gnu node tasks/release.js"
   },
   "engines": {
     "node": ">=16"
