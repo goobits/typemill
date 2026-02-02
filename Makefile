@@ -40,20 +40,20 @@ release-npm:
 	@npm whoami >/dev/null 2>&1 || { echo "❌ npm not logged in"; exit 1; }
 	@test -f $(NPM_DIR)/package.json || { echo "❌ package.json not found in $(NPM_DIR)"; exit 1; }
 	@npm pkg fix --silent --prefix $(NPM_DIR)
-	@pkg_path="$(NPM_DIR)/package.json"; \
+	@stashed=""; \
+	if command -v git >/dev/null 2>&1; then \
+		if [ -n "$$(git status --porcelain)" ]; then \
+			echo "⚠️  Working tree dirty. Stashing before version bump/build..."; \
+			git stash push -u -m "typemill-release-npm" >/dev/null 2>&1 && stashed="yes"; \
+		fi; \
+	fi; \
+	pkg_path="$(NPM_DIR)/package.json"; \
 	current_version=$$(node -p "require('./$$pkg_path').version"); \
 	if npm view $(NPM_PKG)@$$current_version version >/dev/null 2>&1; then \
 		echo "⚠️  $(NPM_PKG) version $$current_version already published. Auto-bumping $(NPM_BUMP)..."; \
 		( cd $(NPM_DIR) && npm version $(NPM_BUMP) --no-git-tag-version ); \
 		current_version=$$(node -p "require('./$$pkg_path').version"); \
 		echo "✅ Bumped to $$current_version"; \
-	fi; \
-	stashed=""; \
-	if command -v git >/dev/null 2>&1; then \
-		if [ -n "$$(git status --porcelain)" ]; then \
-			echo "⚠️  Working tree dirty. Stashing before release build..."; \
-			git stash push -u -m "typemill-release-npm" >/dev/null 2>&1 && stashed="yes"; \
-		fi; \
 	fi; \
 	( cd $(NPM_DIR) && TYPEMILL_ALLOW_DIRTY=1 TYPEMILL_SKIP_PUBLISH=1 TYPEMILL_SKIP_GIT=1 npm run release ); \
 	status=$$?; \
