@@ -273,56 +273,55 @@ impl PluginDispatcher {
             debug!("App config loaded successfully");
             let lsp_config = app_config.lsp;
 
+            let mut registered_plugins = 0;
             if lsp_config.mode == mill_config::config::LspMode::Off {
                 info!("LSP mode is off; skipping LSP adapter initialization");
-                return Ok(());
-            }
+            } else {
+                let all_extensions: Vec<String> = lsp_config
+                    .servers
+                    .iter()
+                    .flat_map(|s| s.extensions.clone())
+                    .collect();
 
-            let all_extensions: Vec<String> = lsp_config
-                .servers
-                .iter()
-                .flat_map(|s| s.extensions.clone())
-                .collect();
-
-            let unified_lsp_adapter = Arc::new(DirectLspAdapter::new(
-                lsp_config.clone(),
-                all_extensions,
-                "unified-lsp-direct".to_string(),
-            ));
-
-            {
-                let mut stored_adapter = self.lsp_adapter.lock().await;
-                *stored_adapter = Some(unified_lsp_adapter.clone());
-                debug!("Stored unified LSP adapter for all tool handlers");
-            }
-
-            let mut registered_plugins = 0;
-            for server_config in &lsp_config.servers {
-                if server_config.extensions.is_empty() {
-                    warn!(command = ?server_config.command, "LSP server config has no extensions, skipping");
-                    continue;
-                }
-
-                let lsp_adapter = unified_lsp_adapter.clone();
-                let primary_extension = &server_config.extensions[0];
-
-                // Use generic LSP adapter for all languages - no hardcoded routing needed
-                // The plugin name is derived from the primary extension
-                let plugin_name = format!("{}-lsp", primary_extension);
-                let plugin = Arc::new(LspAdapterPlugin::new(
-                    plugin_name.clone(),
-                    server_config.extensions.clone(),
-                    lsp_adapter,
+                let unified_lsp_adapter = Arc::new(DirectLspAdapter::new(
+                    lsp_config.clone(),
+                    all_extensions,
+                    "unified-lsp-direct".to_string(),
                 ));
 
-                self.plugin_manager
-                    .register_plugin(&plugin_name, plugin)
-                    .await
-                    .map_err(|e| {
-                        ServerError::internal(format!("Failed to register {} plugin: {}", plugin_name, e))
-                    })?;
+                {
+                    let mut stored_adapter = self.lsp_adapter.lock().await;
+                    *stored_adapter = Some(unified_lsp_adapter.clone());
+                    debug!("Stored unified LSP adapter for all tool handlers");
+                }
 
-                registered_plugins += 1;
+                for server_config in &lsp_config.servers {
+                    if server_config.extensions.is_empty() {
+                        warn!(command = ?server_config.command, "LSP server config has no extensions, skipping");
+                        continue;
+                    }
+
+                    let lsp_adapter = unified_lsp_adapter.clone();
+                    let primary_extension = &server_config.extensions[0];
+
+                    // Use generic LSP adapter for all languages - no hardcoded routing needed
+                    // The plugin name is derived from the primary extension
+                    let plugin_name = format!("{}-lsp", primary_extension);
+                    let plugin = Arc::new(LspAdapterPlugin::new(
+                        plugin_name.clone(),
+                        server_config.extensions.clone(),
+                        lsp_adapter,
+                    ));
+
+                    self.plugin_manager
+                        .register_plugin(&plugin_name, plugin)
+                        .await
+                        .map_err(|e| {
+                            ServerError::internal(format!("Failed to register {} plugin: {}", plugin_name, e))
+                        })?;
+
+                    registered_plugins += 1;
+                }
             }
 
             // Register System Tools plugin for workspace-level operations
