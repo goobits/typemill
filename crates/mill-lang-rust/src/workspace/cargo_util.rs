@@ -518,7 +518,7 @@ pub async fn plan_dependent_crate_path_updates(
 /// Plan updates for the moved crate's own path dependencies
 ///
 /// When a crate moves, its path dependencies need to be recalculated relative to the new location.
-/// For example, moving from `crates/mill-lang-markdown` to `languages/mill-lang-markdown`
+/// For example, moving from `languages/mill-lang-markdown` to `crates/mill-lang-markdown`
 /// changes `{ path = "../mill-plugin-api" }` to `{ path = "../../crates/mill-plugin-api" }`.
 ///
 /// Returns (file_path, old_content, new_content) if updates are needed, or None if no path deps exist.

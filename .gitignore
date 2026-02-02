@@ -14,7 +14,7 @@ test-build/
 *.tsbuildinfo
 
 # Java build artifacts
-languages/*/resources/*/target/
+crates/mill-lang-*/resources/*/target/
 
 # Root-level JS files (build artifacts from test builds)
 /*.js

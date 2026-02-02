@@ -36,7 +36,7 @@ Provides TypeScript/JavaScript AST parsing using SWC, dependency graph analysis,
 
 **TypeScript/JavaScript**: Native SWC parser in this crate
 
-**Other Languages**: Handled by language plugins in `crates/languages/`:
+**Other Languages**: Handled by language plugins in `crates/mill-lang-*/`:
 - Python → `cb-lang-python`
 - Go → `cb-lang-go`
 - Rust → `cb-lang-rust`

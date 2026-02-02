@@ -36,16 +36,9 @@ typemill/
 │   ├── mill-ast/          # AST processing
 │   ├── mill-plugin-*/     # Plugin system
 │   ├── mill-lang-common/  # Shared language abstractions
+│   ├── mill-lang-*/       # Language plugins
 │   ├── mill-*/            # Various utilities
 │   └── xtask/             # Build automation tasks
-├── languages/
-│   ├── mill-lang-rust/    # Rust language plugin
-│   ├── mill-lang-typescript/ # TypeScript plugin
-│   ├── mill-lang-python/  # Python plugin
-│   ├── mill-lang-markdown/# Markdown plugin
-│   ├── mill-lang-toml/    # TOML plugin
-│   ├── mill-lang-yaml/    # YAML plugin
-│   └── mill-lang-gitignore/ # Gitignore plugin
 ├── tests/e2e/             # End-to-end tests
 └── docs/                  # Documentation (you are here!)
 ```

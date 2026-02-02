@@ -153,17 +153,17 @@ pub trait WorkspaceSupport: Send + Sync {
     ///
     /// # Example
     /// ```ignore
-    /// // Moving two crates: crates/a → languages/a, crates/b → languages/b
+    /// // Moving two crates: crates/a → crates/mill-lang-a, crates/b → crates/mill-lang-b
     /// let moves = vec![
-    ///     (PathBuf::from("crates/a"), PathBuf::from("languages/a")),
-    ///     (PathBuf::from("crates/b"), PathBuf::from("languages/b")),
+    ///     (PathBuf::from("crates/a"), PathBuf::from("crates/mill-lang-a")),
+    ///     (PathBuf::from("crates/b"), PathBuf::from("crates/mill-lang-b")),
     /// ];
     ///
     /// let updates = workspace_support.plan_batch_workspace_updates(&moves, project_root).await;
     /// // Returns: [(
     /// //   "/workspace/Cargo.toml",
     /// //   "members = [\"crates/a\", \"crates/b\"]",
-    /// //   "members = [\"languages/a\", \"languages/b\"]"
+    /// //   "members = [\"crates/mill-lang-a\", \"crates/mill-lang-b\"]"
     /// // )]
     /// ```
     async fn plan_batch_workspace_updates(

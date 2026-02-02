@@ -19,12 +19,12 @@ Last updated: 2026-01-31
 ### Reference Detector (Cross-Package Reference Detection)
 
 - [x] **TypeScript: Implement reference_detector** ✅ DONE
-  - Location: `languages/mill-lang-typescript/src/reference_detector.rs`
+  - Location: `crates/mill-lang-typescript/src/reference_detector.rs`
   - Detects: ES6 imports, CommonJS requires, dynamic imports, re-exports
   - Tests: 6 unit tests added
 
 - [x] **Python: Implement reference_detector** ✅ DONE
-  - Location: `languages/mill-lang-python/src/reference_detector.rs`
+  - Location: `crates/mill-lang-python/src/reference_detector.rs`
   - Detects: `import x`, `from x import y`, relative imports
   - Tests: 6 unit tests added
 
@@ -33,7 +33,7 @@ Last updated: 2026-01-31
 - [x] **TypeScript: Add npm package consolidation support** ✅ DONE
   - Location: `crates/mill-handlers/src/handlers/rename_ops/directory_rename.rs`
   - Added `PackageType::Npm` detection with `find_target_npm_root()`
-  - Created: `languages/mill-lang-typescript/src/consolidation.rs`
+  - Created: `crates/mill-lang-typescript/src/consolidation.rs`
   - Features: dependency merging (dependencies, devDependencies, peerDependencies)
   - Import updates, workspace cleanup, nested src/ flattening
   - Tests: 3 unit tests in consolidation.rs + 1 detection test in directory_rename.rs
@@ -41,7 +41,7 @@ Last updated: 2026-01-31
 - [x] **Python: Add Python package consolidation support** ✅ DONE
   - Location: `crates/mill-handlers/src/handlers/rename_ops/directory_rename.rs`
   - Added `PackageType::Python` detection with `find_target_python_root()`
-  - Created: `languages/mill-lang-python/src/consolidation.rs`
+  - Created: `crates/mill-lang-python/src/consolidation.rs`
   - Features: dependency merging (PEP 621 + Poetry), __init__.py creation
   - Import updates, workspace cleanup, nested src/ flattening
   - Tests: 4 unit tests in consolidation.rs + 1 detection test in directory_rename.rs
@@ -53,12 +53,12 @@ Last updated: 2026-01-31
 ### Test Fixtures
 
 - [x] **Rust: Add language-specific test fixtures** ✅ DONE
-  - Created: `languages/mill-lang-rust/src/test_fixtures.rs`
+  - Created: `crates/mill-lang-rust/src/test_fixtures.rs`
   - 14 complexity scenarios (lifetimes, generics, macros, traits, async)
   - 8 refactoring scenarios
 
 - [x] **TypeScript: Add language-specific test fixtures** ✅ DONE
-  - Created: `languages/mill-lang-typescript/src/test_fixtures.rs`
+  - Created: `crates/mill-lang-typescript/src/test_fixtures.rs`
   - 10 complexity scenarios (generics, async/await, JSX, decorators)
   - 8 refactoring scenarios
 

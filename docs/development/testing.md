@@ -397,7 +397,7 @@ Language plugins with full support:
 | YAML | Config file support | ✅ |
 | Gitignore | Config file support | ✅ |
 
-**Note**: Language plugins are located in `languages/mill-lang-*` directory.
+**Note**: Language plugins are located in `crates/mill-lang-*` directory.
 
 ### Adding a New Language Plugin
 

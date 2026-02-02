@@ -37,9 +37,9 @@ criterion = { version = "0.8", features = ["html_reports", "async_tokio"] }
 
 # Individual language plugins as dev-dependencies for extern crate declarations
 # These must match the features enabled in mill-plugin-bundle above
-mill-lang-python = { path = "../../languages/mill-lang-python" }
-mill-lang-rust = { path = "../../languages/mill-lang-rust" }
-mill-lang-typescript = { path = "../../languages/mill-lang-typescript" }
+mill-lang-python = { path = "../../crates/mill-lang-python" }
+mill-lang-rust = { path = "../../crates/mill-lang-rust" }
+mill-lang-typescript = { path = "../../crates/mill-lang-typescript" }
 
 # Benchmarks
 [[bench]]

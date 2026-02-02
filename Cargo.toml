@@ -8,13 +8,13 @@ members = [
     "crates/mill-server",
     "crates/mill-transport",
     "crates/mill-lang-common",
-    "languages/mill-lang-rust",
-    "languages/mill-lang-typescript",
-    "languages/mill-lang-python",
-    "languages/mill-lang-markdown",
-    "languages/mill-lang-toml",
-    "languages/mill-lang-yaml",
-    "languages/mill-lang-gitignore",
+    "crates/mill-lang-rust",
+    "crates/mill-lang-typescript",
+    "crates/mill-lang-python",
+    "crates/mill-lang-markdown",
+    "crates/mill-lang-toml",
+    "crates/mill-lang-yaml",
+    "crates/mill-lang-gitignore",
     "crates/mill-plugin-bundle",
     "apps/mill",
     "tests/e2e",
@@ -99,10 +99,10 @@ tree-sitter-java = "0.20"
 
 # Language plugins (temporarily reduced to TS + Rust during unified API refactoring)
 mill-lang-common = { path = "crates/mill-lang-common", default-features = false }
-mill-lang-typescript = { path = "languages/mill-lang-typescript", default-features = false }
-mill-lang-rust = { path = "languages/mill-lang-rust", default-features = false }
-mill-lang-python = { path = "languages/mill-lang-python", default-features = false }
-mill-lang-markdown = { path = "languages/mill-lang-markdown", default-features = false }
+mill-lang-typescript = { path = "crates/mill-lang-typescript", default-features = false }
+mill-lang-rust = { path = "crates/mill-lang-rust", default-features = false }
+mill-lang-python = { path = "crates/mill-lang-python", default-features = false }
+mill-lang-markdown = { path = "crates/mill-lang-markdown", default-features = false }
 
 # Optimize build times for dev dependencies
 [profile.dev.build-override]

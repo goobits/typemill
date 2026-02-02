@@ -59,7 +59,7 @@ mill-plugin-system = { path = "../mill-plugin-system", default-features = false,
 mill-config = { path = "../mill-config" }
 mill-workspaces = { path = "../mill-workspaces" }
 mill-ast = { path = "../mill-ast", default-features = false }
-mill-lang-rust = { path = "../../languages/mill-lang-rust", optional = true }
+mill-lang-rust = { path = "../../crates/mill-lang-rust", optional = true }
 
 [dev-dependencies]
 mill-test-support = { path = "../mill-test-support" }
