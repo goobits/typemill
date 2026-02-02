@@ -13,3 +13,7 @@
 ## 2024-05-31 - HashSet Insert vs Contains
 **Learning:** In `convert_find_replace_response`, attempting to optimize `HashSet<String>::insert` by checking `contains(&str)` first (to avoid `to_string()` allocation) resulted in a 2x slowdown in debug builds (1.2s -> 2.3s). This suggests that for `HashSet<String>`, the cost of hashing and probing twice (once for `contains`, once for `insert`) outweighs the cost of allocating a short string and hashing once, at least in some environments or for small strings.
 **Action:** Be cautious when optimizing `HashSet::insert` with `contains`. Benchmark first. `insert` already handles existence checks efficiently.
+
+## 2025-05-19 - File Discovery Allocations
+**Learning:** In `discover_importing_files`, `WalkBuilder` results were being converted to `PathBuf` via `.map(|e| e.into_path())` *before* filtering. This caused allocations for every single file in the workspace (including excluded files and directories).
+**Action:** Filter `ignore::DirEntry` directly using `entry.file_type()` and `entry.path()` before mapping to `PathBuf`. This avoids allocations for non-matching files.
