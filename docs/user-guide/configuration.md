@@ -182,6 +182,13 @@ export TYPEMILL__SERVER__AUTH__JWT_SECRET="your-secret-key"
 export TYPEMILL__LSP__MODE="discover"
 ```
 
+### Daemon Configuration
+
+```bash
+# Disable daemon usage (forces in-process execution)
+export TYPEMILL_NO_DAEMON=1
+```
+
 ### Cache Configuration
 
 ```bash

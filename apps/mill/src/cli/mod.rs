@@ -1346,8 +1346,12 @@ async fn handle_tool_command(
 
         let socket_path = default_socket_path();
 
+        let no_daemon = std::env::var("TYPEMILL_NO_DAEMON")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+
         // Auto-start daemon if not running to cache project state
-        if !is_daemon_running(&socket_path).await {
+        if !no_daemon && !is_daemon_running(&socket_path).await {
             eprintln!("🚀 Auto-starting mill daemon for persistent project state...");
             cleanup_stale_daemon_pid(&socket_path);
             if let Err(e) = start_background_daemon().await {
@@ -1356,7 +1360,7 @@ async fn handle_tool_command(
             }
         }
 
-        if is_daemon_running(&socket_path).await {
+        if !no_daemon && is_daemon_running(&socket_path).await {
             // Use daemon for faster execution (LSP servers already running)
             match UnixSocketClient::connect(&socket_path).await {
                 Ok(mut client) => match client.call(message.clone()).await {
