@@ -57,8 +57,12 @@ pub async fn plan_file_move(
         .file_service
         .to_absolute_path_checked(new_path)?;
 
+    // Get LSP finder if available
+    let lsp_adapter = context.lsp_adapter.lock().await.clone();
+    let lsp_finder = lsp_adapter.as_ref().map(|a| a.as_import_finder());
+
     let edit_plan = move_service
-        .plan_file_move(&abs_old, &abs_new, None)
+        .plan_file_move(&abs_old, &abs_new, None, lsp_finder)
         .await
         .map_err(|e| {
             error!(

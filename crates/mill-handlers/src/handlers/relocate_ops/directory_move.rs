@@ -58,8 +58,12 @@ pub async fn plan_directory_move(
         Some(true) | None => Some(mill_plugin_api::ScanScope::AllUseStatements),
     };
 
+    // Get LSP finder if available
+    let lsp_adapter = context.lsp_adapter.lock().await.clone();
+    let lsp_finder = lsp_adapter.as_ref().map(|a| a.as_import_finder());
+
     let edit_plan = move_service
-        .plan_directory_move(old_path, new_path, scan_scope)
+        .plan_directory_move(old_path, new_path, scan_scope, lsp_finder)
         .await
         .map_err(|e| {
             error!(

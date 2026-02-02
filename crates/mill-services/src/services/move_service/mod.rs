@@ -18,7 +18,7 @@
 
 mod planner;
 
-use crate::services::reference_updater::ReferenceUpdater;
+use crate::services::reference_updater::{LspImportFinder, ReferenceUpdater};
 use mill_foundation::errors::MillError as ServerError;
 use mill_foundation::protocol::EditPlan;
 
@@ -62,6 +62,7 @@ impl<'a> MoveService<'a> {
         old_path: &Path,
         new_path: &Path,
         scan_scope: Option<ScanScope>,
+        lsp_finder: Option<&dyn LspImportFinder>,
     ) -> ServerResult<EditPlan> {
         info!(
             old_path = %old_path.display(),
@@ -88,6 +89,7 @@ impl<'a> MoveService<'a> {
             self.plugin_registry,
             scan_scope,
             None, // No RenameScope - use default behavior
+            lsp_finder,
         )
         .await
     }
@@ -105,6 +107,7 @@ impl<'a> MoveService<'a> {
         old_path: &Path,
         new_path: &Path,
         scan_scope: Option<ScanScope>,
+        lsp_finder: Option<&dyn LspImportFinder>,
     ) -> ServerResult<EditPlan> {
         info!(
             old_path = %old_path.display(),
@@ -139,6 +142,7 @@ impl<'a> MoveService<'a> {
             self.project_root,
             scan_scope,
             None, // No RenameScope - use default behavior
+            lsp_finder,
         )
         .await
     }
@@ -151,6 +155,7 @@ impl<'a> MoveService<'a> {
         old_path: &Path,
         new_path: &Path,
         rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
+        lsp_finder: Option<&dyn LspImportFinder>,
     ) -> ServerResult<EditPlan> {
         info!(
             old_path = %old_path.display(),
@@ -190,6 +195,7 @@ impl<'a> MoveService<'a> {
             self.plugin_registry,
             scan_scope,
             rename_scope,
+            lsp_finder,
         )
         .await?;
 
@@ -226,6 +232,7 @@ impl<'a> MoveService<'a> {
         old_path: &Path,
         new_path: &Path,
         rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
+        lsp_finder: Option<&dyn LspImportFinder>,
     ) -> ServerResult<EditPlan> {
         info!(
             old_path = %old_path.display(),
@@ -273,6 +280,7 @@ impl<'a> MoveService<'a> {
             self.project_root,
             scan_scope,
             rename_scope,
+            lsp_finder,
         )
         .await?;
 
@@ -488,7 +496,7 @@ mod tests {
 
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let plan = runtime
-            .block_on(service.plan_file_move(&old_path, &new_path, None))
+            .block_on(service.plan_file_move(&old_path, &new_path, None, None))
             .unwrap();
 
         assert!(
