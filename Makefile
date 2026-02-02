@@ -48,7 +48,21 @@ release-npm:
 		current_version=$$(node -p "require('./$$pkg_path').version"); \
 		echo "✅ Bumped to $$current_version"; \
 	fi; \
+	stashed=""; \
+	if command -v git >/dev/null 2>&1; then \
+		if [ -n "$$(git status --porcelain)" ]; then \
+			echo "⚠️  Working tree dirty. Stashing before release build..."; \
+			git stash push -u -m "typemill-release-npm" >/dev/null 2>&1 && stashed="yes"; \
+		fi; \
+	fi; \
 	( cd $(NPM_DIR) && npm run release ); \
+	status=$$?; \
+	if [ "$$stashed" = "yes" ]; then \
+		git stash pop >/dev/null 2>&1 || true; \
+	fi; \
+	if [ $$status -ne 0 ]; then \
+		exit $$status; \
+	fi; \
 	current_version=$$(node -p "require('./$$pkg_path').version"); \
 	platform_dir=$$(uname -s | tr '[:upper:]' '[:lower:]'); \
 	arch=$$(uname -m); \
