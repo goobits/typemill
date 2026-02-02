@@ -78,6 +78,9 @@ release-npm:
 		if [ -x "$$bin_path" ]; then \
 			expected=$$(node -p "require('./$$pkg_path').version"); \
 			actual=$$($$bin_path --version 2>&1 | tail -n1); \
+			if [ -z "$$actual" ] && command -v strings >/dev/null 2>&1; then \
+				actual=$$(strings "$$bin_path" | grep -E "mill[[:space:]]+[0-9]+\\.[0-9]+\\.[0-9]+" | head -n1); \
+			fi; \
 			if [ -z "$$actual" ] || ! echo "$$actual" | grep -q "$$expected"; then \
 				echo "❌ $$bin_path reports '$$actual', expected $$expected"; \
 				exit 1; \
