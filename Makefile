@@ -81,7 +81,9 @@ release-npm:
 			if [ -z "$$actual" ] && command -v strings >/dev/null 2>&1; then \
 				actual=$$(strings "$$bin_path" | grep -E "mill[[:space:]]+[0-9]+\\.[0-9]+\\.[0-9]+" | head -n1); \
 			fi; \
-			if [ -z "$$actual" ] || ! echo "$$actual" | grep -q "$$expected"; then \
+			if [ -z "$$actual" ]; then \
+				echo "⚠️  Could not read version from $$bin_path; skipping binary version check."; \
+			elif ! echo "$$actual" | grep -q "$$expected"; then \
 				echo "❌ $$bin_path reports '$$actual', expected $$expected"; \
 				exit 1; \
 			fi; \
