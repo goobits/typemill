@@ -71,31 +71,46 @@ impl RenameService {
     /// Detects when moving a package into another package's src/ directory.
     /// Supports: Rust (Cargo.toml), TypeScript/JS (package.json), Python (pyproject.toml)
     async fn detect_consolidation_type(old_path: &Path, new_path: &Path) -> Option<PackageType> {
-        // Check for Rust/Cargo consolidation
-        let has_cargo = tokio::fs::try_exists(old_path.join("Cargo.toml"))
-            .await
-            .unwrap_or(false);
-        if has_cargo && Self::find_target_crate_root(new_path).await.is_some() {
-            return Some(PackageType::Cargo);
-        }
+        let cargo_check = async {
+            // Check for Rust/Cargo consolidation
+            let has_cargo = tokio::fs::try_exists(old_path.join("Cargo.toml"))
+                .await
+                .unwrap_or(false);
+            if has_cargo && Self::find_target_crate_root(new_path).await.is_some() {
+                Some(PackageType::Cargo)
+            } else {
+                None
+            }
+        };
 
-        // Check for npm/TypeScript consolidation
-        let has_package_json = tokio::fs::try_exists(old_path.join("package.json"))
-            .await
-            .unwrap_or(false);
-        if has_package_json && Self::find_target_npm_root(new_path).await.is_some() {
-            return Some(PackageType::Npm);
-        }
+        let npm_check = async {
+            // Check for npm/TypeScript consolidation
+            let has_package_json = tokio::fs::try_exists(old_path.join("package.json"))
+                .await
+                .unwrap_or(false);
+            if has_package_json && Self::find_target_npm_root(new_path).await.is_some() {
+                Some(PackageType::Npm)
+            } else {
+                None
+            }
+        };
 
-        // Check for Python consolidation
-        let has_pyproject = tokio::fs::try_exists(old_path.join("pyproject.toml"))
-            .await
-            .unwrap_or(false);
-        if has_pyproject && Self::find_target_python_root(new_path).await.is_some() {
-            return Some(PackageType::Python);
-        }
+        let python_check = async {
+            // Check for Python consolidation
+            let has_pyproject = tokio::fs::try_exists(old_path.join("pyproject.toml"))
+                .await
+                .unwrap_or(false);
+            if has_pyproject && Self::find_target_python_root(new_path).await.is_some() {
+                Some(PackageType::Python)
+            } else {
+                None
+            }
+        };
 
-        None
+        let (cargo, npm, python) = tokio::join!(cargo_check, npm_check, python_check);
+
+        // Priority: Cargo > Npm > Python
+        cargo.or(npm).or(python)
     }
 
     /// Generate plan for directory rename using FileService
