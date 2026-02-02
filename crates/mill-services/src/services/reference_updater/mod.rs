@@ -13,6 +13,7 @@ pub use helpers::{compute_line_info, create_full_file_edit, create_import_update
 
 use async_trait::async_trait;
 use mill_foundation::errors::MillError as ServerError;
+use mill_plugin_api::LanguagePlugin;
 use mill_foundation::protocol::{DependencyUpdate, EditPlan, EditPlanMetadata};
 
 type ServerResult<T> = Result<T, ServerError>;
@@ -45,6 +46,9 @@ pub struct ReferenceUpdater {
 }
 
 impl ReferenceUpdater {
+    pub fn project_root(&self) -> &Path {
+        &self.project_root
+    }
     /// Creates a new `ReferenceUpdater`.
     pub fn new(project_root: impl AsRef<Path>) -> Self {
         Self {
@@ -394,6 +398,34 @@ impl ReferenceUpdater {
             "Processing affected files for reference updates"
         );
 
+        #[cfg(feature = "lang-svelte")]
+        if !is_directory_rename {
+            let plugin = mill_lang_svelte::SveltePlugin::new();
+            for file in &project_files {
+                if file.extension().and_then(|e| e.to_str()) != Some("svelte") {
+                    continue;
+                }
+                if affected_files.contains(file) {
+                    continue;
+                }
+
+                if let Ok(content) = tokio::fs::read_to_string(file).await {
+                    if let Some((updated_content, count)) = plugin.rewrite_file_references(
+                        &content,
+                        old_path.as_ref(),
+                        new_path.as_ref(),
+                        file,
+                        &self.project_root,
+                        merged_rename_info.as_ref(),
+                    ) {
+                        if count > 0 && updated_content != content {
+                            affected_files.push(file.clone());
+                        }
+                    }
+                }
+            }
+        }
+
         // Prepare shared state for parallel processing
         let plugin_map = Arc::new(plugin_map);
         let project_root = Arc::new(self.project_root.clone());
@@ -429,16 +461,19 @@ impl ReferenceUpdater {
                     "Processing affected file"
                 );
 
-                let plugin = if let Some(ext) = file_path.extension() {
-                    let ext_str = ext.to_str().unwrap_or("");
+                let ext_str = file_path
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .unwrap_or("");
+                let plugin = if !ext_str.is_empty() {
                     plugin_map.get(ext_str)
                 } else {
                     None
                 };
 
                 let plugin = match plugin {
-                    Some(p) => p,
-                    None => return None,
+                    Some(p) => Some(p),
+                    None => None,
                 };
 
                 let content = match tokio::fs::read_to_string(&file_path).await {
@@ -447,6 +482,39 @@ impl ReferenceUpdater {
                 };
 
                 let mut file_edits = Vec::new();
+
+                if plugin.is_none() {
+                    #[cfg(feature = "lang-svelte")]
+                    if ext_str == "svelte" {
+                        let plugin = mill_lang_svelte::SveltePlugin::new();
+                        let rewrite_result = plugin.rewrite_file_references(
+                            &content,
+                            &old_path,
+                            &new_path,
+                            &file_path,
+                            &project_root,
+                            merged_rename_info.as_ref().as_ref(),
+                        );
+
+                        if let Some((updated_content, count)) = rewrite_result {
+                            if count > 0 && updated_content != content {
+                                file_edits.push(create_import_update_edit(
+                                    &file_path,
+                                    content.clone(),
+                                    updated_content,
+                                    count,
+                                    "file rename",
+                                ));
+                            }
+                        }
+
+                        return Some(file_edits);
+                    }
+
+                    return None;
+                }
+
+                let plugin = plugin.unwrap();
 
                 if is_package_rename {
                     // For Rust crate renames, use simple file rename logic with rename_info
@@ -1170,6 +1238,7 @@ pub async fn find_project_files_with_map(
                 } else if let Some(ext) = path.extension() {
                     let ext_str = ext.to_str().unwrap_or("");
                     plugin_extensions.contains(ext_str)
+                        || (cfg!(feature = "lang-svelte") && ext_str == "svelte")
                 } else {
                     false
                 };

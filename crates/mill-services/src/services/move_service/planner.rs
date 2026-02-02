@@ -1,6 +1,7 @@
 //! Planning logic for file and directory moves
 
 use crate::services::reference_updater::ReferenceUpdater;
+use crate::services::reference_updater::helpers::create_import_update_edit;
 use mill_foundation::errors::MillError as ServerError;
 use mill_foundation::protocol::EditPlan;
 use mill_plugin_api::{PluginDiscovery, ScanScope};
@@ -63,6 +64,17 @@ pub async fn plan_file_move(
         "File move plan generated"
     );
 
+    #[cfg(feature = "lang-svelte")]
+    {
+        append_svelte_import_edits(
+            &mut edit_plan,
+            old_abs,
+            new_abs,
+            reference_updater.project_root(),
+        )
+        .await?;
+    }
+
     if !edit_plan.edits.is_empty() {
         info!(
             first_edit_file = ?edit_plan.edits.first().and_then(|e| e.file_path.as_ref()),
@@ -79,6 +91,63 @@ pub async fn plan_file_move(
     }
 
     Ok(edit_plan)
+}
+
+#[cfg(feature = "lang-svelte")]
+async fn append_svelte_import_edits(
+    edit_plan: &mut EditPlan,
+    old_abs: &Path,
+    new_abs: &Path,
+    project_root: &Path,
+) -> ServerResult<()> {
+    use ignore::WalkBuilder;
+    use mill_lang_svelte::SveltePlugin;
+    use mill_plugin_api::LanguagePlugin;
+
+    let plugin = SveltePlugin::new();
+    let mut files = Vec::new();
+
+    let walker = WalkBuilder::new(project_root)
+        .hidden(false)
+        .git_ignore(true)
+        .git_global(true)
+        .git_exclude(true)
+        .build();
+
+    for entry in walker.flatten() {
+        let path = entry.path();
+        if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("svelte") {
+            files.push(path.to_path_buf());
+        }
+    }
+
+    for file in files {
+        let content = match tokio::fs::read_to_string(&file).await {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+
+        if let Some((updated, count)) = plugin.rewrite_file_references(
+            &content,
+            old_abs,
+            new_abs,
+            &file,
+            project_root,
+            None,
+        ) {
+            if count > 0 && updated != content {
+                edit_plan.edits.push(create_import_update_edit(
+                    &file,
+                    content,
+                    updated,
+                    count,
+                    "svelte import update",
+                ));
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /// Plan a directory move with import updates and workspace package support

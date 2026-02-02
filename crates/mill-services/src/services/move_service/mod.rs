@@ -462,4 +462,57 @@ mod tests {
         let abs = service.to_absolute_path(Path::new("/abs/path.rs"));
         assert_eq!(abs, PathBuf::from("/abs/path.rs"));
     }
+
+    #[cfg(feature = "lang-svelte")]
+    #[test]
+    fn test_svelte_imports_in_plan_file_move() {
+        let project_root = PathBuf::from("/workspace");
+        let old_path = project_root.join("web/src/lib/utils/text.ts");
+        let new_path = project_root.join("web/src/lib/utils/text-format.ts");
+        let svelte_file = project_root.join("web/src/routes/+page.svelte");
+
+        if !old_path.exists() || !svelte_file.exists() {
+            return;
+        }
+
+        let mut registry = PluginDiscovery::new();
+        registry.register(std::sync::Arc::from(
+            mill_lang_typescript::TypeScriptPlugin::new(),
+        ));
+        registry.register(std::sync::Arc::from(
+            mill_lang_svelte::SveltePlugin::boxed(),
+        ));
+
+        let reference_updater = ReferenceUpdater::new(&project_root);
+        let service = MoveService::new(&reference_updater, &registry, &project_root);
+
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let plan = runtime
+            .block_on(service.plan_file_move(&old_path, &new_path, None))
+            .unwrap();
+
+        assert!(
+            plan.edits.iter().any(|edit| {
+                edit.file_path
+                    .as_ref()
+                    .map(|path| path.ends_with("web/src/routes/+page.svelte"))
+                    .unwrap_or(false)
+            }),
+            "expected svelte import edit to be included in plan"
+        );
+
+        let svelte_edit = plan.edits.iter().find(|edit| {
+            edit.file_path
+                .as_ref()
+                .map(|path| path.ends_with("web/src/routes/+page.svelte"))
+                .unwrap_or(false)
+        });
+
+        if let Some(edit) = svelte_edit {
+            assert!(
+                edit.new_text.contains("$lib/utils/text-format"),
+                "expected $lib alias to be preserved in svelte import update"
+            );
+        }
+    }
 }

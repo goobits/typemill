@@ -48,15 +48,24 @@ pub async fn plan_file_move(
         new_path = %new_path.display(),
         "Calling MoveService::plan_file_move"
     );
+    let abs_old = context
+        .app_state
+        .file_service
+        .to_absolute_path_checked(old_path)?;
+    let abs_new = context
+        .app_state
+        .file_service
+        .to_absolute_path_checked(new_path)?;
+
     let edit_plan = move_service
-        .plan_file_move(old_path, new_path, None)
+        .plan_file_move(&abs_old, &abs_new, None)
         .await
         .map_err(|e| {
             error!(
                 operation_id = %operation_id,
                 error = %e,
-                old_path = %old_path.display(),
-                new_path = %new_path.display(),
+                old_path = %abs_old.display(),
+                new_path = %abs_new.display(),
                 function = "plan_file_move",
                 "MoveService::plan_file_move failed"
             );
@@ -70,7 +79,7 @@ pub async fn plan_file_move(
     );
 
     // Convert EditPlan → MovePlan
-    let move_plan = editplan_to_moveplan(edit_plan, old_path, new_path, context, operation_id)
+    let move_plan = editplan_to_moveplan(edit_plan, &abs_old, &abs_new, context, operation_id)
         .await
         .map_err(|e| {
             error!(

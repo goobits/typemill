@@ -16,7 +16,7 @@ pub mod imports;
 pub mod lsp_installer;
 mod manifest;
 pub mod parser;
-mod path_alias_resolver;
+pub mod path_alias_resolver;
 mod project_factory;
 pub mod refactoring;
 pub mod reference_detector;

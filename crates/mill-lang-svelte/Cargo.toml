@@ -1,0 +1,22 @@
+[package]
+name = "mill-lang-svelte"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+async-trait = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+regex = { workspace = true }
+
+mill-plugin-api = { workspace = true }
+mill-foundation = { workspace = true }
+mill-lang-typescript = { path = "../mill-lang-typescript", default-features = false }
+mill-lang-common = { path = "../mill-lang-common", default-features = false }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

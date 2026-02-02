@@ -9,6 +9,7 @@
 use crate::tsconfig::{ResolvedTsConfig, TsConfig};
 use indexmap::IndexMap;
 use mill_plugin_api::path_alias_resolver::PathAliasResolver;
+use regex::Regex;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -26,6 +27,16 @@ pub struct TypeScriptPathAliasResolver {
     /// Maps directory → nearest tsconfig.json path
     /// Avoids repeated filesystem walks for find_nearest()
     tsconfig_path_cache: Arc<Mutex<HashMap<PathBuf, Option<PathBuf>>>>,
+
+    /// Cache of Svelte config path lookups (keyed by directory)
+    svelte_config_path_cache: Arc<Mutex<HashMap<PathBuf, Option<PathBuf>>>>,
+    /// Cache of parsed Svelte alias maps (keyed by config path)
+    svelte_alias_cache: Arc<Mutex<HashMap<PathBuf, Arc<IndexMap<String, Vec<PathBuf>>>>>>,
+
+    /// Cache of Vite config path lookups (keyed by directory)
+    vite_config_path_cache: Arc<Mutex<HashMap<PathBuf, Option<PathBuf>>>>,
+    /// Cache of parsed Vite alias maps (keyed by config path)
+    vite_alias_cache: Arc<Mutex<HashMap<PathBuf, Arc<IndexMap<String, Vec<PathBuf>>>>>>,
 }
 
 impl TypeScriptPathAliasResolver {
@@ -34,6 +45,60 @@ impl TypeScriptPathAliasResolver {
         Self {
             tsconfig_cache: Arc::new(Mutex::new(HashMap::new())),
             tsconfig_path_cache: Arc::new(Mutex::new(HashMap::new())),
+            svelte_config_path_cache: Arc::new(Mutex::new(HashMap::new())),
+            svelte_alias_cache: Arc::new(Mutex::new(HashMap::new())),
+            vite_config_path_cache: Arc::new(Mutex::new(HashMap::new())),
+            vite_alias_cache: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    fn find_nearest_config_with_cache(
+        &self,
+        importing_file: &Path,
+        names: &[&str],
+        cache: &Arc<Mutex<HashMap<PathBuf, Option<PathBuf>>>>,
+    ) -> Option<PathBuf> {
+        let mut current = importing_file.parent()?;
+        let mut ancestors_to_cache: Vec<PathBuf> = Vec::new();
+
+        loop {
+            {
+                let cache_guard = cache.lock().ok()?;
+                if let Some(cached_result) = cache_guard.get(current) {
+                    let result = cached_result.clone();
+                    drop(cache_guard);
+                    if !ancestors_to_cache.is_empty() {
+                        if let Ok(mut cache_guard) = cache.lock() {
+                            for ancestor in &ancestors_to_cache {
+                                cache_guard.insert(ancestor.clone(), result.clone());
+                            }
+                        }
+                    }
+                    return result;
+                }
+            }
+
+            let mut found: Option<PathBuf> = None;
+            for name in names {
+                let candidate = current.join(name);
+                if candidate.exists() {
+                    found = Some(candidate);
+                    break;
+                }
+            }
+
+            if let Some(result) = found {
+                if let Ok(mut cache_guard) = cache.lock() {
+                    cache_guard.insert(current.to_path_buf(), Some(result.clone()));
+                    for ancestor in &ancestors_to_cache {
+                        cache_guard.insert(ancestor.clone(), Some(result.clone()));
+                    }
+                }
+                return Some(result);
+            }
+
+            ancestors_to_cache.push(current.to_path_buf());
+            current = current.parent()?;
         }
     }
 
@@ -257,6 +322,102 @@ impl TypeScriptPathAliasResolver {
 
         false
     }
+
+    /// Find nearest SvelteKit config (svelte.config.js/ts)
+    fn find_nearest_svelte_config(&self, importing_file: &Path) -> Option<PathBuf> {
+        self.find_nearest_config_with_cache(
+            importing_file,
+            &["svelte.config.js", "svelte.config.ts", "svelte.config.mjs", "svelte.config.cjs"],
+            &self.svelte_config_path_cache,
+        )
+    }
+
+    /// Find nearest Vite config (vite.config.*)
+    fn find_nearest_vite_config(&self, importing_file: &Path) -> Option<PathBuf> {
+        self.find_nearest_config_with_cache(
+            importing_file,
+            &[
+                "vite.config.ts",
+                "vite.config.js",
+                "vite.config.mjs",
+                "vite.config.cjs",
+            ],
+            &self.vite_config_path_cache,
+        )
+    }
+
+    fn load_aliases_from_svelte_config(
+        &self,
+        config_path: &Path,
+    ) -> Option<Arc<IndexMap<String, Vec<PathBuf>>>> {
+        {
+            let cache = self.svelte_alias_cache.lock().ok()?;
+            if let Some(map) = cache.get(config_path) {
+                return Some(Arc::clone(map));
+            }
+        }
+
+        let content = std::fs::read_to_string(config_path).ok()?;
+        let config_dir = config_path.parent()?;
+        let map = Arc::new(parse_aliases_from_config(&content, config_dir));
+
+        if let Ok(mut cache) = self.svelte_alias_cache.lock() {
+            cache.insert(config_path.to_path_buf(), Arc::clone(&map));
+        }
+
+        Some(map)
+    }
+
+    fn load_aliases_from_vite_config(
+        &self,
+        config_path: &Path,
+    ) -> Option<Arc<IndexMap<String, Vec<PathBuf>>>> {
+        {
+            let cache = self.vite_alias_cache.lock().ok()?;
+            if let Some(map) = cache.get(config_path) {
+                return Some(Arc::clone(map));
+            }
+        }
+
+        let content = std::fs::read_to_string(config_path).ok()?;
+        let config_dir = config_path.parent()?;
+        let map = Arc::new(parse_aliases_from_config(&content, config_dir));
+
+        if let Ok(mut cache) = self.vite_alias_cache.lock() {
+            cache.insert(config_path.to_path_buf(), Arc::clone(&map));
+        }
+
+        Some(map)
+    }
+
+    fn resolve_svelte_lib_alias(
+        &self,
+        specifier: &str,
+        importing_file: &Path,
+        project_root: &Path,
+    ) -> Option<String> {
+        if specifier != "$lib" && !specifier.starts_with("$lib/") {
+            return None;
+        }
+
+        let svelte_root = self
+            .find_nearest_svelte_config(importing_file)
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| project_root.to_path_buf());
+
+        let mut resolved = svelte_root.join("src").join("lib");
+        if let Some(rest) = specifier.strip_prefix("$lib/") {
+            if !rest.is_empty() {
+                resolved = resolved.join(rest);
+            }
+        }
+
+        if self.path_exists_with_extensions(&resolved) {
+            Some(resolved.to_string_lossy().to_string())
+        } else {
+            Some(resolved.to_string_lossy().to_string())
+        }
+    }
 }
 
 impl Default for TypeScriptPathAliasResolver {
@@ -273,14 +434,26 @@ impl PathAliasResolver for TypeScriptPathAliasResolver {
         _project_root: &Path,
     ) -> Option<String> {
         // 1. Find nearest tsconfig.json (with caching)
-        let tsconfig_path = self.find_nearest_tsconfig(importing_file)?;
+        let tsconfig_path = self.find_nearest_tsconfig(importing_file);
 
-        // 2. Load and parse tsconfig
-        let config = self.load_tsconfig(&tsconfig_path)?;
+        if let Some(tsconfig_path) = tsconfig_path {
+            // 2. Load and parse tsconfig
+            if let Some(config) = self.load_tsconfig(&tsconfig_path) {
+                // 3. Use paths from resolved config
+                // base_url is implicit in resolved paths now
+                if let Some(resolved) = self.match_path_alias(specifier, &config.paths) {
+                    return Some(resolved);
+                }
+            }
+        }
 
-        // 3. Use paths from resolved config
-        // base_url is implicit in resolved paths now
-        self.match_path_alias(specifier, &config.paths)
+        // Fallback: Svelte/Vite alias config
+        if let Some(resolved) = self.resolve_alias_from_extra_configs(specifier, importing_file) {
+            return Some(resolved);
+        }
+
+        // Fallback: SvelteKit $lib alias without tsconfig paths
+        self.resolve_svelte_lib_alias(specifier, importing_file, _project_root)
     }
 
     fn is_potential_alias(&self, specifier: &str) -> bool {
@@ -301,26 +474,38 @@ impl TypeScriptPathAliasResolver {
         importing_file: &Path,
         project_root: &Path,
     ) -> Option<String> {
-        // 1. Find nearest tsconfig.json
-        let tsconfig_path = self.find_nearest_tsconfig(importing_file)?;
-
-        // 2. Load config
-        let config = self.load_tsconfig(&tsconfig_path)?;
-
-        // 3. Try each alias pattern in order
-        for (pattern, replacements) in &config.paths {
-            // Try each replacement path for this pattern
-            for replacement in replacements {
-                if let Some(alias) = self.try_convert_path_to_alias(
-                    absolute_path,
-                    pattern,
-                    replacement,
-                    &config.base_url,
-                    project_root,
-                ) {
-                    return Some(alias);
+        // 1. Try tsconfig.json paths
+        if let Some(tsconfig_path) = self.find_nearest_tsconfig(importing_file) {
+            if let Some(config) = self.load_tsconfig(&tsconfig_path) {
+                for (pattern, replacements) in &config.paths {
+                    for replacement in replacements {
+                        if let Some(alias) = self.try_convert_path_to_alias(
+                            absolute_path,
+                            pattern,
+                            replacement,
+                            &config.base_url,
+                            project_root,
+                        ) {
+                            return Some(alias);
+                        }
+                    }
                 }
             }
+        }
+
+        // 2. Fallback to Svelte/Vite alias configs if available
+        if let Some(alias) = self.path_to_alias_from_extra_configs(
+            absolute_path,
+            importing_file,
+        ) {
+            return Some(alias);
+        }
+
+        // 3. Fallback: SvelteKit $lib alias even without tsconfig paths
+        if let Some(alias) =
+            self.path_to_svelte_lib_alias(absolute_path, importing_file, project_root)
+        {
+            return Some(alias);
         }
 
         None
@@ -345,7 +530,8 @@ impl TypeScriptPathAliasResolver {
         }
 
         // replacement is already absolute in ResolvedTsConfig
-        let replacement_str = replacement.to_string_lossy();
+        let normalized_replacement = normalize_path(replacement);
+        let replacement_str = normalized_replacement.to_string_lossy();
 
         if let Some(star_idx) = pattern.find('*') {
             let pattern_prefix = &pattern[..star_idx];
@@ -392,7 +578,7 @@ impl TypeScriptPathAliasResolver {
                 }
             } else {
                 // No wildcard in replacement (unusual)
-                if let Ok(relative) = path_to_check.strip_prefix(replacement) {
+                if let Ok(relative) = path_to_check.strip_prefix(&normalized_replacement) {
                     let relative_str = relative.to_string_lossy();
                     let alias = format!("{}{}{}", pattern_prefix, relative_str, pattern_suffix);
                     return Some(alias);
@@ -400,13 +586,390 @@ impl TypeScriptPathAliasResolver {
             }
         } else {
             // Exact match
-            let expected_path = replacement.with_extension("");
+            let expected_path = normalized_replacement.with_extension("");
             if path_to_check == expected_path {
                 return Some(pattern.to_string());
             }
         }
 
         None
+    }
+}
+
+impl TypeScriptPathAliasResolver {
+    fn resolve_alias_from_extra_configs(
+        &self,
+        specifier: &str,
+        importing_file: &Path,
+    ) -> Option<String> {
+        if let Some(config_path) = self.find_nearest_svelte_config(importing_file) {
+            if let Some(map) = self.load_aliases_from_svelte_config(&config_path) {
+                if let Some(resolved) = resolve_alias_from_map(specifier, &map) {
+                    return Some(resolved);
+                }
+            }
+        }
+
+        if let Some(config_path) = self.find_nearest_vite_config(importing_file) {
+            if let Some(map) = self.load_aliases_from_vite_config(&config_path) {
+                if let Some(resolved) = resolve_alias_from_map(specifier, &map) {
+                    return Some(resolved);
+                }
+            }
+        }
+
+        None
+    }
+
+    fn path_to_alias_from_extra_configs(
+        &self,
+        absolute_path: &Path,
+        importing_file: &Path,
+    ) -> Option<String> {
+        if let Some(config_path) = self.find_nearest_svelte_config(importing_file) {
+            if let Some(map) = self.load_aliases_from_svelte_config(&config_path) {
+                if let Some(alias) = path_to_alias_from_map(absolute_path, &map) {
+                    return Some(alias);
+                }
+            }
+        }
+
+        if let Some(config_path) = self.find_nearest_vite_config(importing_file) {
+            if let Some(map) = self.load_aliases_from_vite_config(&config_path) {
+                if let Some(alias) = path_to_alias_from_map(absolute_path, &map) {
+                    return Some(alias);
+                }
+            }
+        }
+
+        None
+    }
+
+    fn path_to_svelte_lib_alias(
+        &self,
+        absolute_path: &Path,
+        importing_file: &Path,
+        project_root: &Path,
+    ) -> Option<String> {
+        let svelte_root = self
+            .find_nearest_svelte_config(importing_file)
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| project_root.to_path_buf());
+
+        let lib_root = svelte_root.join("src").join("lib");
+        let mut path_to_check = absolute_path.to_path_buf();
+        if let Some(ext) = path_to_check.extension().and_then(|e| e.to_str()) {
+            if ext == "ts" || ext == "tsx" || ext == "js" || ext == "jsx" {
+                path_to_check = path_to_check.with_extension("");
+            }
+        }
+
+        let relative = path_to_check.strip_prefix(&lib_root).ok()?;
+        let relative_str = relative.to_string_lossy().replace('\\', "/");
+
+        if relative_str.is_empty() {
+            Some("$lib".to_string())
+        } else {
+            Some(format!("$lib/{}", relative_str))
+        }
+    }
+}
+
+fn parse_aliases_from_config(
+    content: &str,
+    config_dir: &Path,
+) -> IndexMap<String, Vec<PathBuf>> {
+    let mut map: IndexMap<String, Vec<PathBuf>> = IndexMap::new();
+    let alias_re = Regex::new(r"\balias\s*:").expect("alias regex should be valid");
+
+    for m in alias_re.find_iter(content) {
+        if let Some((block, block_type)) = extract_alias_block(content, m.end()) {
+            match block_type {
+                AliasBlockType::Object => {
+                    collect_alias_object_pairs(block, config_dir, &mut map);
+                }
+                AliasBlockType::Array => {
+                    collect_alias_array_pairs(block, config_dir, &mut map);
+                }
+            }
+        }
+    }
+
+    map
+}
+
+enum AliasBlockType {
+    Object,
+    Array,
+}
+
+fn extract_alias_block(content: &str, start: usize) -> Option<(&str, AliasBlockType)> {
+    let bytes = content.as_bytes();
+    let mut idx = start;
+
+    while idx < bytes.len() && bytes[idx].is_ascii_whitespace() {
+        idx += 1;
+    }
+
+    let (open, close, block_type) = match bytes.get(idx) {
+        Some(b'{') => (b'{', b'}', AliasBlockType::Object),
+        Some(b'[') => (b'[', b']', AliasBlockType::Array),
+        _ => return None,
+    };
+
+    let mut depth = 0usize;
+    let mut i = idx;
+    let mut in_string = false;
+    let mut string_delim = b'\0';
+    let mut escape_next = false;
+
+    while i < bytes.len() {
+        let ch = bytes[i];
+
+        if in_string {
+            if escape_next {
+                escape_next = false;
+            } else if ch == b'\\' {
+                escape_next = true;
+            } else if ch == string_delim {
+                in_string = false;
+            }
+            i += 1;
+            continue;
+        }
+
+        if ch == b'\'' || ch == b'"' || ch == b'`' {
+            in_string = true;
+            string_delim = ch;
+            i += 1;
+            continue;
+        }
+
+        if ch == open {
+            depth += 1;
+        } else if ch == close {
+            depth -= 1;
+            if depth == 0 {
+                let block = &content[idx + 1..i];
+                return Some((block, block_type));
+            }
+        }
+
+        i += 1;
+    }
+
+    None
+}
+
+fn collect_alias_object_pairs(
+    block: &str,
+    config_dir: &Path,
+    map: &mut IndexMap<String, Vec<PathBuf>>,
+) {
+    let single_quoted_pair =
+        Regex::new(r#"(?m)'([^']+)'\s*:\s*'([^']+)'"#)
+            .expect("single-quoted alias regex should be valid");
+    let double_quoted_pair =
+        Regex::new(r#"(?m)"([^"]+)"\s*:\s*"([^"]+)""#)
+            .expect("double-quoted alias regex should be valid");
+    let ident_single_pair =
+        Regex::new(r#"(?m)([$A-Za-z_][\w$]*)\s*:\s*'([^']+)'"#)
+            .expect("ident single alias regex should be valid");
+    let ident_double_pair =
+        Regex::new(r#"(?m)([$A-Za-z_][\w$]*)\s*:\s*"([^"]+)""#)
+            .expect("ident double alias regex should be valid");
+
+    for caps in single_quoted_pair.captures_iter(block) {
+        let key = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+        let value = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+        if let Some(path) = normalize_alias_path(value, config_dir) {
+            map.entry(key.to_string()).or_default().push(path);
+        }
+    }
+
+    for caps in double_quoted_pair.captures_iter(block) {
+        let key = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+        let value = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+        if let Some(path) = normalize_alias_path(value, config_dir) {
+            map.entry(key.to_string()).or_default().push(path);
+        }
+    }
+
+    for caps in ident_single_pair.captures_iter(block) {
+        let key = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+        let value = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+        if let Some(path) = normalize_alias_path(value, config_dir) {
+            map.entry(key.to_string()).or_default().push(path);
+        }
+    }
+
+    for caps in ident_double_pair.captures_iter(block) {
+        let key = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+        let value = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+        if let Some(path) = normalize_alias_path(value, config_dir) {
+            map.entry(key.to_string()).or_default().push(path);
+        }
+    }
+}
+
+fn collect_alias_array_pairs(
+    block: &str,
+    config_dir: &Path,
+    map: &mut IndexMap<String, Vec<PathBuf>>,
+) {
+    let object_re = Regex::new(r#"(?s)\{[^}]*\}"#).expect("alias object regex should be valid");
+    let find_re = Regex::new(r#"find\s*:\s*(['"])([^'"]+)\1"#)
+        .expect("find alias regex should be valid");
+    let replacement_re = Regex::new(r#"replacement\s*:\s*(['"])([^'"]+)\1"#)
+        .expect("replacement alias regex should be valid");
+
+    for obj in object_re.find_iter(block) {
+        let obj_str = obj.as_str();
+        let find = find_re
+            .captures(obj_str)
+            .and_then(|c| c.get(2))
+            .map(|m| m.as_str());
+        let replacement = replacement_re
+            .captures(obj_str)
+            .and_then(|c| c.get(2))
+            .map(|m| m.as_str());
+
+        if let (Some(find), Some(replacement)) = (find, replacement) {
+            if let Some(path) = normalize_alias_path(replacement, config_dir) {
+                map.entry(find.to_string()).or_default().push(path);
+            }
+        }
+    }
+}
+
+fn normalize_alias_path(value: &str, config_dir: &Path) -> Option<PathBuf> {
+    if value.starts_with("http://") || value.starts_with("https://") {
+        return None;
+    }
+    let path = if value.starts_with('/') {
+        PathBuf::from(value)
+    } else {
+        config_dir.join(value)
+    };
+    Some(path)
+}
+
+fn resolve_alias_from_map(
+    specifier: &str,
+    map: &IndexMap<String, Vec<PathBuf>>,
+) -> Option<String> {
+    for (pattern, replacements) in map {
+        if let Some(resolved) = resolve_alias_against_pattern(specifier, pattern, replacements) {
+            return Some(resolved);
+        }
+    }
+    None
+}
+
+fn resolve_alias_against_pattern(
+    specifier: &str,
+    pattern: &str,
+    replacements: &[PathBuf],
+) -> Option<String> {
+    if pattern.contains('*') {
+        return match_path_alias_with_replacements(specifier, pattern, replacements);
+    }
+
+    if specifier == pattern {
+        return replacements
+            .first()
+            .map(|p| p.to_string_lossy().to_string());
+    }
+
+    if specifier.starts_with(pattern) && specifier.as_bytes().get(pattern.len()) == Some(&b'/') {
+        let suffix = &specifier[pattern.len() + 1..];
+        if let Some(base) = replacements.first() {
+            let resolved = base.join(suffix);
+            return Some(resolved.to_string_lossy().to_string());
+        }
+    }
+
+    None
+}
+
+fn match_path_alias_with_replacements(
+    specifier: &str,
+    pattern: &str,
+    replacements: &[PathBuf],
+) -> Option<String> {
+    // Reuse logic from tsconfig matching by building a temporary map
+    let mut map = IndexMap::new();
+    map.insert(pattern.to_string(), replacements.to_vec());
+    let resolver = TypeScriptPathAliasResolver::new();
+    resolver.match_path_alias(specifier, &map)
+}
+
+fn path_to_alias_from_map(
+    absolute_path: &Path,
+    map: &IndexMap<String, Vec<PathBuf>>,
+) -> Option<String> {
+    let resolver = TypeScriptPathAliasResolver::new();
+
+    let mut path_to_check = absolute_path.to_path_buf();
+    if let Some(ext) = path_to_check.extension().and_then(|e| e.to_str()) {
+        if ext == "ts" || ext == "tsx" || ext == "js" || ext == "jsx" {
+            path_to_check = path_to_check.with_extension("");
+        }
+    }
+
+    let mut best: Option<(usize, String)> = None;
+
+    for (pattern, replacements) in map {
+        for replacement in replacements {
+            if !pattern.contains('*') {
+                if let Ok(relative) = path_to_check.strip_prefix(replacement) {
+                    let relative_str = relative.to_string_lossy().replace('\\', "/");
+                    let alias = if relative_str.is_empty() {
+                        pattern.to_string()
+                    } else {
+                        format!("{}/{}", pattern.trim_end_matches('/'), relative_str)
+                    };
+                    let score = replacement.components().count();
+                    if best.as_ref().map_or(true, |(best_score, _)| score > *best_score) {
+                        best = Some((score, alias));
+                    }
+                }
+            }
+
+            if let Some(alias) = resolver.try_convert_path_to_alias(
+                absolute_path,
+                pattern,
+                replacement,
+                Path::new("."),
+                Path::new("."),
+            ) {
+                let score = replacement.components().count();
+                if best.as_ref().map_or(true, |(best_score, _)| score > *best_score) {
+                    best = Some((score, alias));
+                }
+            }
+        }
+    }
+
+    best.map(|(_, alias)| alias)
+}
+
+fn normalize_path(path: &Path) -> PathBuf {
+    use std::path::Component;
+    let mut result = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                result.pop();
+            }
+            _ => result.push(component.as_os_str()),
+        }
+    }
+    if result.as_os_str().is_empty() {
+        PathBuf::from(".")
+    } else {
+        result
     }
 }
 
@@ -483,6 +1046,119 @@ mod tests {
         let resolved = resolver.resolve_alias("@/components/Button", &test_file, project_root);
         assert!(resolved.is_some());
         assert!(resolved.unwrap().contains("src/components/Button"));
+    }
+
+    #[test]
+    fn test_resolve_alias_from_svelte_config() {
+        let temp_dir = TempDir::new().unwrap();
+        let project_root = temp_dir.path();
+
+        let config = r#"
+export default {
+  kit: {
+    alias: {
+      "@": "src",
+      "$utils": "src/utils",
+      "$lib/*": "src/lib/*"
+    }
+  }
+};
+"#;
+        std::fs::write(project_root.join("svelte.config.js"), config).unwrap();
+
+        let src_dir = project_root.join("src");
+        std::fs::create_dir_all(src_dir.join("utils")).unwrap();
+        std::fs::create_dir_all(src_dir.join("lib")).unwrap();
+        let importing_file = src_dir.join("routes").join("+page.svelte");
+        std::fs::create_dir_all(importing_file.parent().unwrap()).unwrap();
+        std::fs::write(&importing_file, "").unwrap();
+
+        let resolver = TypeScriptPathAliasResolver::new();
+        let resolved = resolver.resolve_alias("@/utils/format", &importing_file, project_root);
+        assert!(resolved.is_some());
+        let resolved_path = resolved.unwrap();
+        assert!(resolved_path.ends_with("src/utils/format"));
+
+        let resolved = resolver.resolve_alias("$lib/components/Button", &importing_file, project_root);
+        assert!(resolved.is_some());
+        let resolved_path = resolved.unwrap();
+        assert!(resolved_path.ends_with("src/lib/components/Button"));
+    }
+
+    #[test]
+    fn test_path_to_alias_from_svelte_config() {
+        let temp_dir = TempDir::new().unwrap();
+        let project_root = temp_dir.path();
+
+        let config = r#"
+export default {
+  kit: {
+    alias: {
+      "@": "src",
+      "$utils": "src/utils"
+    }
+  }
+};
+"#;
+        std::fs::write(project_root.join("svelte.config.js"), config).unwrap();
+
+        let src_dir = project_root.join("src");
+        std::fs::create_dir_all(src_dir.join("utils")).unwrap();
+        std::fs::create_dir_all(src_dir.join("components")).unwrap();
+        let importing_file = src_dir.join("routes").join("+page.svelte");
+        std::fs::create_dir_all(importing_file.parent().unwrap()).unwrap();
+        std::fs::write(&importing_file, "").unwrap();
+
+        let resolver = TypeScriptPathAliasResolver::new();
+        let abs_path = src_dir.join("utils").join("format.ts");
+        let alias = resolver.path_to_alias(&abs_path, &importing_file, project_root);
+        assert_eq!(alias, Some("$utils/format".to_string()));
+
+        let abs_path = src_dir.join("components").join("Button.ts");
+        let alias = resolver.path_to_alias(&abs_path, &importing_file, project_root);
+        assert_eq!(alias, Some("@/components/Button".to_string()));
+    }
+
+    #[test]
+    fn test_path_to_alias_with_sveltekit_extends() {
+        let temp_dir = TempDir::new().unwrap();
+        let project_root = temp_dir.path();
+
+        let web_dir = project_root.join("web");
+        let svelte_kit_dir = web_dir.join(".svelte-kit");
+        std::fs::create_dir_all(&svelte_kit_dir).unwrap();
+
+        let svelte_tsconfig = r#"
+{
+  "compilerOptions": {
+    "paths": {
+      "$lib/*": ["../src/lib/*"]
+    }
+  }
+}
+"#;
+        std::fs::write(svelte_kit_dir.join("tsconfig.json"), svelte_tsconfig).unwrap();
+
+        let root_tsconfig = r#"
+{
+  "extends": "./.svelte-kit/tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "bundler"
+  }
+}
+"#;
+        std::fs::write(web_dir.join("tsconfig.json"), root_tsconfig).unwrap();
+
+        let src_dir = web_dir.join("src").join("lib").join("utils");
+        std::fs::create_dir_all(&src_dir).unwrap();
+        let importing_file = web_dir.join("src").join("routes").join("+page.svelte");
+        std::fs::create_dir_all(importing_file.parent().unwrap()).unwrap();
+        std::fs::write(&importing_file, "").unwrap();
+
+        let resolver = TypeScriptPathAliasResolver::new();
+        let abs_path = src_dir.join("text.ts");
+        let alias = resolver.path_to_alias(&abs_path, &importing_file, project_root);
+        assert_eq!(alias, Some("$lib/utils/text".to_string()));
     }
 
     #[test]

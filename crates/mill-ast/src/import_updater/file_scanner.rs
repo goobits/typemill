@@ -226,6 +226,16 @@ impl ImportPathResolver {
                 } else {
                     candidate.with_extension(&ext[1..])
                 };
+                if project_files.contains(&candidate_with_ext) {
+                    return Some(candidate_with_ext);
+                }
+                if candidate_with_ext.is_absolute() {
+                    if let Ok(relative) = candidate_with_ext.strip_prefix(self.project_root()) {
+                        if project_files.contains(&relative.to_path_buf()) {
+                            return Some(candidate_with_ext);
+                        }
+                    }
+                }
                 if let Ok(abs_candidate) = candidate_with_ext.canonicalize() {
                     if project_files.contains(&abs_candidate) {
                         return Some(abs_candidate);

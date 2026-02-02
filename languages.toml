@@ -57,6 +57,12 @@ plugin_struct = "GitignoreLanguagePlugin"
 category = "config"
 default = true
 
+[languages.svelte]
+path = "crates/mill-lang-svelte"
+plugin_struct = "SveltePlugin"
+category = "full"
+default = true
+
 # Future languages (examples, for typemill-languages repo):
 #
 # [languages.go]

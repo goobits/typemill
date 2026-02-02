@@ -196,6 +196,25 @@ pub(crate) async fn find_generic_affected_files_cached(
                                     return Some(file_clone);
                                 }
                             }
+                        } else {
+                            #[cfg(feature = "lang-svelte")]
+                            if ext == "svelte" {
+                                let plugin = mill_lang_svelte::SveltePlugin::new();
+                                let rewrite_result = plugin.rewrite_file_references(
+                                    &content_clone,
+                                    &old_path_clone,
+                                    &new_path_clone,
+                                    &file_clone,
+                                    &project_root_clone,
+                                    rename_info_clone.as_ref(),
+                                );
+
+                                if let Some((updated_content, change_count)) = rewrite_result {
+                                    if change_count > 0 && updated_content != content_clone {
+                                        return Some(file_clone);
+                                    }
+                                }
+                            }
                         }
                     }
                     None

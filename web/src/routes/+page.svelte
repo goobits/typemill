@@ -1,5 +1,11 @@
+<script lang="ts">
+	import { formatHeroTitle } from '$lib/utils/text';
+
+	const heroTitle = formatHeroTitle('🤖 TypeMill');
+</script>
+
 <div class="hero">
-	<h1>🤖 TypeMill</h1>
+	<h1>{heroTitle}</h1>
 	<p>Pure Rust MCP server bridging Language Server Protocol (LSP) to AI coding assistants</p>
 	<div class="btn-group">
 		<a href="#quick-start" class="btn">Quick Start</a>

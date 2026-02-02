@@ -75,10 +75,10 @@ tracing-subscriber = { workspace = true }
 once_cell = "1.19"
 e2e = { path = "../../tests/e2e" }
 mill-test-support = { path = "../../crates/mill-test-support" }
-mill-handlers = { path = "../../crates/mill-handlers", default-features = false, features = ["refactor-all", "lang-rust"] }
+mill-handlers = { path = "../../crates/mill-handlers", default-features = false, features = ["refactor-all", "lang-rust", "lang-svelte"] }
 
 [features]
-default = ["lang-gitignore", "lang-markdown", "lang-python", "lang-rust", "lang-toml", "lang-typescript", "lang-yaml"]
+default = ["lang-gitignore", "lang-markdown", "lang-python", "lang-rust", "lang-svelte", "lang-toml", "lang-typescript", "lang-yaml"]
 lang-rust = ["mill-server/lang-rust", "mill-plugin-bundle/lang-rust", "mill-ast/lang-rust", "mill-plugin-system/lang-rust", "mill-transport/lang-rust"]
 lang-typescript = ["mill-server/lang-typescript", "mill-plugin-bundle/lang-typescript", "mill-ast/lang-typescript", "mill-plugin-system/lang-typescript", "mill-transport/lang-typescript"]
 lang-markdown = ["mill-server/lang-markdown", "mill-plugin-bundle/lang-markdown", "mill-ast/lang-markdown", "mill-plugin-system/lang-markdown", "mill-transport/lang-markdown"]
@@ -91,6 +91,7 @@ heavy-tests = []
 lsp-tests = []  # Enable LSP smoke tests (requires LSP servers installed)
 lang-python = ["mill-server/lang-python", "mill-plugin-bundle/lang-python", "mill-ast/lang-python", "mill-plugin-system/lang-python", "mill-transport/lang-python"]
 lang-gitignore = ["mill-server/lang-gitignore", "mill-plugin-bundle/lang-gitignore"]
+lang-svelte = ["mill-server/lang-svelte", "mill-plugin-bundle/lang-svelte", "mill-ast/lang-svelte", "mill-plugin-system/lang-svelte", "mill-transport/lang-svelte", "mill-handlers/lang-svelte"]
 
 # Platform-specific dependencies for process management
 [target.'cfg(unix)'.dependencies]

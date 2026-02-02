@@ -10,6 +10,7 @@ default = ["refactor-all"]
 # not at the handler layer. This eliminates compile-time coupling.
 # Exception: lang-rust is optional for consolidation validation (Rust-specific operation)
 lang-rust = ["dep:mill-lang-rust"]
+lang-svelte = ["mill-services/lang-svelte"]
 
 # Refactoring operations - optional for faster compilation
 refactor-rename = []

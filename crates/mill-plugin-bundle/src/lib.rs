@@ -21,6 +21,8 @@ use mill_lang_markdown::MarkdownPlugin;
 use mill_lang_python::PythonPlugin;
 #[cfg(feature = "lang-rust")]
 use mill_lang_rust::RustPlugin;
+#[cfg(feature = "lang-svelte")]
+use mill_lang_svelte::SveltePlugin;
 #[cfg(feature = "lang-toml")]
 use mill_lang_toml::TomlLanguagePlugin;
 #[cfg(feature = "lang-typescript")]
@@ -41,6 +43,8 @@ fn _force_plugin_linkage() {
     let _: Option<PythonPlugin> = None;
     #[cfg(feature = "lang-rust")]
     let _: Option<RustPlugin> = None;
+    #[cfg(feature = "lang-svelte")]
+    let _: Option<SveltePlugin> = None;
     #[cfg(feature = "lang-toml")]
     let _: Option<TomlLanguagePlugin> = None;
     #[cfg(feature = "lang-typescript")]
@@ -91,6 +95,8 @@ mod tests {
     extern crate mill_lang_python;
     #[cfg(all(test, feature = "lang-rust"))]
     extern crate mill_lang_rust;
+    #[cfg(all(test, feature = "lang-svelte"))]
+    extern crate mill_lang_svelte;
     #[cfg(all(test, feature = "lang-toml"))]
     extern crate mill_lang_toml;
     #[cfg(all(test, feature = "lang-typescript"))]

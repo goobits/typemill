@@ -12,6 +12,7 @@ members = [
     "crates/mill-lang-typescript",
     "crates/mill-lang-python",
     "crates/mill-lang-markdown",
+    "crates/mill-lang-svelte",
     "crates/mill-lang-toml",
     "crates/mill-lang-yaml",
     "crates/mill-lang-gitignore",
@@ -103,6 +104,7 @@ mill-lang-typescript = { path = "crates/mill-lang-typescript", default-features 
 mill-lang-rust = { path = "crates/mill-lang-rust", default-features = false }
 mill-lang-python = { path = "crates/mill-lang-python", default-features = false }
 mill-lang-markdown = { path = "crates/mill-lang-markdown", default-features = false }
+mill-lang-svelte = { path = "crates/mill-lang-svelte", default-features = false }
 
 # Optimize build times for dev dependencies
 [profile.dev.build-override]

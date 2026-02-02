@@ -62,6 +62,12 @@ pub fn build_language_plugin_registry(
         debug!("TypeScriptPlugin found in registry");
     }
 
+    #[cfg(feature = "lang-svelte")]
+    if registry.find_by_extension("svelte").is_none() {
+        debug!("SveltePlugin not found in registry, registering fallback");
+        registry.register(Arc::new(mill_lang_svelte::SveltePlugin::new()));
+    }
+
     debug!(
         plugin_count,
         "Built language plugin registry from discovered plugins"
