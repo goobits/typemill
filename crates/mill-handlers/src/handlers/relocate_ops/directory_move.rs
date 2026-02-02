@@ -58,9 +58,17 @@ pub async fn plan_directory_move(
         Some(true) | None => Some(mill_plugin_api::ScanScope::AllUseStatements),
     };
 
-    // NOTE: Not using LSP finder - see file_move.rs for explanation
+    // Get LSP import finder from context (uses workspace/willRenameFiles for correct import detection)
+    // The finder may return empty if the LSP doesn't support willRenameFiles, in which case
+    // the plugin-based scanner (TypeScriptReferenceDetector) is used as a fallback.
+    let lsp_adapter_guard = context.lsp_adapter.lock().await;
+    let lsp_finder: Option<&dyn mill_services::services::reference_updater::LspImportFinder> =
+        lsp_adapter_guard
+            .as_ref()
+            .map(|adapter| adapter.as_import_finder());
+
     let edit_plan = move_service
-        .plan_directory_move(old_path, new_path, scan_scope, None)
+        .plan_directory_move(old_path, new_path, scan_scope, lsp_finder)
         .await
         .map_err(|e| {
             error!(
