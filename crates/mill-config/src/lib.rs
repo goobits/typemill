@@ -11,7 +11,7 @@ pub mod refactor_config;
 pub use config::{
     AppConfig, AuthConfig, CacheConfig, ExternalMcpConfig, ExternalMcpServerConfig,
     ExternalPluginConfig, FileLoggingConfig, FuseConfig, GitConfig, LanguagePluginsConfig,
-    LogFormat, LoggingConfig, LspConfig, LspServerConfig, PluginSelectionConfig, ServerConfig,
-    TlsConfig,
+    LogFormat, LoggingConfig, LspConfig, LspMode, LspServerConfig, PluginSelectionConfig,
+    ServerConfig, TlsConfig,
 };
 pub use refactor_config::{RefactorConfig, RefactorDefaults, RefactorPreset};

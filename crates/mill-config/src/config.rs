@@ -92,10 +92,31 @@ pub struct AuthConfig {
 pub struct LspConfig {
     /// List of LSP server configurations
     pub servers: Vec<LspServerConfig>,
+    /// LSP usage mode (off, discover, full)
+    #[serde(default)]
+    pub mode: LspMode,
     /// Default timeout for LSP requests in milliseconds
     pub default_timeout_ms: u64,
     /// Enable LSP server preloading
     pub enable_preload: bool,
+}
+
+/// LSP usage mode
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum LspMode {
+    /// Disable all LSP usage
+    Off,
+    /// Use LSP for discovery only (fallback to AST for edits)
+    Discover,
+    /// Allow LSP for discovery and edits when supported
+    Full,
+}
+
+impl Default for LspMode {
+    fn default() -> Self {
+        Self::Discover
+    }
 }
 
 /// Individual LSP server configuration
@@ -313,6 +334,7 @@ impl Default for LspConfig {
                     initialization_options: None,
                 },
             ],
+            mode: LspMode::Discover,
             default_timeout_ms: 5000,
             enable_preload: true,
         }
