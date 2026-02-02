@@ -100,22 +100,25 @@ impl PrunePlanner {
         let end_brace = line.find('}')?;
         let imports_section = &line[start_brace + 1..end_brace];
 
-        // Split by comma and filter out the identifier to remove
+        let mut found = false;
         let identifiers: Vec<&str> = imports_section
             .split(',')
             .map(|s| s.trim())
-            .filter(|s| !s.is_empty() && *s != identifier)
+            .filter(|s| !s.is_empty())
+            .filter(|s| {
+                if *s == identifier {
+                    found = true;
+                    false
+                } else {
+                    true
+                }
+            })
             .collect();
 
         if identifiers.is_empty() {
             // No identifiers left, delete entire line
             None
-        } else if identifiers.len()
-            == imports_section
-                .split(',')
-                .filter(|s| !s.trim().is_empty())
-                .count()
-        {
+        } else if !found {
             // Identifier wasn't found, keep line as is
             Some(line.to_string())
         } else {
