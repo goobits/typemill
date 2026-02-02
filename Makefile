@@ -93,7 +93,18 @@ release-npm:
 	else \
 		echo "⚠️  Skipping binary version check (unknown platform)"; \
 	fi; \
-	cd $(NPM_DIR) && npm publish --access public
+	npmrc_path="$(NPM_DIR)/.npmrc"; \
+	used_npmrc=""; \
+	if [ -n "$$NPM_TOKEN" ]; then \
+		echo "//registry.npmjs.org/:_authToken=$$NPM_TOKEN" > "$$npmrc_path"; \
+		used_npmrc="yes"; \
+	fi; \
+	cd $(NPM_DIR) && npm publish --access public; \
+	status=$$?; \
+	if [ "$$used_npmrc" = "yes" ]; then \
+		rm -f "$$npmrc_path"; \
+	fi; \
+	exit $$status
 
 release-all: release-rust release-npm
 
