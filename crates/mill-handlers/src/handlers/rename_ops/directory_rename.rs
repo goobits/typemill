@@ -271,13 +271,23 @@ impl RenameService {
         );
 
         // Calculate files_to_move by walking the directory
-        let mut files_to_move = 0;
-        let walker = ignore::WalkBuilder::new(&old_path).hidden(false).build();
-        for entry in walker.flatten() {
-            if entry.path().is_file() {
-                files_to_move += 1;
+        // Run in blocking thread to avoid stalling the async runtime
+        let path_for_walk = old_path.clone();
+        let files_to_move = tokio::task::spawn_blocking(move || {
+            let mut count = 0;
+            let walker = ignore::WalkBuilder::new(&path_for_walk).hidden(false).build();
+            for entry in walker.flatten() {
+                if entry.path().is_file() {
+                    count += 1;
+                }
             }
-        }
+            count
+        })
+        .await
+        .map_err(|e| mill_foundation::errors::MillError::Internal {
+            message: format!("Failed to spawn blocking task: {}", e),
+            source: None,
+        })?;
 
         // Check if this is a Cargo package
         let is_cargo_package = tokio::fs::try_exists(old_path.join("Cargo.toml"))
@@ -566,4 +576,5 @@ name = "target"
         let result = RenameService::detect_consolidation_type(&src, &new_path).await;
         assert_eq!(result, Some(PackageType::Cargo));
     }
+
 }
