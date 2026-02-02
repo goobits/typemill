@@ -1349,6 +1349,7 @@ async fn handle_tool_command(
         // Auto-start daemon if not running to cache project state
         if !is_daemon_running(&socket_path).await {
             eprintln!("🚀 Auto-starting mill daemon for persistent project state...");
+            cleanup_stale_daemon_pid(&socket_path);
             if let Err(e) = start_background_daemon().await {
                 eprintln!("⚠️  Failed to auto-start daemon: {}", e);
                 // Fall through to in-process execution
@@ -1448,6 +1449,7 @@ async fn handle_daemon_command(command: DaemonCommands) {
 
     match command {
         DaemonCommands::Start { foreground } => {
+            cleanup_stale_daemon_pid(&socket_path);
             // Check if daemon is already running
             if is_daemon_running(&socket_path).await {
                 eprintln!("❌ Daemon is already running");
@@ -1550,6 +1552,10 @@ async fn start_background_daemon() -> Result<(), String> {
     let exe_path = std::env::current_exe()
         .map_err(|e| format!("Failed to get current executable path: {}", e))?;
 
+    // Clean up stale daemon PID file if present
+    let socket_path = default_socket_path();
+    cleanup_stale_daemon_pid(&socket_path);
+
     // 2. Spawn daemon process (mill daemon start --foreground)
     // We use --foreground to avoid the complex fork() logic in the daemon command itself,
     // but we spawn it as a detached process from here.
@@ -1564,7 +1570,6 @@ async fn start_background_daemon() -> Result<(), String> {
         .map_err(|e| format!("Failed to spawn daemon process: {}", e))?;
 
     // 3. Wait for socket to appear (with timeout)
-    let socket_path = default_socket_path();
     let start_time = std::time::Instant::now();
     let timeout = std::time::Duration::from_secs(10); // 10s timeout for slow startup
 
@@ -1641,6 +1646,31 @@ async fn run_daemon_server(socket_path: &std::path::Path, pid_path: &std::path::
         eprintln!("❌ Server error: {}", e);
         let _ = std::fs::remove_file(pid_path);
         process::exit(1);
+    }
+}
+
+#[cfg(unix)]
+fn cleanup_stale_daemon_pid(socket_path: &std::path::Path) {
+    let pid_path = socket_path.with_extension("pid");
+    if !pid_path.exists() {
+        return;
+    }
+
+    let pid_str = match std::fs::read_to_string(&pid_path) {
+        Ok(value) => value,
+        Err(_) => return,
+    };
+
+    let pid = match pid_str.trim().parse::<u32>() {
+        Ok(value) => value,
+        Err(_) => {
+            let _ = std::fs::remove_file(&pid_path);
+            return;
+        }
+    };
+
+    if !is_process_running(pid) {
+        let _ = std::fs::remove_file(&pid_path);
     }
 }
 
