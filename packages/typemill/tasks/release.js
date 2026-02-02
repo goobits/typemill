@@ -72,7 +72,14 @@ const writeCargoVersion = (version) => {
 }
 
 const buildAndStageBinary = (target) => {
-	run('cargo', ['build', '--release', '--target', target])
+	const env = { ...process.env }
+	if (target.endsWith('unknown-linux-gnu')) {
+		const linker = process.env.TYPEMILL_LINUX_LINKER || `${target}-gcc`
+		env[`CC_${target.replace(/-/g, '_')}`] = linker
+		env[`CARGO_TARGET_${target.replace(/-/g, '_').toUpperCase()}_LINKER`] = linker
+	}
+
+	run('cargo', ['build', '--release', '--target', target, '-p', 'mill'], { env })
 	const sourceBinary = path.join(repoRoot, 'target', target, 'release', binaryName)
 	const destDir = path.join(packageDir, 'bin', target)
 	const destBinary = path.join(destDir, binaryName)
