@@ -422,7 +422,17 @@ impl TestClient {
     pub fn get_server_stats(&self) -> Result<ServerStats, Box<dyn std::error::Error>> {
         let pid = self.process.id();
 
+        #[cfg(target_os = "linux")]
         let mut stats = ServerStats {
+            pid,
+            memory_kb: 0,
+            cpu_percent: 0.0,
+            uptime_seconds: 0,
+            child_processes: self.get_child_processes().len() as u32,
+        };
+
+        #[cfg(not(target_os = "linux"))]
+        let stats = ServerStats {
             pid,
             memory_kb: 0,
             cpu_percent: 0.0,
