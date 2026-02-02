@@ -40,14 +40,15 @@ release-npm:
 	@npm whoami >/dev/null 2>&1 || { echo "❌ npm not logged in"; exit 1; }
 	@test -f $(NPM_DIR)/package.json || { echo "❌ package.json not found in $(NPM_DIR)"; exit 1; }
 	@npm pkg fix --silent --prefix $(NPM_DIR)
-	@current_version=$$(node -p "require('./$(NPM_DIR)/package.json').version"); \
+	@pkg_path="$(NPM_DIR)/package.json"; \
+	current_version=$$(node -p "require('./$$pkg_path').version"); \
 	if npm view $(NPM_PKG)@$$current_version version >/dev/null 2>&1; then \
 		echo "⚠️  $(NPM_PKG) version $$current_version already published. Auto-bumping $(NPM_BUMP)..."; \
-		cd $(NPM_DIR) && npm version $(NPM_BUMP) --no-git-tag-version; \
-		current_version=$$(node -p "require('./package.json').version"); \
+		( cd $(NPM_DIR) && npm version $(NPM_BUMP) --no-git-tag-version ); \
+		current_version=$$(node -p "require('./$$pkg_path').version"); \
 		echo "✅ Bumped to $$current_version"; \
 	fi; \
-	if ! node -e "const fs=require('fs');const path=require('path');const pkg=require('./$(NPM_DIR)/package.json');const ver=pkg.version;const binDir=path.join('$(NPM_DIR)','bin');const entries=fs.readdirSync(binDir,{withFileTypes:true}).filter(d=>d.isDirectory()).map(d=>path.join(binDir,d.name,'$(NPM_BIN_NAME)'));let ok=true;for(const bin of entries){if(!fs.existsSync(bin)) continue;const out=require('child_process').execFileSync(bin,['--version'],{encoding:'utf8'}).trim();if(!out.endsWith(ver)){console.error(`❌ ${bin} reports ${out}, expected ${ver}`);ok=false;}}if(!ok) process.exit(1);"; then \
+	if ! node -e "const fs=require('fs');const path=require('path');const pkg=require('./$$pkg_path');const ver=pkg.version;const binDir=path.join('$(NPM_DIR)','bin');const entries=fs.readdirSync(binDir,{withFileTypes:true}).filter(d=>d.isDirectory()).map(d=>path.join(binDir,d.name,'$(NPM_BIN_NAME)'));let ok=true;for(const bin of entries){if(!fs.existsSync(bin)) continue;const out=require('child_process').execFileSync(bin,['--version'],{encoding:'utf8'}).trim();if(!out.endsWith(ver)){console.error(`❌ ${bin} reports ${out}, expected ${ver}`);ok=false;}}if(!ok) process.exit(1);"; then \
 		echo "❌ Binary versions do not match package.json. Rebuild binaries before publish."; \
 		exit 1; \
 	fi; \
