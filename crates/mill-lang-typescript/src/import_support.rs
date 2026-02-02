@@ -347,7 +347,8 @@ pub fn rewrite_imports_for_move_with_context(
                         // Calculate the new path after the move
                         let new_resolved_path = if is_directory_move {
                             // For directory moves, preserve the relative structure within
-                            if let Ok(relative) = resolved_path.strip_prefix(old_path) {
+                            // Use normalized paths for consistent strip_prefix behavior
+                            if let Ok(relative) = resolved_path.strip_prefix(&old_path_normalized) {
                                 new_path.join(relative)
                             } else {
                                 continue;
