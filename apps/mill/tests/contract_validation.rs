@@ -25,6 +25,7 @@ fn test_app_config_contract() {
 
     // Verify LSP config
     assert_eq!(config.lsp.servers.len(), 2);
+    assert_eq!(config.lsp.mode, mill_config::config::LspMode::Discover);
     assert_eq!(config.lsp.default_timeout_ms, 30000);
     assert!(config.lsp.enable_preload);
 

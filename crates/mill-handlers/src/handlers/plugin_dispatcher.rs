@@ -271,6 +271,11 @@ impl PluginDispatcher {
             debug!("App config loaded successfully");
             let lsp_config = app_config.lsp;
 
+            if lsp_config.mode == mill_config::config::LspMode::Off {
+                info!("LSP mode is off; skipping LSP adapter initialization");
+                return Ok(());
+            }
+
             let all_extensions: Vec<String> = lsp_config
                 .servers
                 .iter()

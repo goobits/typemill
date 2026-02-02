@@ -97,6 +97,31 @@ mill setup --interactive
 | `rootDir` | string | Optional | Working directory for LSP (relative or absolute path) |
 | `restartInterval` | number | Optional | Minutes before LSP restart (default: 15) |
 
+### LSP Mode
+
+Control how TypeMill uses LSP with `lsp.mode` (default: `discover`):
+
+| Mode | Discovery (find affected files) | Edits (rewrite code) | Notes |
+| --- | --- | --- | --- |
+| `off` | no | no | Disables all LSP usage |
+| `discover` | yes | no (except LSP-only ops) | Uses LSP only to find affected files; edits are AST-based |
+| `full` | yes | yes | Allows LSP edits when supported |
+
+Example:
+
+```toml
+[lsp]
+mode = "discover"
+```
+
+Environment override (shorthand):
+
+```bash
+export TYPEMILL_LSP_MODE="discover"
+```
+
+Note: when `mode = "off"`, LSP servers are optional.
+
 ### Why `rootDir` Matters
 
 **TypeScript/JavaScript:**
@@ -149,6 +174,14 @@ export TYPEMILL__SERVER__PORT=3040
 # Authentication (JWT secret)
 export TYPEMILL__SERVER__AUTH__JWT_SECRET="your-secret-key"
 ```
+
+### LSP Configuration
+
+```bash
+# LSP usage mode (off, discover, full)
+export TYPEMILL__LSP__MODE="discover"
+```
+
 ### Cache Configuration
 
 ```bash

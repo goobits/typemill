@@ -1,4 +1,5 @@
 use super::{RenameOptions, RenameService, RenameTarget};
+use crate::handlers::common::lsp_mode;
 use crate::handlers::tools::extensions::get_concrete_app_state;
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_foundation::planning::{PlanMetadata, PlanSummary, RenamePlan};
@@ -57,9 +58,13 @@ impl RenameService {
         // the plugin-based scanner (TypeScriptReferenceDetector) is used as a fallback.
         let lsp_adapter_guard = context.lsp_adapter.lock().await;
         let lsp_finder: Option<&dyn mill_services::services::reference_updater::LspImportFinder> =
-            lsp_adapter_guard
-                .as_ref()
-                .map(|adapter| adapter.as_import_finder());
+            if lsp_mode(context) == mill_config::config::LspMode::Off {
+                None
+            } else {
+                lsp_adapter_guard
+                    .as_ref()
+                    .map(|adapter| adapter.as_import_finder())
+            };
 
         // Call MoveService directly to get the EditPlan (using absolute paths)
         let edit_plan = concrete_state

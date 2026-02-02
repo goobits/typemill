@@ -39,6 +39,7 @@ fn test_config_load_default() {
     assert!(config.server.auth.is_none());
 
     assert!(!config.lsp.servers.is_empty());
+    assert_eq!(config.lsp.mode, mill_config::config::LspMode::Discover);
     assert_eq!(config.lsp.default_timeout_ms, 5000);
     assert!(config.lsp.enable_preload);
 
@@ -108,6 +109,7 @@ cacheDir = "/tmp/cache"
     assert_eq!(config.server.timeout_ms, 60000);
 
     assert_eq!(config.lsp.servers.len(), 1);
+    assert_eq!(config.lsp.mode, mill_config::config::LspMode::Discover);
     assert_eq!(config.lsp.servers[0].extensions, vec!["rs"]);
     assert_eq!(config.lsp.servers[0].command, vec!["rust-analyzer"]);
     assert_eq!(config.lsp.servers[0].restart_interval, Some(15));

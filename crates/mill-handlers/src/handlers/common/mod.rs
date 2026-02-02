@@ -40,6 +40,17 @@ use mill_services::services::reference_updater::LspImportFinder;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+/// Resolve the configured LSP mode from the concrete AppState, if available.
+pub fn lsp_mode(context: &ToolHandlerContext) -> mill_config::config::LspMode {
+    context
+        .app_state
+        .extensions
+        .as_ref()
+        .and_then(|ext| ext.downcast_ref::<crate::handlers::plugin_dispatcher::AppState>())
+        .map(|state| state.lsp_mode)
+        .unwrap_or(mill_config::config::LspMode::Discover)
+}
+
 /// Wrapper to adapt LspAdapter to LspImportFinder trait
 pub struct LspFinderWrapper(pub Arc<dyn LspAdapter>);
 

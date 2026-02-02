@@ -5,7 +5,7 @@
 //! - File deletion (via FileService)
 //! - Directory deletion (via FileService)
 
-use crate::handlers::common::{calculate_checksum, lsp_uri_from_file_path};
+use crate::handlers::common::{calculate_checksum, lsp_mode, lsp_uri_from_file_path};
 use futures::stream::StreamExt;
 use lsp_types::{Location, Position, Range, TextEdit, Uri};
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
@@ -140,6 +140,12 @@ impl PrunePlanner {
         character: u32,
         context: &mill_handler_api::ToolHandlerContext,
     ) -> ServerResult<HashMap<Uri, Vec<TextEdit>>> {
+        if lsp_mode(context) == mill_config::config::LspMode::Off {
+            return Err(ServerError::not_supported(
+                "LSP is disabled (lsp.mode=off). Prune symbol cleanup requires LSP.",
+            ));
+        }
+
         let mut changes: HashMap<Uri, Vec<TextEdit>> = HashMap::new();
 
         // Get extension to find LSP client

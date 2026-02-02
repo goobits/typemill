@@ -225,6 +225,11 @@ impl SystemHandler {
         let app_config = mill_config::config::AppConfig::load()
             .map_err(|e| ServerError::internal(format!("Failed to load app config: {}", e)))?;
         let lsp_config = app_config.lsp;
+        if lsp_config.mode == mill_config::config::LspMode::Off {
+            return Err(ServerError::not_supported(
+                "LSP is disabled (lsp.mode=off).",
+            ));
+        }
 
         // Find the server config for this extension
         if let Some(_server_config) = lsp_config

@@ -1,5 +1,5 @@
 use super::{RenameOptions, RenameService, RenameTarget};
-use crate::handlers::common::calculate_checksums_for_directory_rename;
+use crate::handlers::common::{calculate_checksums_for_directory_rename, lsp_mode};
 use crate::handlers::tools::extensions::get_concrete_app_state;
 use mill_foundation::errors::MillResult as ServerResult;
 use mill_foundation::planning::{PlanMetadata, PlanSummary, PlanWarning, RenamePlan};
@@ -263,9 +263,13 @@ impl RenameService {
         // the plugin-based scanner (TypeScriptReferenceDetector) is used as a fallback.
         let lsp_adapter_guard = context.lsp_adapter.lock().await;
         let lsp_finder: Option<&dyn mill_services::services::reference_updater::LspImportFinder> =
-            lsp_adapter_guard
-                .as_ref()
-                .map(|adapter| adapter.as_import_finder());
+            if lsp_mode(context) == mill_config::config::LspMode::Off {
+                None
+            } else {
+                lsp_adapter_guard
+                    .as_ref()
+                    .map(|adapter| adapter.as_import_finder())
+            };
 
         // Get the EditPlan with import updates (call MoveService directly)
         let edit_plan = concrete_state

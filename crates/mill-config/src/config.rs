@@ -442,9 +442,25 @@ impl AppConfig {
         );
 
         // Extract and deserialize configuration
-        let app_config: AppConfig = figment_final
+        let mut app_config: AppConfig = figment_final
             .extract()
             .map_err(|e| MillError::config(format!("Failed to load configuration: {}", e)))?;
+
+        // Optional convenience override (non-nested env var)
+        if let Ok(val) = std::env::var("TYPEMILL_LSP_MODE") {
+            let mode = match val.trim().to_lowercase().as_str() {
+                "off" => LspMode::Off,
+                "discover" => LspMode::Discover,
+                "full" => LspMode::Full,
+                other => {
+                    return Err(MillError::config(format!(
+                        "Invalid TYPEMILL_LSP_MODE '{}'. Expected: off, discover, full",
+                        other
+                    )))
+                }
+            };
+            app_config.lsp.mode = mode;
+        }
 
         // Validate configuration
         app_config.validate()?;
@@ -470,20 +486,22 @@ impl AppConfig {
         }
 
         // Validate LSP config
-        if self.lsp.servers.is_empty() {
-            return Err(MillError::config(
-                "At least one LSP server must be configured",
-            ));
-        }
-
-        for server in &self.lsp.servers {
-            if server.extensions.is_empty() {
+        if self.lsp.mode != LspMode::Off {
+            if self.lsp.servers.is_empty() {
                 return Err(MillError::config(
-                    "LSP server must handle at least one extension",
+                    "At least one LSP server must be configured",
                 ));
             }
-            if server.command.is_empty() {
-                return Err(MillError::config("LSP server command cannot be empty"));
+
+            for server in &self.lsp.servers {
+                if server.extensions.is_empty() {
+                    return Err(MillError::config(
+                        "LSP server must handle at least one extension",
+                    ));
+                }
+                if server.command.is_empty() {
+                    return Err(MillError::config("LSP server command cannot be empty"));
+                }
             }
         }
 

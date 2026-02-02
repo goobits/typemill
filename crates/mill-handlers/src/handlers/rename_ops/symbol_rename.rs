@@ -1,4 +1,5 @@
 use super::{RenameOptions, RenameService, RenameTarget};
+use crate::handlers::common::lsp_mode;
 use crate::handlers::tools::cross_file_references;
 use lsp_types::WorkspaceEdit;
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
@@ -17,6 +18,12 @@ impl RenameService {
         context: &mill_handler_api::ToolHandlerContext,
     ) -> ServerResult<RenamePlan> {
         debug!(path = %target.path, new_name = %new_name, "Planning symbol rename via LSP");
+
+        if lsp_mode(context) == mill_config::config::LspMode::Off {
+            return Err(ServerError::not_supported(
+                "LSP is disabled (lsp.mode=off). Symbol rename requires LSP.",
+            ));
+        }
 
         // Extract position from selector
         let position = target
