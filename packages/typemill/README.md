@@ -9,6 +9,8 @@
 
 [Quick Start](#quick-start) • [Features](#features) • [Tools](#tools) • [Documentation](docs/)
 
+![TypeMill Demo](demo/demo.gif)
+
 </div>
 
 ---
