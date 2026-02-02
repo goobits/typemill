@@ -193,12 +193,14 @@ pub async fn discover_importing_files(
             .git_ignore(true)
             .build()
             .filter_map(|e| e.ok())
-            .map(|e| e.into_path())
-            .filter(|path| {
-                // Skip non-files
-                if !path.is_file() {
+            .filter(|entry| {
+                // Skip non-files - use file_type() to avoid extra stat calls and PathBuf allocation
+                let is_file = entry.file_type().map(|ft| ft.is_file()).unwrap_or(false);
+                if !is_file {
                     return false;
                 }
+
+                let path = entry.path();
 
                 // Skip excluded paths
                 if exclude_matcher_owned.is_match(path) {
@@ -212,12 +214,13 @@ pub async fn discover_importing_files(
                 }
 
                 // Skip the source file itself
-                if path == &source_file_owned {
+                if path == source_file_owned.as_path() {
                     return false;
                 }
 
                 true
             })
+            .map(|e| e.into_path())
             .collect::<Vec<PathBuf>>()
     })
     .await
