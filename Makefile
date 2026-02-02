@@ -77,7 +77,7 @@ release-npm:
 		bin_path="$(NPM_DIR)/bin/$$target_dir/$(NPM_BIN_NAME)"; \
 		if [ -x "$$bin_path" ]; then \
 			expected=$$(node -p "require('./$$pkg_path').version"); \
-			actual=$$($$bin_path --version 2>/dev/null | tail -n1); \
+			actual=$$($$bin_path --version 2>&1 | tail -n1); \
 			if [ -z "$$actual" ] || ! echo "$$actual" | grep -q "$$expected"; then \
 				echo "❌ $$bin_path reports '$$actual', expected $$expected"; \
 				exit 1; \
