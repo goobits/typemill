@@ -162,8 +162,34 @@ impl ReferenceUpdater {
 
         // Try LSP-based detection first (fast path using LSP index)
         // This is O(1) compared to O(N) scanning approach
+        let prefer_cache = std::env::var("TYPEMILL_PREFER_CACHE_IMPORTERS")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(true);
+        let cached_importers = if prefer_cache && self.import_cache.is_populated() {
+            let cached = if is_directory_rename {
+                self.import_cache.get_importers_for_directory(&old_path.to_path_buf())
+            } else {
+                self.import_cache.get_importers(&old_path.to_path_buf())
+            };
+            if cached.is_empty() {
+                None
+            } else {
+                Some(cached.into_iter().collect::<Vec<_>>())
+            }
+        } else {
+            None
+        };
+
         let lsp_start = std::time::Instant::now();
-        let lsp_detected_files = if let Some(finder) = lsp_finder {
+        let lsp_detected_files = if let Some(cached) = cached_importers {
+            if perf_enabled {
+                tracing::info!(
+                    files_count = cached.len(),
+                    "perf: cached_importers_used"
+                );
+            }
+            Some(cached)
+        } else if let Some(finder) = lsp_finder {
             // Query LSP for importing files (directory or file)
             let lsp_result = if is_directory_rename {
                 finder.find_files_that_import_directory(old_path).await
@@ -211,23 +237,7 @@ impl ReferenceUpdater {
                 }
             }
         } else {
-            // Check the cache for previously LSP-detected importers
-            let cached_importers = if is_directory_rename {
-                self.import_cache.get_importers_for_directory(&old_path.to_path_buf())
-            } else {
-                self.import_cache.get_importers(&old_path.to_path_buf())
-            };
-
-            if !cached_importers.is_empty() {
-                tracing::info!(
-                    files_count = cached_importers.len(),
-                    old_path = %old_path.display(),
-                    "Using cached LSP importers (warm lookup)"
-                );
-                Some(cached_importers.into_iter().collect())
-            } else {
-                None
-            }
+            None
         };
         if perf_enabled {
             tracing::info!(
