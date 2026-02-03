@@ -87,7 +87,7 @@ impl ReferenceUpdater {
         plugins: &[std::sync::Arc<dyn mill_plugin_api::LanguagePlugin>],
         rename_info: Option<&serde_json::Value>,
         _dry_run: bool,
-        _scan_scope: Option<mill_plugin_api::ScanScope>,
+        scan_scope: Option<mill_plugin_api::ScanScope>,
         rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
         lsp_finder: Option<&dyn LspImportFinder>,
     ) -> ServerResult<EditPlan> {
@@ -247,6 +247,7 @@ impl ReferenceUpdater {
                     plugins,
                     &plugin_map,
                     merged_rename_info.as_ref(),
+                    scan_scope,
                 )
                 .await?
             } else {
@@ -267,6 +268,7 @@ impl ReferenceUpdater {
                 plugins,
                 &plugin_map,
                 merged_rename_info.as_ref(),
+                scan_scope,
             )
             .await?
         } else if is_directory_rename {
@@ -292,6 +294,7 @@ impl ReferenceUpdater {
                     plugins,
                     &plugin_map,
                     merged_rename_info.as_ref(),
+                    scan_scope,
                 )
                 .await?;
 
@@ -318,6 +321,7 @@ impl ReferenceUpdater {
                         plugins,
                         &plugin_map,
                         merged_rename_info.as_ref(),
+                        scan_scope,
                     )
                     .await?;
 
@@ -352,6 +356,7 @@ impl ReferenceUpdater {
                 plugins,
                 &plugin_map,
                 merged_rename_info.as_ref(),
+                scan_scope,
             )
             .await?
         };
@@ -880,6 +885,7 @@ impl ReferenceUpdater {
         project_files: &[PathBuf],
         plugins: &[std::sync::Arc<dyn mill_plugin_api::LanguagePlugin>],
         rename_info: Option<&serde_json::Value>,
+        scan_scope: Option<mill_plugin_api::ScanScope>,
     ) -> ServerResult<Vec<PathBuf>> {
         let plugin_map = build_plugin_ext_map(plugins);
         self.find_affected_files_for_rename_with_map(
@@ -889,6 +895,7 @@ impl ReferenceUpdater {
             plugins,
             &plugin_map,
             rename_info,
+            scan_scope,
         )
         .await
     }
@@ -902,6 +909,7 @@ impl ReferenceUpdater {
         plugins: &[std::sync::Arc<dyn mill_plugin_api::LanguagePlugin>],
         plugin_map: &HashMap<String, std::sync::Arc<dyn mill_plugin_api::LanguagePlugin>>,
         rename_info: Option<&serde_json::Value>,
+        scan_scope: Option<mill_plugin_api::ScanScope>,
     ) -> ServerResult<Vec<PathBuf>> {
         // Language-specific cross-package move detection
         // Some languages (e.g., Rust) use package-qualified imports which the generic
@@ -957,6 +965,7 @@ impl ReferenceUpdater {
                     plugins,
                     plugin_map,
                     rename_info,
+                    scan_scope,
                     Some(self.import_cache.clone()),
                 )
                 .await;
@@ -973,6 +982,7 @@ impl ReferenceUpdater {
                     plugins,
                     plugin_map,
                     rename_info,
+                    scan_scope,
                     Some(self.import_cache.clone()),
                 )
                 .await;
@@ -989,6 +999,7 @@ impl ReferenceUpdater {
                 plugins,
                 plugin_map,
                 rename_info,
+                scan_scope,
                 Some(self.import_cache.clone()),
             )
             .await;
@@ -1395,7 +1406,14 @@ mod tests {
 
         // Test: find_affected_files_for_rename should detect my_crate/src/main.rs
         let affected = updater
-            .find_affected_files_for_rename(&old_path, &new_path, &project_files, plugins, None)
+            .find_affected_files_for_rename(
+                &old_path,
+                &new_path,
+                &project_files,
+                plugins,
+                None,
+                None,
+            )
             .await
             .unwrap();
 
@@ -1481,7 +1499,14 @@ mod tests {
 
         // Test: find_affected_files_for_rename should detect common/src/processor.rs
         let affected = updater
-            .find_affected_files_for_rename(&old_path, &new_path, &project_files, plugins, None)
+            .find_affected_files_for_rename(
+                &old_path,
+                &new_path,
+                &project_files,
+                plugins,
+                None,
+                None,
+            )
             .await
             .unwrap();
 

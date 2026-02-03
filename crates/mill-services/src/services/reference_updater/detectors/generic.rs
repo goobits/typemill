@@ -27,6 +27,7 @@ pub(crate) async fn find_generic_affected_files_cached(
     plugins: &[Arc<dyn LanguagePlugin>],
     plugin_map: &HashMap<String, Arc<dyn LanguagePlugin>>,
     rename_info: Option<&serde_json::Value>,
+    scan_scope: Option<mill_plugin_api::ScanScope>,
     import_cache: Option<Arc<ImportCache>>,
 ) -> Vec<PathBuf> {
     let mut affected = HashSet::new();
@@ -85,7 +86,8 @@ pub(crate) async fn find_generic_affected_files_cached(
                         .map(|ext| {
                             let is_doc = matches!(ext, "md" | "markdown" | "toml" | "yaml" | "yml" | "json");
                             let is_web = matches!(ext, "svelte" | "ts" | "tsx" | "js" | "jsx");
-                            is_doc || (is_directory && is_web)
+                            let allow_rewrite = matches!(scan_scope, Some(mill_plugin_api::ScanScope::All));
+                            is_doc || ((is_directory && is_web) && allow_rewrite)
                         })
                         .unwrap_or(false)
                 })
@@ -100,6 +102,7 @@ pub(crate) async fn find_generic_affected_files_cached(
                     project_root,
                     plugin_map,
                     rename_info,
+                    scan_scope,
                 )
                 .await;
                 affected.extend(rewrite_affected);
@@ -125,13 +128,16 @@ pub(crate) async fn find_generic_affected_files_cached(
 
     let plugin_map = Arc::new(plugin_map.clone());
     let rename_info = rename_info.cloned();
-        let old_path = old_path.to_path_buf();
-        let new_path = new_path.to_path_buf();
-        let project_root = project_root.to_path_buf();
-        let project_files_arc = Arc::new(project_files.to_vec());
-        let renamed_ext = renamed_ext.clone();
+    let old_path = old_path.to_path_buf();
+    let new_path = new_path.to_path_buf();
+    let project_root = project_root.to_path_buf();
+    let project_files_arc = Arc::new(project_files.to_vec());
+    let renamed_ext = renamed_ext.clone();
+    let allow_rewrite = matches!(scan_scope, Some(mill_plugin_api::ScanScope::All));
 
     let mut join_set = JoinSet::new();
+    let concurrency = default_concurrency_limit();
+    let semaphore = Arc::new(tokio::sync::Semaphore::new(concurrency));
 
     for file in project_files {
         if file == &new_path {
@@ -148,8 +154,15 @@ pub(crate) async fn find_generic_affected_files_cached(
         let project_files_arc = project_files_arc.clone();
         let import_cache = import_cache.clone();
         let renamed_ext = renamed_ext.clone();
+        let allow_rewrite = allow_rewrite;
+
+        let permit = match semaphore.clone().acquire_owned().await {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
 
         join_set.spawn(async move {
+            let _permit = permit;
             if let Ok(content) = tokio::fs::read_to_string(&file).await {
                 let file_clone = file.clone();
                 let old_path_clone = old_path.clone();
@@ -198,6 +211,9 @@ pub(crate) async fn find_generic_affected_files_cached(
                             ) {
                                 return None;
                             }
+                            if !allow_rewrite && is_web_extension(ext) {
+                                return None;
+                            }
                             if is_directory
                                 && is_web_extension(ext)
                                 && !content_might_contain_alias_imports(&content_clone)
@@ -223,6 +239,9 @@ pub(crate) async fn find_generic_affected_files_cached(
                             #[cfg(feature = "lang-svelte")]
                             if ext == "svelte" {
                                 let plugin = mill_lang_svelte::SveltePlugin::new();
+                                if !allow_rewrite {
+                                    return None;
+                                }
                                 if is_directory
                                     && !content_might_contain_alias_imports(&content_clone)
                                 {
@@ -306,6 +325,7 @@ async fn check_files_for_rewrite(
     project_root: &Path,
     plugin_map: &HashMap<String, Arc<dyn LanguagePlugin>>,
     rename_info: Option<&serde_json::Value>,
+    scan_scope: Option<mill_plugin_api::ScanScope>,
 ) -> Vec<PathBuf> {
     let mut affected = Vec::new();
     let plugin_map = Arc::new(plugin_map.clone());
@@ -319,7 +339,11 @@ async fn check_files_for_rewrite(
         .and_then(|e| e.to_str())
         .map(|s| s.to_string());
 
+    let allow_rewrite = matches!(scan_scope, Some(mill_plugin_api::ScanScope::All));
+
     let mut join_set = JoinSet::new();
+    let concurrency = default_concurrency_limit();
+    let semaphore = Arc::new(tokio::sync::Semaphore::new(concurrency));
 
     for file in files {
         let file = file.clone();
@@ -330,7 +354,13 @@ async fn check_files_for_rewrite(
         let rename_info = rename_info.clone();
         let renamed_ext = renamed_ext.clone();
 
+        let permit = match semaphore.clone().acquire_owned().await {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+
         join_set.spawn(async move {
+            let _permit = permit;
             if let Ok(content) = tokio::fs::read_to_string(&file).await {
                 let file_clone = file.clone();
                 let renamed_ext = renamed_ext.clone();
@@ -340,6 +370,9 @@ async fn check_files_for_rewrite(
                             renamed_ext.as_deref(),
                             Some(ext),
                         ) {
+                            return None;
+                        }
+                        if !allow_rewrite && is_web_extension(ext) {
                             return None;
                         }
                         if is_directory
@@ -457,6 +490,13 @@ fn content_might_contain_alias_imports(content: &str) -> bool {
         || content.contains("$")
         || content.contains("@")
         || content.contains("~")
+}
+
+fn default_concurrency_limit() -> usize {
+    std::thread::available_parallelism()
+        .map(|n| n.get().saturating_mul(2))
+        .unwrap_or(8)
+        .clamp(4, 64)
 }
 
 /// Resolve an import specifier to a file path
