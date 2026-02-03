@@ -184,12 +184,13 @@ fn build_workspace_edit(
             },
         ))];
 
-    // Group text edits by file (using String keys to avoid mutable_key_type issue)
-    let mut files_with_edits: HashMap<String, Vec<LspTextEdit>> = HashMap::new();
+    // Group text edits by file
+    #[allow(clippy::mutable_key_type)]
+    let mut files_with_edits: HashMap<lsp_types::Uri, Vec<LspTextEdit>> = HashMap::new();
     for edit in edits {
         if let Some(ref file_path) = edit.file_path {
             let path = Path::new(file_path);
-            let file_uri_str = lsp_uri_from_file_path(path)?.as_str().to_string();
+            let file_uri = lsp_uri_from_file_path(path)?;
 
             let lsp_edit = LspTextEdit {
                 range: lsp_types::Range {
@@ -205,17 +206,18 @@ fn build_workspace_edit(
                 new_text: edit.new_text.clone(),
             };
 
-            files_with_edits
-                .entry(file_uri_str)
-                .or_default()
-                .push(lsp_edit);
+            files_with_edits.entry(file_uri).or_default().push(lsp_edit);
         }
     }
 
     // Add text document edits
-    for (uri_str, text_edits) in files_with_edits {
-        let uri = lsp_uri_from_uri_str(&uri_str)?;
-
+    if edits.len() > 0 && files_with_edits.is_empty() {
+        debug!(
+            edits_count = edits.len(),
+            "No file-based edits were collected for WorkspaceEdit"
+        );
+    }
+    for (uri, text_edits) in files_with_edits {
         document_changes.push(DocumentChangeOperation::Edit(TextDocumentEdit {
             text_document: OptionalVersionedTextDocumentIdentifier {
                 uri,

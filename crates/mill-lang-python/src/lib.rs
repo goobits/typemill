@@ -175,26 +175,45 @@ impl LanguagePlugin for PythonPlugin {
         content: &str,
         old_path: &Path,
         new_path: &Path,
-        _current_file: &Path,
-        _project_root: &Path,
+        current_file: &Path,
+        project_root: &Path,
         _rename_info: Option<&serde_json::Value>,
     ) -> Option<(String, usize)> {
         use mill_plugin_api::ImportMoveSupport;
+        use mill_lang_common::import_helpers::replace_in_lines;
+
+        let old_rel = old_path.strip_prefix(project_root).unwrap_or(old_path);
+        let new_rel = new_path.strip_prefix(project_root).unwrap_or(new_path);
+        let old_abs = old_path;
+        let new_abs = new_path;
 
         // First, rewrite imports using move support
         let (content_after_imports, import_count) = self
             .import_support
-            .rewrite_imports_for_move(content, old_path, new_path);
+            .rewrite_imports_for_move(content, old_rel, new_rel);
+
+        // Also handle relative imports (e.g., from .foo import ...)
+        let (content_after_relative, relative_count) = if let Some(old_rel_mod) =
+            relative_import_module(current_file, old_abs, project_root)
+        {
+            if let Some(new_rel_mod) = relative_import_module(current_file, new_abs, project_root) {
+                replace_in_lines(&content_after_imports, &old_rel_mod, &new_rel_mod)
+            } else {
+                (content_after_imports, 0)
+            }
+        } else {
+            (content_after_imports, 0)
+        };
 
         // Then, rewrite string literals (path-like strings)
         let (final_content, literal_count) = string_literal_support::rewrite_string_literals(
-            &content_after_imports,
-            old_path,
-            new_path,
+            &content_after_relative,
+            old_rel,
+            new_rel,
         )
         .ok()?;
 
-        let total_changes = import_count + literal_count;
+        let total_changes = import_count + relative_count + literal_count;
 
         if total_changes > 0 {
             Some((final_content, total_changes))
@@ -233,6 +252,34 @@ impl LanguagePlugin for PythonPlugin {
         reference_detector => {
             reference_detector: ReferenceDetector,
         },
+    }
+}
+
+fn relative_import_module(
+    current_file: &Path,
+    target_file: &Path,
+    project_root: &Path,
+) -> Option<String> {
+    let _ = project_root;
+    let current_dir = current_file.parent()?;
+    let target_no_ext = target_file.with_extension("");
+    let rel_path = pathdiff::diff_paths(&target_no_ext, current_dir)?;
+
+    let mut up = 0usize;
+    let mut parts: Vec<String> = Vec::new();
+    for comp in rel_path.components() {
+        match comp {
+            std::path::Component::ParentDir => up += 1,
+            std::path::Component::Normal(s) => parts.push(s.to_string_lossy().to_string()),
+            _ => {}
+        }
+    }
+
+    let dots = ".".repeat(up + 1);
+    if parts.is_empty() {
+        Some(dots)
+    } else {
+        Some(format!("{}{}", dots, parts.join(".")))
     }
 }
 
