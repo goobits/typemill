@@ -617,7 +617,12 @@ impl PrunePlanner {
             let walker = ignore::WalkBuilder::new(&abs_dir).hidden(false).build();
             let files = walker
                 .flatten()
-                .filter(|entry| entry.path().is_file())
+                .filter(|entry| {
+                    entry
+                        .file_type()
+                        .map(|ft| ft.is_file() || (ft.is_symlink() && entry.path().is_file()))
+                        .unwrap_or_else(|| entry.path().is_file())
+                })
                 .map(|entry| entry.path().to_path_buf())
                 .collect();
             Ok((files, abs_dir))

@@ -329,7 +329,14 @@ async fn discover_files(
         let path = entry.path();
 
         // Only include files, not directories
-        if !path.is_file() {
+        // Use file_type() to avoid syscalls for regular files and directories.
+        // Only fallback to path.is_file() (stat) for symlinks or unknown types.
+        let is_file = entry
+            .file_type()
+            .map(|ft| ft.is_file() || (ft.is_symlink() && path.is_file()))
+            .unwrap_or_else(|| path.is_file());
+
+        if !is_file {
             continue;
         }
 

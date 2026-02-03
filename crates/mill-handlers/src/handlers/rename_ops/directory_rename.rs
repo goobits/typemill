@@ -286,7 +286,11 @@ impl RenameService {
         let mut files_to_move = 0;
         let walker = ignore::WalkBuilder::new(&old_path).hidden(false).build();
         for entry in walker.flatten() {
-            if entry.path().is_file() {
+            let is_file = entry
+                .file_type()
+                .map(|ft| ft.is_file() || (ft.is_symlink() && entry.path().is_file()))
+                .unwrap_or_else(|| entry.path().is_file());
+            if is_file {
                 files_to_move += 1;
             }
         }
