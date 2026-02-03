@@ -8,7 +8,7 @@ mod cache;
 pub mod detectors;
 pub mod helpers;
 
-pub use cache::{FileImportInfo, ImportCache};
+pub use cache::{load_filelist_cache, save_filelist_cache, FileImportInfo, ImportCache};
 pub use helpers::{compute_line_info, create_full_file_edit, create_import_update_edit, create_path_reference_edit};
 
 use async_trait::async_trait;
@@ -1291,13 +1291,25 @@ pub async fn find_project_files_with_map(
     rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
 ) -> ServerResult<Vec<PathBuf>> {
     use ignore::WalkBuilder;
+    use std::time::Duration;
 
     let project_root = project_root.to_path_buf();
     let plugin_extensions: std::collections::HashSet<String> =
         plugin_map.keys().cloned().collect();
     let rename_scope = rename_scope.cloned();
 
+    let scope_key = build_filelist_scope_key(&plugin_extensions, rename_scope.as_ref());
+    let ttl_ms = std::env::var("TYPEMILL_FILELIST_CACHE_TTL_MS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .unwrap_or(30_000);
+    let ttl = Duration::from_millis(ttl_ms);
+    if let Some(cached) = load_filelist_cache(&project_root, &scope_key, ttl) {
+        return Ok(cached);
+    }
+
     // Run the synchronous walk in a blocking task to not block the async runtime
+    let project_root_for_walk = project_root.clone();
     let files = tokio::task::spawn_blocking(move || {
         let mut files = Vec::new();
 
@@ -1312,7 +1324,7 @@ pub async fn find_project_files_with_map(
             ".ruff_cache",  // ruff linter cache
         ];
 
-        let walker = WalkBuilder::new(&project_root)
+        let walker = WalkBuilder::new(&project_root_for_walk)
             .hidden(false) // Don't skip hidden files (we want .gitignore, etc.)
             .git_ignore(true) // Respect .gitignore files
             .git_global(true) // Respect global gitignore
@@ -1354,7 +1366,20 @@ pub async fn find_project_files_with_map(
     .await
     .map_err(|e| ServerError::internal(format!("Failed to scan project files: {}", e)))?;
 
+    let _ = save_filelist_cache(&project_root, &scope_key, &files);
     Ok(files)
+}
+
+fn build_filelist_scope_key(
+    plugin_extensions: &std::collections::HashSet<String>,
+    rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
+) -> String {
+    let mut exts: Vec<String> = plugin_extensions.iter().cloned().collect();
+    exts.sort();
+    let scope_json = rename_scope
+        .and_then(|scope| serde_json::to_string(scope).ok())
+        .unwrap_or_else(|| "null".to_string());
+    format!("v1|exts:{}|scope:{}", exts.join(","), scope_json)
 }
 
 #[cfg(test)]

@@ -8,7 +8,7 @@ use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Cached information about a file's imports
 #[derive(Debug, Clone)]
@@ -32,6 +32,7 @@ struct CacheSnapshot {
 }
 
 const CACHE_VERSION: u32 = 1;
+const FILELIST_CACHE_VERSION: u32 = 1;
 
 /// Thread-safe import cache with reverse index for fast lookups
 ///
@@ -300,4 +301,87 @@ fn cache_path_for_project(project_root: &Path) -> Option<PathBuf> {
     hasher.update(project_root.to_string_lossy().as_bytes());
     let hash = format!("{:x}", hasher.finalize());
     Some(base.join("imports").join(format!("{}.json", hash)))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct FileListSnapshot {
+    version: u32,
+    created_at_ms: u128,
+    files: Vec<PathBuf>,
+}
+
+pub fn load_filelist_cache(
+    project_root: &Path,
+    scope_key: &str,
+    ttl: Duration,
+) -> Option<Vec<PathBuf>> {
+    if ttl.is_zero() {
+        return None;
+    }
+
+    let cache_path = filelist_cache_path(project_root, scope_key)?;
+    let data = std::fs::read_to_string(cache_path).ok()?;
+    let snapshot: FileListSnapshot = serde_json::from_str(&data).ok()?;
+
+    if snapshot.version != FILELIST_CACHE_VERSION {
+        return None;
+    }
+
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()?
+        .as_millis();
+    if now_ms.saturating_sub(snapshot.created_at_ms) > ttl.as_millis() {
+        return None;
+    }
+
+    Some(snapshot.files)
+}
+
+pub fn save_filelist_cache(project_root: &Path, scope_key: &str, files: &[PathBuf]) -> bool {
+    let cache_path = match filelist_cache_path(project_root, scope_key) {
+        Some(path) => path,
+        None => return false,
+    };
+
+    if let Some(parent) = cache_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+
+    let created_at_ms = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(duration) => duration.as_millis(),
+        Err(_) => return false,
+    };
+
+    let snapshot = FileListSnapshot {
+        version: FILELIST_CACHE_VERSION,
+        created_at_ms,
+        files: files.to_vec(),
+    };
+
+    let tmp_path = cache_path.with_extension("json.tmp");
+    if let Ok(serialized) = serde_json::to_string(&snapshot) {
+        if std::fs::write(&tmp_path, serialized).is_ok() {
+            let _ = std::fs::rename(&tmp_path, &cache_path);
+            return true;
+        }
+    }
+
+    false
+}
+
+fn filelist_cache_path(project_root: &Path, scope_key: &str) -> Option<PathBuf> {
+    let base = if let Ok(dir) = std::env::var("TYPEMILL_CACHE_DIR") {
+        PathBuf::from(dir)
+    } else if let Ok(home) = std::env::var("HOME") {
+        PathBuf::from(home).join(".typemill").join("cache")
+    } else {
+        return None;
+    };
+
+    let mut hasher = Sha256::new();
+    hasher.update(project_root.to_string_lossy().as_bytes());
+    hasher.update(scope_key.as_bytes());
+    let hash = format!("{:x}", hasher.finalize());
+    Some(base.join("filelist").join(format!("{}.json", hash)))
 }
