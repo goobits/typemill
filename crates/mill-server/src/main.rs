@@ -1,6 +1,6 @@
 //! mill-server main binary
 
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use mill_config::AppConfig;
 use std::sync::Arc;
 
@@ -18,6 +18,23 @@ enum Commands {
     Start,
     /// Start WebSocket server (default)
     Serve,
+    /// Generate authentication token
+    GenerateToken(GenerateTokenArgs),
+}
+
+#[derive(Args)]
+struct GenerateTokenArgs {
+    /// User ID for the token
+    #[arg(long, default_value = "admin")]
+    user_id: String,
+
+    /// Optional Project ID
+    #[arg(long)]
+    project_id: Option<String>,
+
+    /// Token expiry in seconds (optional, defaults to config)
+    #[arg(long)]
+    expiry_seconds: Option<u64>,
 }
 
 #[tokio::main]
@@ -30,6 +47,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize tracing based on configuration
     mill_config::logging::initialize(&config);
+
+    // Handle token generation early to avoid starting server components
+    if let Some(Commands::GenerateToken(args)) = &cli.command {
+        let auth_config = config.server.auth.as_ref().ok_or_else(|| {
+            Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Authentication is not configured in mill.toml or environment",
+            )) as Box<dyn std::error::Error>
+        })?;
+
+        let expiry_seconds = args.expiry_seconds.unwrap_or(auth_config.jwt_expiry_seconds);
+
+        let token = mill_auth::generate_token(
+            &auth_config.jwt_secret,
+            expiry_seconds,
+            &auth_config.jwt_issuer,
+            &auth_config.jwt_audience,
+            args.project_id.clone(),
+            Some(args.user_id.clone()),
+        )?;
+
+        println!("{}", token);
+        return Ok(());
+    }
 
     tracing::info!("Starting TypeMill Server");
 
@@ -71,6 +112,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 return Err(e);
             }
         }
+        Some(Commands::GenerateToken(_)) => unreachable!("Handled early"),
         Some(Commands::Serve) | None => {
             // Start admin server on a separate port
             let admin_port = config.server.port + 1000; // Admin on port+1000
