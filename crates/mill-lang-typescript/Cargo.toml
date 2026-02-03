@@ -38,7 +38,7 @@ swc_common = "16"
 swc_ecma_parser = "26"
 swc_ecma_ast = "17"
 swc_ecma_visit = "17"
-swc_ecma_codegen = "19"
+swc_ecma_codegen = "23"
 
 [dev-dependencies]
 tokio-test = "0.4"
