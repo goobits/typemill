@@ -251,7 +251,24 @@ impl ReferenceUpdater {
                 )
                 .await?
             } else {
-                files
+                if is_directory_rename {
+                    let mut merged: HashSet<PathBuf> = files.into_iter().collect();
+                    let plugin_files = self
+                        .find_affected_files_for_rename_with_map(
+                            old_path,
+                            new_path,
+                            &project_files,
+                            plugins,
+                            &plugin_map,
+                            merged_rename_info.as_ref(),
+                            scan_scope,
+                        )
+                        .await?;
+                    merged.extend(plugin_files);
+                    merged.into_iter().collect()
+                } else {
+                    files
+                }
             }
         } else if is_package_rename {
             // For package renames, call the detector ONCE with the directory paths
