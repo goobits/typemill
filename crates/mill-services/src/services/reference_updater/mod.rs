@@ -165,6 +165,9 @@ impl ReferenceUpdater {
         let prefer_cache = std::env::var("TYPEMILL_PREFER_CACHE_IMPORTERS")
             .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
             .unwrap_or(true);
+        let skip_lsp_for_dir = std::env::var("TYPEMILL_SKIP_LSP_FOR_DIR")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
         let cached_importers = if prefer_cache && self.import_cache.is_populated() {
             let cached = if is_directory_rename {
                 self.import_cache.get_importers_for_directory(&old_path.to_path_buf())
@@ -189,6 +192,11 @@ impl ReferenceUpdater {
                 );
             }
             Some(cached)
+        } else if skip_lsp_for_dir && is_directory_rename && self.import_cache.is_populated() {
+            if perf_enabled {
+                tracing::info!("perf: skipped_lsp_for_dir");
+            }
+            None
         } else if let Some(finder) = lsp_finder {
             // Query LSP for importing files (directory or file)
             let lsp_result = if is_directory_rename {
