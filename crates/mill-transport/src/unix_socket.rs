@@ -9,6 +9,8 @@ use mill_foundation::errors::ErrorResponse;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{debug, error, info, warn};
@@ -73,18 +75,68 @@ impl UnixSocketServer {
     pub async fn run(self, dispatcher: Arc<dyn McpDispatcher>) -> std::io::Result<()> {
         info!("Unix socket daemon started, listening for connections");
 
+        let idle_ms = std::env::var("TYPEMILL_DAEMON_IDLE_MS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(0);
+        let idle_timeout = if idle_ms == 0 {
+            None
+        } else {
+            Some(Duration::from_millis(idle_ms))
+        };
+        let last_activity = Arc::new(AtomicU64::new(now_millis()));
+        let mut last_check = Instant::now();
+
         loop {
-            match self.listener.accept().await {
-                Ok((stream, _addr)) => {
-                    let dispatcher = dispatcher.clone();
-                    tokio::spawn(async move {
-                        if let Err(e) = handle_connection(stream, dispatcher).await {
-                            error!(error = %e, "Connection handler error");
+            if let Some(timeout) = idle_timeout {
+                let sleep = tokio::time::sleep(timeout);
+                tokio::pin!(sleep);
+                tokio::select! {
+                    accept_result = self.listener.accept() => {
+                        match accept_result {
+                            Ok((stream, _addr)) => {
+                                last_activity.store(now_millis(), Ordering::Relaxed);
+                                let dispatcher = dispatcher.clone();
+                                let last_activity = last_activity.clone();
+                                tokio::spawn(async move {
+                                    if let Err(e) = handle_connection(stream, dispatcher, last_activity).await {
+                                        error!(error = %e, "Connection handler error");
+                                    }
+                                });
+                            }
+                            Err(e) => {
+                                error!(error = %e, "Failed to accept connection");
+                            }
                         }
-                    });
+                    }
+                    _ = &mut sleep => {
+                        if last_check.elapsed() >= timeout {
+                            last_check = Instant::now();
+                            let idle_for = Duration::from_millis(now_millis().saturating_sub(last_activity.load(Ordering::Relaxed)));
+                            if idle_for >= timeout {
+                                info!(
+                                    idle_for_ms = idle_for.as_millis(),
+                                    "Idle timeout reached; shutting down daemon"
+                                );
+                                return Ok(());
+                            }
+                        }
+                    }
                 }
-                Err(e) => {
-                    error!(error = %e, "Failed to accept connection");
+            } else {
+                match self.listener.accept().await {
+                    Ok((stream, _addr)) => {
+                        let dispatcher = dispatcher.clone();
+                        let last_activity = last_activity.clone();
+                        tokio::spawn(async move {
+                            if let Err(e) = handle_connection(stream, dispatcher, last_activity).await {
+                                error!(error = %e, "Connection handler error");
+                            }
+                        });
+                    }
+                    Err(e) => {
+                        error!(error = %e, "Failed to accept connection");
+                    }
                 }
             }
         }
@@ -115,6 +167,7 @@ impl Drop for UnixSocketServer {
 async fn handle_connection(
     stream: UnixStream,
     dispatcher: Arc<dyn McpDispatcher>,
+    last_activity: Arc<AtomicU64>,
 ) -> std::io::Result<()> {
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
@@ -130,6 +183,7 @@ async fn handle_connection(
             debug!("Client disconnected");
             break;
         }
+        last_activity.store(now_millis(), Ordering::Relaxed);
 
         let line = line.trim();
         if line.is_empty() {
@@ -189,9 +243,17 @@ async fn handle_connection(
         writer.write_all(response_json.as_bytes()).await?;
         writer.write_all(b"\n").await?;
         writer.flush().await?;
+        last_activity.store(now_millis(), Ordering::Relaxed);
     }
 
     Ok(())
+}
+
+fn now_millis() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_else(|_| Duration::from_secs(0))
+        .as_millis() as u64
 }
 
 /// Unix socket client for connecting to the daemon

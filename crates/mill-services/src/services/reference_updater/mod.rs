@@ -21,6 +21,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::task::JoinSet;
+use std::time::Duration;
 
 /// Trait for LSP-based import detection
 ///
@@ -1290,9 +1291,6 @@ pub async fn find_project_files_with_map(
     plugin_map: &HashMap<String, std::sync::Arc<dyn mill_plugin_api::LanguagePlugin>>,
     rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
 ) -> ServerResult<Vec<PathBuf>> {
-    use ignore::WalkBuilder;
-    use std::time::Duration;
-
     let project_root = project_root.to_path_buf();
     let plugin_extensions: std::collections::HashSet<String> =
         plugin_map.keys().cloned().collect();
@@ -1308,66 +1306,86 @@ pub async fn find_project_files_with_map(
         return Ok(cached);
     }
 
+    ensure_filelist_watcher(
+        project_root.clone(),
+        plugin_extensions.clone(),
+        rename_scope.clone(),
+        scope_key.clone(),
+    );
+
     // Run the synchronous walk in a blocking task to not block the async runtime
-    let project_root_for_walk = project_root.clone();
+    let project_root_for_scan = project_root.clone();
     let files = tokio::task::spawn_blocking(move || {
-        let mut files = Vec::new();
-
-        // Universal exclusions that should NEVER be scanned during refactoring
-        // These are cache/generated directories that exist regardless of .gitignore
-        const UNIVERSAL_EXCLUSIONS: &[&str] = &[
-            ".git",         // Version control - never scan
-            "__pycache__",  // Python bytecode cache
-            ".mypy_cache",  // mypy type checker cache
-            ".pytest_cache", // pytest cache
-            ".tox",         // tox virtualenvs
-            ".ruff_cache",  // ruff linter cache
-        ];
-
-        let walker = WalkBuilder::new(&project_root_for_walk)
-            .hidden(false) // Don't skip hidden files (we want .gitignore, etc.)
-            .git_ignore(true) // Respect .gitignore files
-            .git_global(true) // Respect global gitignore
-            .git_exclude(true) // Respect .git/info/exclude
-            .filter_entry(move |entry| {
-                // Skip universal exclusions
-                if let Some(name) = entry.file_name().to_str() {
-                    if UNIVERSAL_EXCLUSIONS.contains(&name) {
-                        return false;
-                    }
-                }
-                true
-            })
-            .build();
-
-        for entry in walker.flatten() {
-            let path = entry.path();
-            if path.is_file() {
-                // If RenameScope is provided, use it to determine file inclusion
-                // Otherwise, fall back to plugin-based filtering for backward compatibility
-                let should_include = if let Some(ref scope) = rename_scope {
-                    scope.should_include_file(path)
-                } else if let Some(ext) = path.extension() {
-                    let ext_str = ext.to_str().unwrap_or("");
-                    plugin_extensions.contains(ext_str)
-                        || (cfg!(feature = "lang-svelte") && ext_str == "svelte")
-                } else {
-                    false
-                };
-
-                if should_include {
-                    files.push(path.to_path_buf());
-                }
-            }
-        }
-
-        files
+        scan_project_files_sync(
+            &project_root_for_scan,
+            &plugin_extensions,
+            rename_scope.as_ref(),
+        )
     })
     .await
     .map_err(|e| ServerError::internal(format!("Failed to scan project files: {}", e)))?;
 
     let _ = save_filelist_cache(&project_root, &scope_key, &files);
     Ok(files)
+}
+
+fn scan_project_files_sync(
+    project_root: &Path,
+    plugin_extensions: &std::collections::HashSet<String>,
+    rename_scope: Option<&mill_foundation::core::rename_scope::RenameScope>,
+) -> Vec<PathBuf> {
+    use ignore::WalkBuilder;
+
+    let mut files = Vec::new();
+
+    // Universal exclusions that should NEVER be scanned during refactoring
+    // These are cache/generated directories that exist regardless of .gitignore
+    const UNIVERSAL_EXCLUSIONS: &[&str] = &[
+        ".git",         // Version control - never scan
+        "__pycache__",  // Python bytecode cache
+        ".mypy_cache",  // mypy type checker cache
+        ".pytest_cache", // pytest cache
+        ".tox",         // tox virtualenvs
+        ".ruff_cache",  // ruff linter cache
+    ];
+
+    let walker = WalkBuilder::new(project_root)
+        .hidden(false) // Don't skip hidden files (we want .gitignore, etc.)
+        .git_ignore(true) // Respect .gitignore files
+        .git_global(true) // Respect global gitignore
+        .git_exclude(true) // Respect .git/info/exclude
+        .filter_entry(move |entry| {
+            // Skip universal exclusions
+            if let Some(name) = entry.file_name().to_str() {
+                if UNIVERSAL_EXCLUSIONS.contains(&name) {
+                    return false;
+                }
+            }
+            true
+        })
+        .build();
+
+    for entry in walker.flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            // If RenameScope is provided, use it to determine file inclusion
+            // Otherwise, fall back to plugin-based filtering for backward compatibility
+            let should_include = if let Some(scope) = rename_scope {
+                scope.should_include_file(path)
+            } else if let Some(ext) = path.extension() {
+                let ext_str = ext.to_str().unwrap_or("");
+                plugin_extensions.contains(ext_str) || (cfg!(feature = "lang-svelte") && ext_str == "svelte")
+            } else {
+                false
+            };
+
+            if should_include {
+                files.push(path.to_path_buf());
+            }
+        }
+    }
+
+    files
 }
 
 fn build_filelist_scope_key(
@@ -1380,6 +1398,74 @@ fn build_filelist_scope_key(
         .and_then(|scope| serde_json::to_string(scope).ok())
         .unwrap_or_else(|| "null".to_string());
     format!("v1|exts:{}|scope:{}", exts.join(","), scope_json)
+}
+
+fn ensure_filelist_watcher(
+    project_root: PathBuf,
+    plugin_extensions: std::collections::HashSet<String>,
+    rename_scope: Option<mill_foundation::core::rename_scope::RenameScope>,
+    scope_key: String,
+) {
+    if !matches!(
+        std::env::var("TYPEMILL_FILELIST_WATCH")
+            .as_deref()
+            .unwrap_or("0"),
+        "1" | "true" | "TRUE"
+    ) {
+        return;
+    }
+
+    use once_cell::sync::OnceCell;
+    use dashmap::DashMap;
+
+    static WATCHERS: OnceCell<DashMap<String, bool>> = OnceCell::new();
+    let watchers = WATCHERS.get_or_init(DashMap::new);
+
+    if watchers.insert(scope_key.clone(), true).is_some() {
+        return;
+    }
+
+    std::thread::spawn(move || {
+        use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
+        use std::sync::mpsc::channel;
+        use std::time::{Duration, Instant};
+
+        let (tx, rx) = channel::<Result<Event, notify::Error>>();
+        let mut watcher = match RecommendedWatcher::new(tx, Config::default()) {
+            Ok(w) => w,
+            Err(_) => return,
+        };
+        if watcher
+            .watch(&project_root, RecursiveMode::Recursive)
+            .is_err()
+        {
+            return;
+        }
+
+        let mut last_refresh = Instant::now();
+        let mut pending = false;
+
+        loop {
+            match rx.recv_timeout(Duration::from_millis(500)) {
+                Ok(Ok(_event)) => {
+                    pending = true;
+                }
+                Ok(Err(_)) => {}
+                Err(_) => {}
+            }
+
+            if pending && last_refresh.elapsed() >= Duration::from_secs(2) {
+                let files = scan_project_files_sync(
+                    &project_root,
+                    &plugin_extensions,
+                    rename_scope.as_ref(),
+                );
+                let _ = save_filelist_cache(&project_root, &scope_key, &files);
+                last_refresh = Instant::now();
+                pending = false;
+            }
+        }
+    });
 }
 
 #[cfg(test)]

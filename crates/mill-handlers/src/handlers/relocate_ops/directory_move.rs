@@ -61,11 +61,17 @@ pub async fn plan_directory_move(
     // Get LSP import finder from context (uses workspace/willRenameFiles for correct import detection)
     // The finder may return empty if the LSP doesn't support willRenameFiles, in which case
     // the plugin-based scanner (TypeScriptReferenceDetector) is used as a fallback.
-    let lsp_adapter_guard = context.lsp_adapter.lock().await;
-    let lsp_finder: Option<&dyn mill_services::services::reference_updater::LspImportFinder> =
+    let lsp_finder_wrapper = if crate::handlers::common::should_use_lsp_for_refactor(context) {
+        let lsp_adapter_guard = context.lsp_adapter.lock().await;
         lsp_adapter_guard
             .as_ref()
-            .map(|adapter| adapter.as_import_finder());
+            .map(|adapter| crate::handlers::common::LspFinderWrapper(adapter.clone()))
+    } else {
+        None
+    };
+    let lsp_finder = lsp_finder_wrapper
+        .as_ref()
+        .map(|wrapper| wrapper as &dyn mill_services::services::reference_updater::LspImportFinder);
 
     let edit_plan = move_service
         .plan_directory_move(old_path, new_path, scan_scope, lsp_finder)

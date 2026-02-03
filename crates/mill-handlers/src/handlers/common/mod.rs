@@ -51,6 +51,21 @@ pub fn lsp_mode(context: &ToolHandlerContext) -> mill_config::config::LspMode {
         .unwrap_or(mill_config::config::LspMode::Discover)
 }
 
+/// Decide whether to use LSP for refactor operations.
+/// In Discover mode with TYPEMILL_LSP_LAZY=1, we skip LSP and use plugin detection.
+pub fn should_use_lsp_for_refactor(context: &ToolHandlerContext) -> bool {
+    if lsp_mode(context) == mill_config::config::LspMode::Off {
+        return false;
+    }
+    let lazy = std::env::var("TYPEMILL_LSP_LAZY")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+    if lazy && lsp_mode(context) == mill_config::config::LspMode::Discover {
+        return false;
+    }
+    true
+}
+
 /// Wrapper to adapt LspAdapter to LspImportFinder trait
 pub struct LspFinderWrapper(pub Arc<dyn LspAdapter>);
 
