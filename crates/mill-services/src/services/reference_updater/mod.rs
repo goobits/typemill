@@ -315,18 +315,15 @@ impl ReferenceUpdater {
             .await?
         } else if is_directory_rename {
             // For non-Rust directory renames, use BOTH per-file AND directory-level detection
-            // 1. Per-file detection: Find files that import specific files in the directory
-            // 2. Directory-level detection: Find files with string literals referencing the directory
+            // 1. Directory-level detection: Find files with string literals or imports referencing the directory
             let mut all_affected = HashSet::new();
-            let mut importer_to_imported_files: HashMap<PathBuf, HashSet<(PathBuf, PathBuf)>> =
-                HashMap::new();
 
-            // FIRST: Directory-level detection for string literals (e.g., "config/settings.toml")
+            // Directory-level detection for string literals and imports
             // This is essential for catching path references that aren't imports
             tracing::info!(
                 old_path = %old_path.display(),
                 new_path = %new_path.display(),
-                "Running directory-level detection for string literals"
+                "Running directory-level detection for string literals and imports"
             );
             let directory_level_affected = self
                 .find_affected_files_for_rename_with_map(
@@ -344,49 +341,11 @@ impl ReferenceUpdater {
                 all_affected.insert(file);
             }
 
-            // SECOND: Per-file detection for import-based references
-            let files_in_directory: Vec<&PathBuf> = project_files
-                .iter()
-                .filter(|f| f.starts_with(old_path) && f.is_file())
-                .collect();
-
-            let files_in_dir_count = files_in_directory.len();
-
-            for file_in_dir in &files_in_directory {
-                let relative_path = file_in_dir.strip_prefix(old_path).unwrap_or(file_in_dir);
-                let new_file_path = new_path.join(relative_path);
-                let importers = self
-                    .find_affected_files_for_rename_with_map(
-                        file_in_dir,
-                        &new_file_path,
-                        &project_files,
-                        plugins,
-                        &plugin_map,
-                        merged_rename_info.as_ref(),
-                        scan_scope,
-                    )
-                    .await?;
-
-                // Track which files in the directory each importer references
-                for importer in importers {
-                    all_affected.insert(importer.clone());
-                    importer_to_imported_files
-                        .entry(importer)
-                        .or_default()
-                        .insert(((*file_in_dir).clone(), new_file_path.clone()));
-                }
-            }
-
-            // Store the mapping for use in rewriting phase
-            // We'll need to pass this to the rewriting logic
             let affected_vec: Vec<PathBuf> = all_affected.into_iter().collect();
 
-            // Store mapping in a way we can access during rewriting
-            // For now, we'll process affected files differently for directory renames
             tracing::info!(
                 affected_files_count = affected_vec.len(),
-                files_in_directory_count = files_in_dir_count,
-                "Directory rename: found affected files (including string literals)"
+                "Directory rename: found affected files (including string literals/imports)"
             );
 
             affected_vec
