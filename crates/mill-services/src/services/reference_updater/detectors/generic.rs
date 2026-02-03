@@ -79,11 +79,14 @@ pub(crate) async fn find_generic_affected_files_cached(
                     if affected.contains(*f) {
                         return false;
                     }
-                    // Only check file types that might have string literal references
-                    // (md, toml, yaml, json, etc.)
+                    // Check file types that may contain alias paths or string refs.
                     f.extension()
                         .and_then(|e| e.to_str())
-                        .map(|ext| matches!(ext, "md" | "markdown" | "toml" | "yaml" | "yml" | "json"))
+                        .map(|ext| {
+                            let is_doc = matches!(ext, "md" | "markdown" | "toml" | "yaml" | "yml" | "json");
+                            let is_web = matches!(ext, "svelte" | "ts" | "tsx" | "js" | "jsx");
+                            is_doc || (is_directory && is_web)
+                        })
                         .unwrap_or(false)
                 })
                 .cloned()
