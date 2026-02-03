@@ -173,6 +173,17 @@ impl LanguagePlugin for RustPlugin {
         project_root: &Path,
         rename_info: Option<&serde_json::Value>,
     ) -> Option<(String, usize)> {
+        if let Some(ext) = old_path.extension().and_then(|e| e.to_str()) {
+            if ext != "rs" {
+                tracing::debug!(
+                    old_path = %old_path.display(),
+                    ext = ext,
+                    "Skipping Rust rewrite for non-.rs rename"
+                );
+                return None;
+            }
+        }
+
         tracing::info!(
             old_path = %old_path.display(),
             new_path = %new_path.display(),
@@ -1523,6 +1534,27 @@ pub use old_lsp::LspClient;
             new_content.contains("from old-lsp"),
             "Should preserve second comment without flag"
         );
+    }
+
+    #[test]
+    fn test_skip_rewrite_for_non_rs_file_rename() {
+        let content = r#"
+use ratatui::text::{Line, Span};
+fn main() {}
+"#;
+
+        let plugin = RustPlugin::new();
+
+        let result = plugin.rewrite_file_references(
+            content,
+            Path::new("web/src/lib/utils/text.ts"),
+            Path::new("web/src/lib/utils/text-format.ts"),
+            Path::new("src/main.rs"),
+            Path::new("/workspace"),
+            None,
+        );
+
+        assert!(result.is_none(), "Should skip rewrites for non-.rs renames");
     }
 
     // ========================================================================
