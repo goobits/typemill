@@ -286,7 +286,15 @@ pub async fn run() {
             mill_config::logging::initialize(&config);
         }
         _ => {
-            // For other commands, we want direct console output
+            // For other commands, only initialize logging when explicitly requested
+            let perf = std::env::var("TYPEMILL_PERF")
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                .unwrap_or(false);
+            let has_rust_log = std::env::var("RUST_LOG").is_ok();
+            if perf || has_rust_log {
+                let config = AppConfig::load().unwrap_or_default();
+                mill_config::logging::initialize(&config);
+            }
         }
     }
 
