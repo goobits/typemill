@@ -20,11 +20,13 @@ async fn test_magnificent_seven_tools_registered() {
     ];
 
     // System tools - utilities not part of code intelligence
-    const SYSTEM_TOOLS: [&str; 4] = [
+    const SYSTEM_TOOLS: [&str; 6] = [
         "health_check",
         "notify_file_opened",
         "notify_file_saved",
         "notify_file_closed",
+        "apply_plan",
+        "get_lsp_progress",
     ];
 
     // Verify Magnificent Seven tools are present
@@ -47,11 +49,11 @@ async fn test_magnificent_seven_tools_registered() {
         );
     }
 
-    // Total: M7 (7) + System (4) = 11 tools
+    // Total: M7 (7) + System (6) = 13 tools
     assert_eq!(
         registered_tools.len(),
-        11,
-        "Expected 11 tools (M7 + System), found {}. Registered: {:?}",
+        13,
+        "Expected 13 tools (M7 + System), found {}. Registered: {:?}",
         registered_tools.len(),
         registered_tools
     );
