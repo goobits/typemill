@@ -168,17 +168,14 @@ impl ReferenceUpdater {
         let skip_lsp_for_dir = std::env::var("TYPEMILL_SKIP_LSP_FOR_DIR")
             .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
             .unwrap_or(false);
-        let cached_importers = if prefer_cache && self.import_cache.is_populated() {
+        let cache_ready = self.import_cache.is_populated() || self.import_cache.has_any_reverse_entries();
+        let cached_importers = if prefer_cache && cache_ready {
             let cached = if is_directory_rename {
                 self.import_cache.get_importers_for_directory(&old_path.to_path_buf())
             } else {
                 self.import_cache.get_importers(&old_path.to_path_buf())
             };
-            if cached.is_empty() {
-                None
-            } else {
-                Some(cached.into_iter().collect::<Vec<_>>())
-            }
+            Some(cached.into_iter().collect::<Vec<_>>())
         } else {
             None
         };

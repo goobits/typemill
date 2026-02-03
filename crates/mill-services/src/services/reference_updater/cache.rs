@@ -147,6 +147,11 @@ impl ImportCache {
         (forward_count, reverse_count)
     }
 
+    /// Check if the reverse index has any entries (partial cache from LSP results).
+    pub fn has_any_reverse_entries(&self) -> bool {
+        self.reverse.read().map(|r| !r.is_empty()).unwrap_or(false)
+    }
+
     /// Populate the reverse index from LSP-detected importers
     ///
     /// This allows caching LSP detection results for future queries.
