@@ -95,6 +95,10 @@ impl ReferenceUpdater {
         let plugin_map = build_plugin_ext_map(plugins);
 
         let is_directory_rename = old_path.is_dir();
+        let renamed_ext = old_path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|s| s.to_string());
 
         // Serialize rename_scope to JSON and merge with existing rename_info
         // This ensures plugins receive BOTH cargo package info AND scope flags
@@ -449,6 +453,7 @@ impl ReferenceUpdater {
         let old_path = Arc::new(old_path.to_path_buf());
         let new_path = Arc::new(new_path.to_path_buf());
         let merged_rename_info = Arc::new(merged_rename_info);
+        let renamed_ext = Arc::new(renamed_ext);
 
         // Pre-calculate directory files for directory rename logic
         let files_in_directory = if is_directory_rename {
@@ -470,6 +475,7 @@ impl ReferenceUpdater {
             let old_path = old_path.clone();
             let new_path = new_path.clone();
             let merged_rename_info = merged_rename_info.clone();
+            let renamed_ext = renamed_ext.clone();
             let files_in_directory = files_in_directory.clone();
 
             join_set.spawn(async move {
@@ -699,6 +705,18 @@ impl ReferenceUpdater {
                         current_file = %file_path.display(),
                         "Attempting to call rewrite_file_references on selected plugin"
                     );
+
+                    let target_ext = file_path.extension().and_then(|ext| ext.to_str());
+                    let renamed_ext = renamed_ext.as_ref().as_deref();
+                    if !is_extension_compatible_for_rewrite(renamed_ext, target_ext) {
+                        tracing::debug!(
+                            old_ext = ?renamed_ext,
+                            target_ext = ?target_ext,
+                            file = %file_path.display(),
+                            "Skipping rewrite for incompatible language pair"
+                        );
+                        return Some(Vec::new());
+                    }
 
                     let rewrite_result = plugin.rewrite_file_references(
                         &content,
@@ -1040,6 +1058,40 @@ impl ReferenceUpdater {
 
         Ok(true)
     }
+}
+
+pub(crate) fn is_extension_compatible_for_rewrite(
+    renamed_ext: Option<&str>,
+    target_ext: Option<&str>,
+) -> bool {
+    let renamed_ext = renamed_ext.unwrap_or("").to_ascii_lowercase();
+    let target_ext = target_ext.unwrap_or("").to_ascii_lowercase();
+
+    if renamed_ext.is_empty() || target_ext.is_empty() {
+        return false;
+    }
+
+    // Allow config/doc formats to always update path references.
+    if matches!(
+        target_ext.as_str(),
+        "md" | "markdown" | "toml" | "yaml" | "yml" | "json"
+    ) {
+        return true;
+    }
+
+    // Web group: TS/JS/Svelte are mutually compatible.
+    if matches!(
+        renamed_ext.as_str(),
+        "ts" | "tsx" | "js" | "jsx" | "svelte"
+    ) {
+        return matches!(
+            target_ext.as_str(),
+            "ts" | "tsx" | "js" | "jsx" | "svelte"
+        );
+    }
+
+    // Keep other languages isolated by default.
+    renamed_ext == target_ext
 }
 
 /// Helper to build a map of extension -> plugin for O(1) lookups

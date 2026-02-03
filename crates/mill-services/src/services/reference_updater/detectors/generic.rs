@@ -32,6 +32,10 @@ pub(crate) async fn find_generic_affected_files_cached(
     let mut affected = HashSet::new();
     let old_path_buf = old_path.to_path_buf();
     let is_directory = old_path.is_dir();
+    let renamed_ext = old_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|s| s.to_string());
 
     tracing::info!(
         old_path = %old_path.display(),
@@ -118,10 +122,11 @@ pub(crate) async fn find_generic_affected_files_cached(
 
     let plugin_map = Arc::new(plugin_map.clone());
     let rename_info = rename_info.cloned();
-    let old_path = old_path.to_path_buf();
-    let new_path = new_path.to_path_buf();
-    let project_root = project_root.to_path_buf();
-    let project_files_arc = Arc::new(project_files.to_vec());
+        let old_path = old_path.to_path_buf();
+        let new_path = new_path.to_path_buf();
+        let project_root = project_root.to_path_buf();
+        let project_files_arc = Arc::new(project_files.to_vec());
+        let renamed_ext = renamed_ext.clone();
 
     let mut join_set = JoinSet::new();
 
@@ -139,6 +144,7 @@ pub(crate) async fn find_generic_affected_files_cached(
         let rename_info = rename_info.clone();
         let project_files_arc = project_files_arc.clone();
         let import_cache = import_cache.clone();
+        let renamed_ext = renamed_ext.clone();
 
         join_set.spawn(async move {
             if let Ok(content) = tokio::fs::read_to_string(&file).await {
@@ -152,7 +158,7 @@ pub(crate) async fn find_generic_affected_files_cached(
                 let project_files_clone = project_files_arc.clone();
                 let content_clone = content.clone();
                 let import_cache_clone = import_cache.clone();
-
+                let renamed_ext = renamed_ext.clone();
                 let result = tokio::task::spawn_blocking(move || {
                     // METHOD 1: Import-based detection
                     let all_imports = get_all_imported_files_internal(
@@ -182,6 +188,14 @@ pub(crate) async fn find_generic_affected_files_cached(
                     // METHOD 2: Rewrite-based detection
                     if let Some(ext) = file_clone.extension().and_then(|e| e.to_str()) {
                         if let Some(plugin) = plugin_map_clone.get(ext) {
+                            let target_ext = file_clone.extension().and_then(|e| e.to_str());
+                            if !crate::services::reference_updater::is_extension_compatible_for_rewrite(
+                                renamed_ext.as_deref(),
+                                target_ext,
+                            ) {
+                                return None;
+                            }
+
                             let rewrite_result = plugin.rewrite_file_references(
                                 &content_clone,
                                 &old_path_clone,
@@ -285,6 +299,10 @@ async fn check_files_for_rewrite(
     let old_path = old_path.to_path_buf();
     let new_path = new_path.to_path_buf();
     let project_root = project_root.to_path_buf();
+    let renamed_ext = old_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|s| s.to_string());
 
     let mut join_set = JoinSet::new();
 
@@ -295,12 +313,20 @@ async fn check_files_for_rewrite(
         let project_root = project_root.clone();
         let plugin_map = plugin_map.clone();
         let rename_info = rename_info.clone();
+        let renamed_ext = renamed_ext.clone();
 
         join_set.spawn(async move {
             if let Ok(content) = tokio::fs::read_to_string(&file).await {
                 let file_clone = file.clone();
+                let renamed_ext = renamed_ext.clone();
                 let result = tokio::task::spawn_blocking(move || {
                     if let Some(ext) = file_clone.extension().and_then(|e| e.to_str()) {
+                        if !crate::services::reference_updater::is_extension_compatible_for_rewrite(
+                            renamed_ext.as_deref(),
+                            Some(ext),
+                        ) {
+                            return None;
+                        }
                         if let Some(plugin) = plugin_map.get(ext) {
                             let rewrite_result = plugin.rewrite_file_references(
                                 &content,
