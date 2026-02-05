@@ -10,13 +10,14 @@
 //! This follows the hybrid grep+LSP approach for reliable cross-file reference discovery.
 
 use futures::stream::{self, StreamExt};
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use ignore::WalkBuilder;
 use mill_foundation::errors::MillResult as ServerResult;
 use regex::bytes::Regex;
 use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use tracing::debug;
 
 /// Default patterns to exclude from file discovery
@@ -40,6 +41,9 @@ const SEARCHABLE_EXTENSIONS: &[&str] = &[
     "swift", // Swift
     "cs",    // C#
 ];
+
+static KEYWORDS_RE: OnceLock<Regex> = OnceLock::new();
+static EXCLUDE_MATCHER: OnceLock<GlobSet> = OnceLock::new();
 
 /// Location structure matching LSP Location format
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -106,16 +110,16 @@ pub async fn discover_importing_files(
     source_file: &Path,
     _context: &mill_handler_api::ToolHandlerContext,
 ) -> ServerResult<Vec<PathBuf>> {
-    use globset::{Glob, GlobSetBuilder};
-
-    // Build exclude matcher
-    let mut exclude_builder = GlobSetBuilder::new();
-    for pattern in DEFAULT_EXCLUDES {
-        if let Ok(glob) = Glob::new(pattern) {
-            exclude_builder.add(glob);
+    // Build or get exclude matcher
+    let exclude_matcher = EXCLUDE_MATCHER.get_or_init(|| {
+        let mut exclude_builder = GlobSetBuilder::new();
+        for pattern in DEFAULT_EXCLUDES {
+            if let Ok(glob) = Glob::new(pattern) {
+                exclude_builder.add(glob);
+            }
         }
-    }
-    let exclude_matcher = exclude_builder.build().unwrap_or_default();
+        exclude_builder.build().unwrap_or_default()
+    });
 
     // Get the source file name/path for pattern matching
     let source_name = source_file
@@ -167,7 +171,9 @@ pub async fn discover_importing_files(
 
     // Compile Regex patterns
     // 1. Keywords (constant)
-    let keywords_re = Arc::new(Regex::new(r"import |require\(|use |from |import ").unwrap());
+    let keywords_re = KEYWORDS_RE.get_or_init(|| {
+        Regex::new(r"import |require\(|use |from ").unwrap()
+    });
 
     // 2. Specific patterns (dynamic)
     // We want to match: word boundary + source_name + word boundary
