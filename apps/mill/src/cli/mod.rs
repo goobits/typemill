@@ -255,6 +255,20 @@ pub enum Commands {
         #[arg(long, default_value = "pretty", value_parser = ["pretty", "compact"])]
         format: String,
     },
+    /// Generate an authentication token for the server
+    GenerateToken {
+        /// Optional project ID to include in the token
+        #[arg(long)]
+        project_id: Option<String>,
+
+        /// Optional user ID (defaults to "default-user")
+        #[arg(long)]
+        user_id: Option<String>,
+
+        /// Optional expiry in seconds (defaults to config value)
+        #[arg(long)]
+        expiry: Option<u64>,
+    },
 }
 
 /// Daemon management subcommands
@@ -415,6 +429,59 @@ pub async fn run() {
             format,
         } => {
             handle_convert_naming(&from, &to, &glob, &target, dry_run, &format).await;
+        }
+        Commands::GenerateToken {
+            project_id,
+            user_id,
+            expiry,
+        } => {
+            handle_generate_token(project_id, user_id, expiry).await;
+        }
+    }
+}
+
+/// Handle token generation
+async fn handle_generate_token(
+    project_id: Option<String>,
+    user_id: Option<String>,
+    expiry: Option<u64>,
+) {
+    // Load config
+    let config = match AppConfig::load() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("❌ Failed to load configuration: {}", e);
+            process::exit(1);
+        }
+    };
+
+    let auth_config = match config.server.auth {
+        Some(c) => c,
+        None => {
+            eprintln!("❌ Authentication is not configured in mill.toml or .typemill/config.toml");
+            eprintln!("   Add [server.auth] section to enable authentication.");
+            process::exit(1);
+        }
+    };
+
+    // Use provided expiry or config default
+    let expiry_seconds = expiry.unwrap_or(auth_config.jwt_expiry_seconds);
+    let uid = user_id.or_else(|| Some("default-user".to_string()));
+
+    match mill_auth::generate_token(
+        &auth_config.jwt_secret,
+        expiry_seconds,
+        &auth_config.jwt_issuer,
+        &auth_config.jwt_audience,
+        project_id,
+        uid,
+    ) {
+        Ok(token) => {
+            println!("{}", token);
+        }
+        Err(e) => {
+            eprintln!("❌ Failed to generate token: {}", e);
+            process::exit(1);
         }
     }
 }
