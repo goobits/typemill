@@ -12,6 +12,7 @@ categories = ["development-tools", "command-line-utilities"]
 [dependencies]
 mill-server = { path = "../../crates/mill-server", default-features = false }
 mill-foundation = { path = "../../crates/mill-foundation" }
+mill-auth = { path = "../../crates/mill-auth" }
 mill-transport = { path = "../../crates/mill-transport", default-features = false }
 mill-plugin-api = { path = "../../crates/mill-plugin-api" }
 
