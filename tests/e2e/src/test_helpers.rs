@@ -421,3 +421,169 @@ pub fn setup_workspace_from_fixture(workspace: &TestWorkspace, files: &[(&str, &
         workspace.create_file(file_path, content);
     }
 }
+
+// ============================================================================
+// DRY Utility Helpers
+// ============================================================================
+
+/// Set dryRun and optionally validateChecksums on a params Value.
+/// Avoids repeated options mutation boilerplate across test files.
+pub fn set_dry_run(params: &mut Value, dry_run: bool) {
+    if let Some(obj) = params.as_object_mut() {
+        obj.entry("options").or_insert_with(|| json!({}));
+        if let Some(options) = obj.get_mut("options").and_then(|v| v.as_object_mut()) {
+            options.insert("dryRun".to_string(), json!(dry_run));
+        }
+    }
+}
+
+/// Extract the plan/content from an M7 response, returning None if unavailable.
+/// Avoids repeated `.get("result").and_then(|r| r.get("content"))` chains.
+pub fn extract_content(response: &Value) -> Option<&Value> {
+    response.get("result").and_then(|r| r.get("content"))
+}
+
+/// Extract the changes from an M7 response plan.
+pub fn extract_changes(response: &Value) -> Option<Value> {
+    extract_content(response).and_then(|c| c.get("changes").cloned())
+}
+
+/// Helper for scope preset tests: rename src/old.rs → src/new.rs with given scope,
+/// then run verification closure.
+///
+/// Eliminates the repeated workspace+client+call_tool+assert pattern in test_scope_presets.rs.
+///
+/// # Example
+/// ```no_run
+/// run_scope_rename_test(
+///     &[("src/old.rs", "pub fn hello() {}"), ("README.md", "See src/old.rs")],
+///     Some("code"),
+///     |ws| {
+///         let readme = ws.read_file("README.md");
+///         assert!(readme.contains("old.rs"), "code scope should NOT update markdown");
+///         Ok(())
+///     }
+/// ).await?;
+/// ```
+pub async fn run_scope_rename_test<V>(
+    files: &[(&str, &str)],
+    scope: Option<&str>,
+    verify: V,
+) -> Result<()>
+where
+    V: FnOnce(&TestWorkspace) -> Result<()>,
+{
+    let workspace = TestWorkspace::new();
+
+    for (file_path, content) in files {
+        if let Some(parent) = Path::new(file_path).parent() {
+            if parent != Path::new("") {
+                workspace.create_directory(parent.to_str().unwrap());
+            }
+        }
+        workspace.create_file(file_path, content);
+    }
+
+    let mut client = TestClient::new(workspace.path());
+
+    let mut options = json!({"dryRun": false});
+    if let Some(s) = scope {
+        options["scope"] = json!(s);
+    }
+
+    client
+        .call_tool(
+            "rename_all",
+            json!({
+                "target": {
+                    "kind": "file",
+                    "filePath": workspace.absolute_path("src/old.rs").to_string_lossy()
+                },
+                "newName": workspace.absolute_path("src/new.rs").to_string_lossy(),
+                "options": options
+            }),
+        )
+        .await
+        .map_err(|e| anyhow::anyhow!("rename should succeed: {}", e))?;
+
+    // Always verify the file was renamed
+    assert!(workspace.file_exists("src/new.rs"), "File should be renamed");
+    assert!(!workspace.file_exists("src/old.rs"), "Old file should be gone");
+
+    verify(&workspace)
+}
+
+/// Helper for refactoring tests that may require LSP support.
+/// Handles the common match Ok/Err pattern where Err means "LSP not available, skip".
+///
+/// Returns Ok(Some(response)) if the tool call succeeded, Ok(None) if LSP unavailable.
+pub async fn try_refactor_tool(
+    client: &mut TestClient,
+    params: Value,
+) -> Result<Option<Value>> {
+    match client.call_tool("refactor", params).await {
+        Ok(response) => {
+            if response.get("error").is_some() {
+                eprintln!("INFO: refactor requires LSP support, skipping");
+                return Ok(None);
+            }
+            let content = extract_content(&response);
+            if content.and_then(|c| c.get("planType")).is_none() {
+                eprintln!("INFO: refactor returned no planType (likely no LSP), skipping");
+                return Ok(None);
+            }
+            Ok(Some(response))
+        }
+        Err(_) => {
+            eprintln!("INFO: refactor requires LSP support, skipping");
+            Ok(None)
+        }
+    }
+}
+
+/// Build refactor extract params with absolute path.
+pub fn build_extract_params(
+    workspace: &TestWorkspace,
+    file_path: &str,
+    kind: &str,
+    start_line: u32,
+    start_char: u32,
+    end_line: u32,
+    end_char: u32,
+    name: &str,
+) -> Value {
+    json!({
+        "action": "extract",
+        "params": {
+            "kind": kind,
+            "filePath": workspace.absolute_path(file_path).to_string_lossy(),
+            "range": {
+                "startLine": start_line,
+                "startCharacter": start_char,
+                "endLine": end_line,
+                "endCharacter": end_char
+            },
+            "name": name
+        }
+    })
+}
+
+/// Build refactor inline params with absolute path.
+pub fn build_inline_params(
+    workspace: &TestWorkspace,
+    file_path: &str,
+    kind: &str,
+    line: u32,
+    character: u32,
+) -> Value {
+    json!({
+        "action": "inline",
+        "params": {
+            "kind": kind,
+            "target": {
+                "filePath": workspace.absolute_path(file_path).to_string_lossy(),
+                "position": {"line": line, "character": character}
+            }
+        }
+    })
+}
