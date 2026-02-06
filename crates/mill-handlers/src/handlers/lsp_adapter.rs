@@ -772,9 +772,13 @@ impl LspImportFinder for DirectLspAdapter {
         let mut files_in_dir = Vec::new();
         for entry in walker.flatten() {
             let path = entry.path();
-            if path.is_file() {
+            // Use entry.file_type() to avoid syscall if possible
+            let is_file = entry.file_type().map(|ft| ft.is_file()).unwrap_or(false);
+
+            if is_file {
                 if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                    if self.extensions.contains(&ext.to_string()) {
+                    // Avoid allocating String for contains check
+                    if self.extensions.iter().any(|s| s == ext) {
                         files_in_dir.push(path.to_path_buf());
                     }
                 }
@@ -977,5 +981,41 @@ impl mill_handler_api::LspAdapter for DirectLspAdapter {
 
     fn as_import_finder(&self) -> &dyn LspImportFinder {
         self
+    }
+}
+
+#[cfg(test)]
+mod performance_tests {
+    use super::*;
+    use std::time::Instant;
+    use mill_services::services::reference_updater::LspImportFinder;
+
+    #[tokio::test]
+    async fn test_benchmark_directory_scan() {
+        // Create a temp dir with many non-matching files
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = temp_dir.path();
+
+        // Create 10,000 text files
+        // We use std::fs for setup speed
+        for i in 0..10000 {
+            let path = root.join(format!("file_{}.txt", i));
+            std::fs::File::create(path).unwrap();
+        }
+
+        // Setup adapter
+        let config = mill_config::config::LspConfig::default();
+        // Extensions that we care about
+        let extensions = vec!["rs".to_string(), "ts".to_string()];
+
+        let adapter = DirectLspAdapter::new(config, extensions, "test".to_string());
+
+        let start = Instant::now();
+        let result = adapter.find_files_that_import_directory(root).await.unwrap();
+        let duration = start.elapsed();
+
+        println!("BENCHMARK: Directory scan (10k non-matching files): {:?}", duration);
+
+        assert!(result.is_empty());
     }
 }
