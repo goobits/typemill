@@ -16,7 +16,7 @@ use regex::bytes::Regex;
 use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use tracing::debug;
 
 /// Default patterns to exclude from file discovery
@@ -89,6 +89,9 @@ fn is_same_file_only(locations: &[Location], source_uri: &str) -> bool {
     locations.iter().all(|loc| loc.uri == source_uri)
 }
 
+static KEYWORDS_RE: OnceLock<Regex> = OnceLock::new();
+static EXCLUDE_MATCHER: OnceLock<globset::GlobSet> = OnceLock::new();
+
 /// Extract locations from LSP response
 fn extract_locations(response: &Value) -> Vec<Location> {
     let content = response.get("content").unwrap_or(response);
@@ -108,14 +111,16 @@ pub async fn discover_importing_files(
 ) -> ServerResult<Vec<PathBuf>> {
     use globset::{Glob, GlobSetBuilder};
 
-    // Build exclude matcher
-    let mut exclude_builder = GlobSetBuilder::new();
-    for pattern in DEFAULT_EXCLUDES {
-        if let Ok(glob) = Glob::new(pattern) {
-            exclude_builder.add(glob);
+    // Get or initialize exclude matcher
+    let exclude_matcher = EXCLUDE_MATCHER.get_or_init(|| {
+        let mut exclude_builder = GlobSetBuilder::new();
+        for pattern in DEFAULT_EXCLUDES {
+            if let Ok(glob) = Glob::new(pattern) {
+                exclude_builder.add(glob);
+            }
         }
-    }
-    let exclude_matcher = exclude_builder.build().unwrap_or_default();
+        exclude_builder.build().unwrap_or_default()
+    });
 
     // Get the source file name/path for pattern matching
     let source_name = source_file
@@ -166,8 +171,12 @@ pub async fn discover_importing_files(
     };
 
     // Compile Regex patterns
-    // 1. Keywords (constant)
-    let keywords_re = Arc::new(Regex::new(r"import |require\(|use |from |import ").unwrap());
+    // 1. Keywords (constant) - cached globally
+    let keywords_re = KEYWORDS_RE.get_or_init(|| {
+        Regex::new(r"import |require\(|use |from |import ").unwrap()
+    });
+    // Arc wrapper for cheap cloning to threads
+    let keywords_re = Arc::new(keywords_re.clone());
 
     // 2. Specific patterns (dynamic)
     // We want to match: word boundary + source_name + word boundary
