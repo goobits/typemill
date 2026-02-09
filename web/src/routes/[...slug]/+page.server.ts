@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { readMarkdownFile, renderMarkdown, getProjectRoot } from '$lib/server/markdown';
+import { getRenderedPost, getProjectRoot } from '$lib/server/markdown';
 import { readdir } from 'fs/promises';
 import { join } from 'path';
 import type { PageServerLoad, EntryGenerator } from './$types';
@@ -76,15 +76,15 @@ export const load: PageServerLoad = async ({ params }) => {
 	}
 
 	try {
-		let rawData;
+		let post;
 
 		try {
-			rawData = await readMarkdownFile(filePath);
+			post = await getRenderedPost(filePath);
 		} catch (e: any) {
 			if (e.message === 'File not found' && potentialReadmePath) {
 				// Try with README.md appended
 				try {
-					rawData = await readMarkdownFile(potentialReadmePath);
+					post = await getRenderedPost(potentialReadmePath);
 					filePath = potentialReadmePath;
 				} catch (innerE: any) {
 					// If specifically the second attempt failed, throw 404
@@ -100,11 +100,9 @@ export const load: PageServerLoad = async ({ params }) => {
 			}
 		}
 
-		const htmlContent = await renderMarkdown(rawData.content);
-
 		return {
-			htmlContent,
-			metadata: rawData.metadata || {},
+			htmlContent: post.html,
+			metadata: post.metadata || {},
 			slug: slug || 'home',
 			filePath
 		};
