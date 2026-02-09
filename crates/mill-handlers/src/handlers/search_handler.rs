@@ -420,11 +420,38 @@ impl SearchHandler {
             ));
         }
 
-        // Get workspace path
-        let workspace_path = request
-            .workspace_path
-            .map(PathBuf::from)
-            .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+        // Get project root from context
+        let project_root = &context.app_state.project_root;
+        let project_root_abs = tokio::fs::canonicalize(project_root)
+            .await
+            .map_err(|e| ServerError::internal(format!("Failed to canonicalize project root: {}", e)))?;
+
+        // Resolve and validate workspace path
+        let workspace_path = if let Some(path_str) = request.workspace_path {
+            let path = PathBuf::from(path_str);
+            let abs_path = if path.is_absolute() {
+                path
+            } else {
+                project_root_abs.join(path)
+            };
+
+            // Canonicalize to resolve ..
+            let canonical_path = tokio::fs::canonicalize(&abs_path)
+                .await
+                .map_err(|e| ServerError::invalid_request(format!("Invalid workspace path '{}': {}", abs_path.display(), e)))?;
+
+            // Check containment
+            if !canonical_path.starts_with(&project_root_abs) {
+                return Err(ServerError::invalid_request(format!(
+                    "Path traversal detected: path '{}' is outside project root '{}'",
+                    canonical_path.display(),
+                    project_root_abs.display()
+                )));
+            }
+            canonical_path
+        } else {
+            project_root_abs.clone()
+        };
 
         // Parse kind filter if provided
         let kind_filter = if let Some(kind_str) = &request.kind {
@@ -900,5 +927,109 @@ mod performance_tests {
         // Should only return the 25,000 functions
         assert_eq!(results.len(), 25000);
         println!("BENCHMARK: Search (50k total, 25k matching): {:?}", duration);
+    }
+}
+
+#[cfg(test)]
+mod security_tests {
+    use super::*;
+    use mill_handler_api::{ToolHandlerContext, AppState};
+    use mill_plugin_system::{LanguagePlugin, PluginMetadata, Capabilities, PluginRequest, PluginResponse, PluginResult};
+    use tokio::fs;
+    use tokio::sync::Mutex;
+    use std::path::PathBuf;
+    use std::sync::Arc;
+    use serde_json::{json, Value};
+    use async_trait::async_trait;
+
+    // Dummy file service
+    struct DummyFileService;
+    #[async_trait]
+    impl mill_handler_api::FileService for DummyFileService {
+        async fn read_file(&self, _path: &std::path::Path) -> Result<String, mill_foundation::errors::MillError> { unimplemented!() }
+        async fn list_files(&self, _path: &std::path::Path, _recursive: bool) -> Result<Vec<String>, mill_foundation::errors::MillError> { unimplemented!() }
+        async fn write_file(&self, _path: &std::path::Path, _content: &str, _dry_run: bool) -> Result<mill_foundation::core::dry_run::DryRunnable<serde_json::Value>, mill_foundation::errors::MillError> { unimplemented!() }
+        async fn delete_file(&self, _path: &std::path::Path, _force: bool, _dry_run: bool) -> Result<mill_foundation::core::dry_run::DryRunnable<serde_json::Value>, mill_foundation::errors::MillError> { unimplemented!() }
+        async fn create_file(&self, _path: &std::path::Path, _content: Option<&str>, _overwrite: bool, _dry_run: bool) -> Result<mill_foundation::core::dry_run::DryRunnable<serde_json::Value>, mill_foundation::errors::MillError> { unimplemented!() }
+        async fn rename_file_with_imports(&self, _old_path: &std::path::Path, _new_path: &std::path::Path, _dry_run: bool, _scan_scope: Option<mill_plugin_api::ScanScope>) -> Result<mill_foundation::core::dry_run::DryRunnable<serde_json::Value>, mill_foundation::errors::MillError> { unimplemented!() }
+        async fn rename_directory_with_imports(&self, _old_path: &std::path::Path, _new_path: &std::path::Path, _dry_run: bool, _scan_scope: Option<mill_plugin_api::ScanScope>, _details: bool) -> Result<mill_foundation::core::dry_run::DryRunnable<serde_json::Value>, mill_foundation::errors::MillError> { unimplemented!() }
+        async fn list_files_with_pattern(&self, _path: &std::path::Path, _recursive: bool, _pattern: Option<&str>) -> Result<Vec<String>, mill_foundation::errors::MillError> { unimplemented!() }
+        fn to_absolute_path_checked(&self, _path: &std::path::Path) -> Result<PathBuf, mill_foundation::errors::MillError> { unimplemented!() }
+        async fn apply_edit_plan(&self, _plan: &mill_foundation::protocol::EditPlan) -> Result<mill_foundation::protocol::EditPlanResult, mill_foundation::errors::MillError> { unimplemented!() }
+    }
+
+    struct DummyLanguagePluginRegistry;
+    impl mill_handler_api::LanguagePluginRegistry for DummyLanguagePluginRegistry {
+        fn get_plugin(&self, _extension: &str) -> Option<&dyn mill_plugin_api::LanguagePlugin> { None }
+        fn supported_extensions(&self) -> Vec<String> { vec![] }
+        fn get_plugin_for_manifest(&self, _file_path: &std::path::Path) -> Option<&dyn mill_plugin_api::LanguagePlugin> { None }
+        fn inner(&self) -> &dyn std::any::Any { self }
+    }
+
+    #[tokio::test]
+    async fn test_security_path_traversal() {
+        // Setup directories
+        let temp_root = tempfile::TempDir::new().unwrap();
+        let root_path = temp_root.path();
+        let workspace_dir = root_path.join("workspace");
+        fs::create_dir(&workspace_dir).await.unwrap();
+        let secret_dir = root_path.join("secrets");
+        fs::create_dir(&secret_dir).await.unwrap();
+        // create a dummy file that the "mock-txt" plugin can find
+        fs::write(secret_dir.join("secret.txt"), "secret data").await.unwrap();
+
+        // Setup mock plugin for .txt
+        struct MockTxtPlugin;
+        #[async_trait]
+        impl LanguagePlugin for MockTxtPlugin {
+            fn metadata(&self) -> PluginMetadata { PluginMetadata::new("mock-txt", "1.0", "test") }
+            fn supported_extensions(&self) -> Vec<String> { vec!["txt".to_string()] }
+            fn capabilities(&self) -> Capabilities {
+                let mut c = Capabilities::default();
+                c.navigation.workspace_symbols = true;
+                c
+            }
+            async fn handle_request(&self, _req: PluginRequest) -> PluginResult<PluginResponse> {
+                // Return a dummy symbol if called
+                Ok(PluginResponse::success(Value::Array(vec![json!({"name": "secret", "kind": "file"})]), "mock-txt"))
+            }
+            fn configure(&self, _config: Value) -> PluginResult<()> { Ok(()) }
+            fn tool_definitions(&self) -> Vec<Value> { vec![] }
+        }
+
+        // Setup handler
+        let handler = SearchHandler::new();
+        let plugin_manager = Arc::new(mill_plugin_system::PluginManager::new());
+        plugin_manager.register_plugin("mock-txt", Arc::new(MockTxtPlugin)).await.unwrap();
+
+        let app_state = Arc::new(AppState {
+            file_service: Arc::new(DummyFileService),
+            language_plugins: Arc::new(DummyLanguagePluginRegistry),
+            project_root: PathBuf::from("."),
+            extensions: None,
+        });
+
+        let context = ToolHandlerContext {
+            user_id: None,
+            app_state,
+            plugin_manager,
+            lsp_adapter: Arc::new(Mutex::new(None)),
+        };
+
+        let tool_call = ToolCall {
+            name: "search_code".to_string(),
+            arguments: Some(json!({
+                "query": "secret",
+                "workspacePath": secret_dir.to_str().unwrap()
+            })),
+        };
+
+        // This should FAIL now because of validation.
+        let result = handler.handle_search_code(&context, &tool_call).await;
+
+        assert!(result.is_err(), "Should fail due to path traversal/scope validation");
+        let err = result.unwrap_err();
+        // Verify error message mentions path traversal
+        assert!(err.to_string().contains("Path traversal detected"), "Error should be about path traversal: {}", err);
     }
 }
