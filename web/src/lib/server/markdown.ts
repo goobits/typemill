@@ -1,4 +1,4 @@
-import { readFile, access } from 'fs/promises';
+import { readFile, access, stat } from 'fs/promises';
 import { join, isAbsolute, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { marked } from 'marked';
@@ -67,6 +67,16 @@ marked.use({
 	renderer
 });
 
+// Cache for markdown content and rendered HTML
+interface CacheEntry {
+	mtimeMs: number;
+	content: string;
+	metadata: Record<string, any>;
+	html?: string;
+}
+
+const postCache = new Map<string, CacheEntry>();
+
 // Parse frontmatter from markdown content
 function parseFrontmatter(content: string): { metadata: Record<string, any>; content: string } {
 	const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
@@ -92,7 +102,7 @@ function parseFrontmatter(content: string): { metadata: Record<string, any>; con
 	return { metadata, content: mainContent };
 }
 
-export async function readMarkdownFile(relativePath: string): Promise<{ content: string; metadata: Record<string, any> }> {
+async function resolveMarkdownPath(relativePath: string): Promise<string> {
 	// Security: Prevent directory traversal and arbitrary file read
 	// Check for parent directory references and absolute paths (including Windows drive paths)
 	if (relativePath.includes('..') || isAbsolute(relativePath) || relativePath.startsWith('/')) {
@@ -105,11 +115,31 @@ export async function readMarkdownFile(relativePath: string): Promise<{ content:
 	}
 
 	const root = await getProjectRoot();
-	const filePath = join(root, relativePath);
+	return join(root, relativePath);
+}
+
+export async function readMarkdownFile(relativePath: string): Promise<{ content: string; metadata: Record<string, any> }> {
+	const filePath = await resolveMarkdownPath(relativePath);
 
 	try {
+		const stats = await stat(filePath);
+		const cached = postCache.get(filePath);
+
+		if (cached && cached.mtimeMs === stats.mtimeMs) {
+			return { content: cached.content, metadata: cached.metadata };
+		}
+
 		const fileContent = await readFile(filePath, 'utf-8');
-		return parseFrontmatter(fileContent);
+		const { metadata, content } = parseFrontmatter(fileContent);
+
+		postCache.set(filePath, {
+			mtimeMs: stats.mtimeMs,
+			content,
+			metadata,
+			html: undefined // Invalidate HTML cache
+		});
+
+		return { content, metadata };
 	} catch (e: any) {
 		if (e.code === 'ENOENT') {
 			throw new Error('File not found');
@@ -122,6 +152,50 @@ export async function renderMarkdown(markdown: string): Promise<string> {
 	const result = marked.parse(markdown);
 	const html = result instanceof Promise ? await result : result;
 	return DOMPurify.sanitize(html);
+}
+
+export async function getRenderedPost(relativePath: string): Promise<{ html: string; metadata: Record<string, any>; filePath: string }> {
+	const filePath = await resolveMarkdownPath(relativePath);
+
+	try {
+		const stats = await stat(filePath);
+		const cached = postCache.get(filePath);
+
+		if (cached && cached.mtimeMs === stats.mtimeMs && cached.html) {
+			return { html: cached.html, metadata: cached.metadata, filePath };
+		}
+
+		// Check if content is cached but HTML is missing
+		let content: string;
+		let metadata: Record<string, any>;
+
+		if (cached && cached.mtimeMs === stats.mtimeMs) {
+			content = cached.content;
+			metadata = cached.metadata;
+		} else {
+			// Read fresh
+			const fileContent = await readFile(filePath, 'utf-8');
+			const parsed = parseFrontmatter(fileContent);
+			content = parsed.content;
+			metadata = parsed.metadata;
+		}
+
+		const html = await renderMarkdown(content);
+
+		postCache.set(filePath, {
+			mtimeMs: stats.mtimeMs,
+			content,
+			metadata,
+			html
+		});
+
+		return { html, metadata, filePath };
+	} catch (e: any) {
+		if (e.code === 'ENOENT') {
+			throw new Error('File not found');
+		}
+		throw e;
+	}
 }
 
 // Export for use in entries generator
