@@ -764,22 +764,32 @@ impl LspImportFinder for DirectLspAdapter {
         let mut all_importing_files: HashSet<std::path::PathBuf> = HashSet::new();
 
         // Walk the directory to find all source files
-        let walker = ignore::WalkBuilder::new(dir_path)
-            .hidden(false)
-            .git_ignore(true)
-            .build();
+        // Use a blocking task to avoid blocking the async executor with file I/O
+        let dir_path_owned = dir_path.to_path_buf();
+        let extensions_owned = self.extensions.clone();
 
-        let mut files_in_dir = Vec::new();
-        for entry in walker.flatten() {
-            let path = entry.path();
-            if path.is_file() {
-                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                    if self.extensions.contains(&ext.to_string()) {
-                        files_in_dir.push(path.to_path_buf());
+        let files_in_dir = tokio::task::spawn_blocking(move || {
+            let mut files = Vec::new();
+            let walker = ignore::WalkBuilder::new(&dir_path_owned)
+                .hidden(false)
+                .git_ignore(true)
+                .build();
+
+            for entry in walker.flatten() {
+                let is_file = entry.file_type().map(|ft| ft.is_file()).unwrap_or(false);
+                if is_file {
+                    let path = entry.path();
+                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                        if extensions_owned.contains(&ext.to_string()) {
+                            files.push(path.to_path_buf());
+                        }
                     }
                 }
             }
-        }
+            files
+        })
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?;
 
         debug!(
             dir = %dir_path.display(),
