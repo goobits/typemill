@@ -74,6 +74,7 @@ pub async fn find_source_files(dir: &Path, extensions: &[&str]) -> PluginResult<
             .map_err(|e| MillError::internal(format!("Failed to read entry: {}", e)))?
         {
             let path = entry.path();
+            // Use file_type() to avoid extra syscalls (stat) on supported platforms
             let file_type = entry
                 .file_type()
                 .await
