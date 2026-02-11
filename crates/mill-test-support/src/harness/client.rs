@@ -11,13 +11,25 @@ use std::time::{Duration, Instant};
 // Test Client Timeout Constants
 // ============================================================================
 // These values are tuned for test reliability across different systems.
-// Increase if tests are flaky on slow CI systems.
+// Override with TYPEMILL_TEST_TOOL_TIMEOUT_SECS environment variable if needed.
 
 /// Time to wait for server to become ready after spawn (health check passes)
 const SERVER_READY_TIMEOUT_SECS: u64 = 5;
 
-/// Default timeout for tool call requests (most operations)
-const DEFAULT_TOOL_CALL_TIMEOUT_SECS: u64 = 15;
+/// Default timeout for tool call requests (most operations).
+/// Must be long enough to cover LSP initialization on first tool call (~60-120s).
+/// Override via TYPEMILL_TEST_TOOL_TIMEOUT_SECS env var.
+const DEFAULT_TOOL_CALL_TIMEOUT_SECS: u64 = 180;
+
+/// Returns the effective tool call timeout, checking env override first.
+fn tool_call_timeout() -> Duration {
+    if let Ok(val) = std::env::var("TYPEMILL_TEST_TOOL_TIMEOUT_SECS") {
+        if let Ok(secs) = val.parse::<u64>() {
+            return Duration::from_secs(secs);
+        }
+    }
+    Duration::from_secs(DEFAULT_TOOL_CALL_TIMEOUT_SECS)
+}
 
 /// Timeout for graceful shutdown before force kill
 const SHUTDOWN_TIMEOUT_SECS: u64 = 2;
@@ -49,30 +61,31 @@ impl TestClient {
         let workspace_root = find_workspace_root(&manifest_dir).expect(
             "Failed to find workspace root. Ensure tests are run within a Cargo workspace.",
         );
-        let server_path = workspace_root.join("target/debug/mill");
+        let release_path = workspace_root.join("target/release/mill");
+        let debug_path = workspace_root.join("target/debug/mill");
+        let server_path = if release_path.exists() {
+            release_path.clone()
+        } else {
+            debug_path.clone()
+        };
 
         // Pre-check: Fail fast if binary doesn't exist with helpful message
         if !server_path.exists() {
             panic!(
                 "\n\n\
-                 ❌ \x1b[1;31mMill debug binary not found\x1b[0m\n\
+                 ❌ \x1b[1;31mMill binary not found\x1b[0m\n\
                  \n\
-                 Expected location: \x1b[1m{}\x1b[0m\n\
+                 Expected location: \x1b[1m{}\x1b[0m (release) or \x1b[1m{}\x1b[0m (debug)\n\
                  \n\
-                 E2E tests require the debug build. Please run:\n\
+                 Please build the project first:\n\
                  \n\
-                 \x1b[1;36m    cargo build --workspace\x1b[0m\n\
-                 \n\
-                 Or just the mill binary:\n\
-                 \n\
-                 \x1b[1;36m    cargo build -p mill\x1b[0m\n\
-                 \n\
-                 \x1b[33m💡 Note:\x1b[0m Building with \x1b[1m--release\x1b[0m only creates target/release/mill.\n\
-                 Tests need target/debug/mill (the debug build).\n\
+                 \x1b[1;36m    cargo build --workspace\x1b[0m  (debug)\n\
+                 \x1b[1;36m    cargo build --workspace --release\x1b[0m  (release, 2-5x faster)\n\
                  \n\
                  \x1b[33m💡 Low memory?\x1b[0m Use: cargo build -j 1\n\
                  \n",
-                server_path.display()
+                release_path.display(),
+                debug_path.display()
             );
         }
 
@@ -205,7 +218,7 @@ impl TestClient {
 
     /// Send a JSON-RPC request and wait for response.
     pub fn send_request(&mut self, request: Value) -> Result<Value, Box<dyn std::error::Error>> {
-        self.send_request_with_timeout(request, Duration::from_secs(DEFAULT_TOOL_CALL_TIMEOUT_SECS))
+        self.send_request_with_timeout(request, tool_call_timeout())
     }
 
     /// Send a JSON-RPC request with a custom timeout.
