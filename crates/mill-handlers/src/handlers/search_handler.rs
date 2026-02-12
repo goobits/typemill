@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use mill_foundation::core::model::mcp::ToolCall;
 use mill_foundation::errors::{MillError as ServerError, MillResult as ServerResult};
 use mill_plugin_api::SymbolKind;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -39,16 +39,6 @@ struct SearchCodeRequest {
 
 fn default_limit() -> usize {
     50
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SearchCodeResponse {
-    results: Vec<Value>,
-    total: usize,
-    processing_time_ms: u64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    warnings: Option<Vec<String>>,
 }
 
 // ============================================================================
@@ -467,16 +457,16 @@ impl SearchHandler {
             "search_code: Got symbols from workspace search"
         );
 
-        // Build response
-        let response = SearchCodeResponse {
-            results: paginated_symbols,
-            total,
-            processing_time_ms: processing_time,
-            warnings,
-        };
+        // Build response manually to avoid deep cloning results
+        let mut response_map = serde_json::Map::new();
+        response_map.insert("results".to_string(), Value::Array(paginated_symbols));
+        response_map.insert("total".to_string(), json!(total));
+        response_map.insert("processingTimeMs".to_string(), json!(processing_time));
+        if let Some(w) = warnings {
+            response_map.insert("warnings".to_string(), json!(w));
+        }
 
-        serde_json::to_value(response)
-            .map_err(|e| ServerError::internal(format!("Failed to serialize response: {}", e)))
+        Ok(Value::Object(response_map))
     }
 }
 
