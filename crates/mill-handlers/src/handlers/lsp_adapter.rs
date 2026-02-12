@@ -63,15 +63,16 @@ impl DirectLspAdapter {
         extension: &str,
     ) -> Result<Arc<mill_lsp::lsp_system::LspClient>, String> {
         // Find server config for this extension and derive a stable cache key.
-        let server_config = self
+        // optimization: use iter().any() to avoid allocating string for extension check
+        // optimization: avoid cloning server_config until we know we need to create a client
+        let server_config_ref = self
             .config
             .servers
             .iter()
-            .find(|server| server.extensions.contains(&extension.to_string()))
-            .ok_or_else(|| format!("No LSP server configured for extension: {}", extension))?
-            .clone();
+            .find(|server| server.extensions.iter().any(|e| e == extension))
+            .ok_or_else(|| format!("No LSP server configured for extension: {}", extension))?;
 
-        let cache_key = server_config
+        let cache_key = server_config_ref
             .extensions
             .first()
             .cloned()
@@ -118,7 +119,7 @@ impl DirectLspAdapter {
         drop(clients);
 
         // Create new LSP client
-        let client = mill_lsp::lsp_system::LspClient::new(server_config)
+        let client = mill_lsp::lsp_system::LspClient::new(server_config_ref.clone())
             .await
             .map_err(|e| format!("Failed to create LSP client: {}", e))?;
 
