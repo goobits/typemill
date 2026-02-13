@@ -193,6 +193,20 @@ pub enum Commands {
         #[arg(long, default_value = "pretty", value_parser = ["pretty", "compact"])]
         format: String,
     },
+    /// Generate an authentication token for the mill server
+    GenerateToken {
+        /// Project ID to include in the token
+        #[arg(long)]
+        project_id: Option<String>,
+
+        /// User ID to include in the token
+        #[arg(long)]
+        user_id: Option<String>,
+
+        /// Expiry time in seconds (defaults to config value)
+        #[arg(long)]
+        expiry: Option<u64>,
+    },
     /// List all public MCP tools (excludes internal tools)
     Tools {
         /// Output format (table, json, or names-only)
@@ -396,6 +410,13 @@ pub async fn run() {
         Commands::ApplyPlan { input, format } => {
             handle_apply_plan_command(&input, &format).await;
         }
+        Commands::GenerateToken {
+            project_id,
+            user_id,
+            expiry,
+        } => {
+            handle_generate_token(project_id, user_id, expiry);
+        }
         Commands::Tools { format } => {
             handle_tools_command(&format).await;
         }
@@ -437,6 +458,47 @@ async fn handle_mcp_command(command: mill_client::McpCommands) {
     if let Err(e) = result {
         error!(error = %e, "MCP command failed");
         process::exit(1);
+    }
+}
+
+/// Handle the generate-token command
+fn handle_generate_token(
+    project_id: Option<String>,
+    user_id: Option<String>,
+    expiry: Option<u64>,
+) {
+    let config = AppConfig::load().unwrap_or_default();
+
+    // Check if authentication is configured
+    let auth_config = match config.server.auth.as_ref() {
+        Some(c) => c,
+        None => {
+            eprintln!("❌ Authentication is not configured");
+            eprintln!("   Add a [server.auth] section to configuration to enable authentication.");
+            process::exit(1);
+        }
+    };
+
+    // Use custom expiry or default from config
+    let expiry_seconds = expiry.unwrap_or(auth_config.jwt_expiry_seconds);
+
+    // Generate token
+    match mill_auth::generate_token(
+        &auth_config.jwt_secret,
+        expiry_seconds,
+        &auth_config.jwt_issuer,
+        &auth_config.jwt_audience,
+        project_id,
+        user_id,
+    ) {
+        Ok(token) => {
+            println!("{}", token);
+        }
+        Err(e) => {
+            error!(error = %e, "Failed to generate token");
+            eprintln!("❌ Failed to generate token: {}", e);
+            process::exit(1);
+        }
     }
 }
 
