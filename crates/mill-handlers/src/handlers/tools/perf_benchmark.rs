@@ -170,12 +170,10 @@ mod tests {
             }
         }
 
-        let context = create_dummy_context();
-
         println!("Starting benchmark with {} files...", num_files);
         let start = Instant::now();
 
-        let result = discover_importing_files(root, &source_file, &context)
+        let result = discover_importing_files(root, &source_file)
             .await
             .expect("Discovery failed");
 

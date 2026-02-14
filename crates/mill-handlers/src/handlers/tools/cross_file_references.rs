@@ -10,13 +10,14 @@
 //! This follows the hybrid grep+LSP approach for reliable cross-file reference discovery.
 
 use futures::stream::{self, StreamExt};
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use ignore::WalkBuilder;
 use mill_foundation::errors::MillResult as ServerResult;
 use regex::bytes::Regex;
 use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use tracing::debug;
 
 /// Default patterns to exclude from file discovery
@@ -100,22 +101,24 @@ fn extract_locations(response: &Value) -> Vec<Location> {
     }
 }
 
+static KEYWORDS_RE: OnceLock<Regex> = OnceLock::new();
+static EXCLUDE_MATCHER: OnceLock<GlobSet> = OnceLock::new();
+
 /// Discover files that might import the source file
 pub async fn discover_importing_files(
     workspace_root: &Path,
     source_file: &Path,
-    _context: &mill_handler_api::ToolHandlerContext,
 ) -> ServerResult<Vec<PathBuf>> {
-    use globset::{Glob, GlobSetBuilder};
-
-    // Build exclude matcher
-    let mut exclude_builder = GlobSetBuilder::new();
-    for pattern in DEFAULT_EXCLUDES {
-        if let Ok(glob) = Glob::new(pattern) {
-            exclude_builder.add(glob);
+    // Get exclude matcher (cached)
+    let exclude_matcher = EXCLUDE_MATCHER.get_or_init(|| {
+        let mut exclude_builder = GlobSetBuilder::new();
+        for pattern in DEFAULT_EXCLUDES {
+            if let Ok(glob) = Glob::new(pattern) {
+                exclude_builder.add(glob);
+            }
         }
-    }
-    let exclude_matcher = exclude_builder.build().unwrap_or_default();
+        exclude_builder.build().unwrap_or_default()
+    });
 
     // Get the source file name/path for pattern matching
     let source_name = source_file
@@ -166,8 +169,9 @@ pub async fn discover_importing_files(
     };
 
     // Compile Regex patterns
-    // 1. Keywords (constant)
-    let keywords_re = Arc::new(Regex::new(r"import |require\(|use |from |import ").unwrap());
+    // 1. Keywords (constant, cached)
+    let keywords_re = KEYWORDS_RE
+        .get_or_init(|| Regex::new(r"import |require\(|use |from |import ").unwrap());
 
     // 2. Specific patterns (dynamic)
     // We want to match: word boundary + source_name + word boundary
@@ -293,7 +297,7 @@ pub async fn enhance_find_references(
     source_file: &Path,
     line: u32,
     character: u32,
-    context: &mill_handler_api::ToolHandlerContext,
+    _context: &mill_handler_api::ToolHandlerContext,
 ) -> ServerResult<Value> {
     // Extract original locations
     let mut locations: HashSet<Location> =
@@ -321,7 +325,7 @@ pub async fn enhance_find_references(
         .unwrap_or_else(|| source_file.parent().unwrap_or(source_file).to_path_buf());
 
     // Discover importing files
-    let importing_files = discover_importing_files(&workspace_root, source_file, context).await?;
+    let importing_files = discover_importing_files(&workspace_root, source_file).await?;
 
     if importing_files.is_empty() {
         debug!("No importing files found");
@@ -557,7 +561,7 @@ pub async fn enhance_symbol_rename(
     _character: u32,
     old_name: &str,
     new_name: &str,
-    context: &mill_handler_api::ToolHandlerContext,
+    _context: &mill_handler_api::ToolHandlerContext,
 ) -> ServerResult<lsp_types::WorkspaceEdit> {
     use lsp_types::{TextEdit, Uri};
 
@@ -588,7 +592,7 @@ pub async fn enhance_symbol_rename(
         .unwrap_or_else(|| source_file.parent().unwrap_or(source_file).to_path_buf());
 
     // Discover importing files
-    let importing_files = discover_importing_files(&workspace_root, source_file, context).await?;
+    let importing_files = discover_importing_files(&workspace_root, source_file).await?;
 
     if importing_files.is_empty() {
         debug!("No importing files found");
@@ -752,5 +756,24 @@ mod tests {
         // Also check ignoring part of word
         let content2 = "Hello worldy";
         assert!(!re.is_match(content2.as_bytes()), "Should not find 'world' in 'worldy'");
+    }
+
+    #[tokio::test]
+    async fn test_discover_importing_files_smoke() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = temp_dir.path();
+
+        // Setup files
+        let src = root.join("src.ts");
+        tokio::fs::write(&src, "export const x = 1;").await.unwrap();
+
+        let importer = root.join("importer.ts");
+        tokio::fs::write(&importer, "import { x } from './src';").await.unwrap();
+
+        // Run discovery
+        let result = discover_importing_files(root, &src).await.unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], importer);
     }
 }
